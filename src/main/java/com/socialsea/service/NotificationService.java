@@ -3,10 +3,8 @@ package com.socialsea.service;
 import com.socialsea.model.Notification;
 import com.socialsea.model.User;
 import com.socialsea.repository.NotificationRepository;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
-@Profile("local") // 👈 DISABLED on Railway (default profile)
 @Service
 public class NotificationService {
 
