@@ -13,11 +13,16 @@ import lombok.Setter;
 public class User {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue
     private Long id;
 
     @Column(unique = true)
     private String username;
 
     private String password;
+
+    private String role = "USER"; // USER | ADMIN
+
+    private boolean banned = false;
 }
+

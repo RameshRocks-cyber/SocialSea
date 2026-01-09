@@ -2,6 +2,7 @@ package com.socialsea.controller;
 
 import com.socialsea.model.*;
 import com.socialsea.repository.*;
+import com.socialsea.service.NotificationService;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,15 +14,18 @@ public class LikeController {
     private final LikeRepository likeRepo;
     private final UserRepository userRepo;
     private final PostRepository postRepo;
+    private final NotificationService notificationService;
 
     public LikeController(
         LikeRepository likeRepo,
         UserRepository userRepo,
-        PostRepository postRepo
+        PostRepository postRepo,
+        NotificationService notificationService
     ) {
         this.likeRepo = likeRepo;
         this.userRepo = userRepo;
         this.postRepo = postRepo;
+        this.notificationService = notificationService;
     }
 
     @PostMapping("/{postId}")
@@ -36,6 +40,13 @@ public class LikeController {
 
         Like like = new Like(null, user, post);
         likeRepo.save(like);
+
+        // 🔔 NOTIFICATION (must be before return)
+        notificationService.notify(
+            post.getUser(),
+            auth.getName() + " liked your post"
+        );
+
         return "Liked";
     }
 

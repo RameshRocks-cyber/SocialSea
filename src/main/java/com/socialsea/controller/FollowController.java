@@ -2,6 +2,7 @@ package com.socialsea.controller;
 
 import com.socialsea.model.*;
 import com.socialsea.repository.*;
+import com.socialsea.service.NotificationService;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,13 +13,19 @@ public class FollowController {
 
     private final FollowRepository followRepo;
     private final UserRepository userRepo;
+    private final NotificationService notificationService;
 
-    public FollowController(FollowRepository followRepo, UserRepository userRepo) {
+    public FollowController(
+        FollowRepository followRepo,
+        UserRepository userRepo,
+        NotificationService notificationService
+    ) {
         this.followRepo = followRepo;
         this.userRepo = userRepo;
+        this.notificationService = notificationService;
     }
 
-    // Follow user
+    // ✅ FOLLOW USER
     @PostMapping("/{username}")
     public String follow(@PathVariable String username, Authentication auth) {
 
@@ -34,10 +41,17 @@ public class FollowController {
         }
 
         followRepo.save(new Follow(null, follower, following));
+
+        // 🔔 NOTIFICATION
+        notificationService.notify(
+            following,
+            follower.getUsername() + " started following you"
+        );
+
         return "Followed";
     }
 
-    // Unfollow user
+    // ✅ UNFOLLOW USER
     @DeleteMapping("/{username}")
     public String unfollow(@PathVariable String username, Authentication auth) {
 

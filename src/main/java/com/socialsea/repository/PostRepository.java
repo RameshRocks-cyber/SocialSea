@@ -13,4 +13,5 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 
     // ✅ ALSO ADD THIS (used later)
     List<Post> findByUser(User user);
+    List<Post> findByReelTrueOrderByCreatedAtDesc();
 }

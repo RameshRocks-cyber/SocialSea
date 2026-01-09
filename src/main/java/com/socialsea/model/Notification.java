@@ -1,28 +1,25 @@
 package com.socialsea.model;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
 @Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class Post {
+public class Notification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String mediaUrl;
+    private String message;
 
-    private boolean reel;    
+    private boolean read = false;
 
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @ManyToOne
-    private User user;
+    private User user; // receiver
 }
