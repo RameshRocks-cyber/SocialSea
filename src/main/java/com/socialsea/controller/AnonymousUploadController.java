@@ -32,13 +32,15 @@ public class AnonymousUploadController {
             return ResponseEntity.badRequest().body("File is empty");
         }
 
-        Map<String, Object> uploadResult = cloudinary.uploader().upload(
-                file.getBytes(),
-                Map.of(
-                        "resource_type", "video",
-                        "folder", "anonymous"
-                )
-        );
+        @SuppressWarnings("unchecked")
+        Map<String, Object> uploadResult =
+                (Map<String, Object>) cloudinary.uploader().upload(
+                        file.getBytes(),
+                        Map.of(
+                                "resource_type", "video",
+                                "folder", "anonymous"
+                        )
+                );
 
         String videoUrl = uploadResult.get("secure_url").toString();
 
