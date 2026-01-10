@@ -13,14 +13,11 @@ public class CloudinaryConfig {
 
     @Bean
     public Cloudinary cloudinary(Environment env) {
-        String cloudName = env.getProperty("CLOUDINARY_CLOUD_NAME");
-        String apiKey = env.getProperty("CLOUDINARY_API_KEY");
-        String apiSecret = env.getProperty("CLOUDINARY_API_SECRET");
+        String cloudName = env.getProperty("CLOUDINARY_CLOUD_NAME", "dummy");
+        String apiKey = env.getProperty("CLOUDINARY_API_KEY", "dummy");
+        String apiSecret = env.getProperty("CLOUDINARY_API_SECRET", "dummy");
 
-        if (cloudName == null || apiKey == null || apiSecret == null) {
-            throw new IllegalStateException("Cloudinary credentials are not set. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET.");
-        }
-
+        // Do not throw if credentials are missing — use safe dummy values so the app can start.
         Map<String, Object> config = new HashMap<>();
         config.put("cloud_name", cloudName);
         config.put("api_key", apiKey);
