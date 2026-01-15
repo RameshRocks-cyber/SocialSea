@@ -24,5 +24,6 @@ public class Post {
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @ManyToOne
+    @JoinColumn(name = "user_id")
     private User user;
 }

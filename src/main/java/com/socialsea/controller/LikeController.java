@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/likes")
-@CrossOrigin
+@CrossOrigin("https://socialsea.netlify.app")
 public class LikeController {
 
     private final LikeRepository likeRepo;

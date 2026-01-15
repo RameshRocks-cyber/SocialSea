@@ -10,7 +10,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/anonymous")
-@CrossOrigin
+@CrossOrigin("https://socialsea.netlify.app")
 public class AnonymousUploadController {
 
     private final Cloudinary cloudinary;
@@ -30,6 +30,14 @@ public class AnonymousUploadController {
 
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body("File is empty");
+        }
+
+        if (!file.getContentType().startsWith("video/")) {
+            throw new RuntimeException("Only videos allowed");
+        }
+
+        if (file.getSize() > 50 * 1024 * 1024) {
+            throw new RuntimeException("File too large");
         }
 
         @SuppressWarnings("unchecked")

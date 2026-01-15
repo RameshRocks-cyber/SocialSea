@@ -14,7 +14,7 @@ import lombok.Setter;
 public class User {
 
     @Id
-    @GeneratedValue
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(unique = true)
@@ -26,4 +26,3 @@ public class User {
 
     private boolean banned = false;
 }
-

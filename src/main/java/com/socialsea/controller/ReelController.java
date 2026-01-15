@@ -12,7 +12,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/reels")
-@CrossOrigin
+@CrossOrigin("https://socialsea.netlify.app")
 public class ReelController {
 
     private final PostRepository postRepo;

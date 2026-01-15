@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/feed")
-@CrossOrigin
+@CrossOrigin("https://socialsea.netlify.app")
 public class FeedController {
 
     private final UserRepository userRepo;

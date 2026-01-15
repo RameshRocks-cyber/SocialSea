@@ -16,10 +16,12 @@ public class Notification {
 
     private String message;
 
+    @Column(name = "is_read")
     private boolean read = false;
 
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @ManyToOne
+    @JoinColumn(name = "user_id")
     private User user; // receiver
 }

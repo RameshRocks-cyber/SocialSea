@@ -1,41 +1,80 @@
 package com.socialsea.controller;
 
-import com.socialsea.model.User;
-import com.socialsea.repository.UserRepository;
-import com.socialsea.security.JwtUtil;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin
+@CrossOrigin("https://socialsea.netlify.app")
 public class AuthController {
 
-    private final UserRepository repo;
-    private final JwtUtil jwt;
-    private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+    // In-memory storage for demonstration. 
+    // In a real application, replace these with a Database (UserRepository) and Redis (for OTPs).
+    private static final Map<String, String> users = new HashMap<>();
+    private static final Map<String, String> otpStorage = new HashMap<>();
 
-    public AuthController(UserRepository repo, JwtUtil jwt) {
-        this.repo = repo;
-        this.jwt = jwt;
+    @PostMapping("/send-otp")
+    public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        
+        if (username == null || username.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("Phone number or Email is required");
+        }
+
+        // Check if user already exists (Enforces one account per email/phone)
+        if (users.containsKey(username)) {
+            return ResponseEntity.badRequest().body("Account already exists with this identifier");
+        }
+
+        // Generate a 6-digit OTP
+        String otp = String.format("%06d", new Random().nextInt(999999));
+        
+        // Store OTP temporarily
+        otpStorage.put(username, otp);
+
+        // Simulate sending OTP (Check your server console to see the code)
+        System.out.println(">>> OTP for " + username + " is: " + otp);
+
+        return ResponseEntity.ok("OTP sent successfully");
     }
 
     @PostMapping("/register")
-    public String register(@RequestBody User user) {
-        user.setPassword(encoder.encode(user.getPassword()));
-        repo.save(user);
-        return "User registered";
+    public ResponseEntity<?> register(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        String password = request.get("password");
+        String otp = request.get("otp");
+
+        if (username == null || password == null || otp == null) {
+            return ResponseEntity.badRequest().body("All fields are required");
+        }
+
+        // Verify OTP
+        String storedOtp = otpStorage.get(username);
+        if (storedOtp == null || !storedOtp.equals(otp)) {
+            return ResponseEntity.badRequest().body("Invalid or expired OTP");
+        }
+
+        // Register User
+        users.put(username, password);
+        otpStorage.remove(username); // Clear OTP after successful registration
+
+        return ResponseEntity.ok("User registered successfully");
     }
 
     @PostMapping("/login")
-    public String login(@RequestBody User user) {
-        User dbUser = repo.findByUsername(user.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    public ResponseEntity<?> login(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        String password = request.get("password");
 
-        if (!encoder.matches(user.getPassword(), dbUser.getPassword())) {
-            throw new RuntimeException("Wrong password");
+        if (users.containsKey(username) && users.get(username).equals(password)) {
+            // Return a dummy token for now
+            return ResponseEntity.ok(Map.of("token", "dummy-jwt-token-" + System.currentTimeMillis()));
         }
 
-        return jwt.generateToken(dbUser.getUsername());
+        return ResponseEntity.status(401).body("Invalid credentials");
     }
 }

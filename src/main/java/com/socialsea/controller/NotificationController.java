@@ -9,7 +9,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/notifications")
-@CrossOrigin
+@CrossOrigin("https://socialsea.netlify.app")
 public class NotificationController {
 
     private final NotificationRepository repo;
@@ -39,4 +39,3 @@ public class NotificationController {
         repo.save(n);
     }
 }
-

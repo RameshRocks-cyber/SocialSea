@@ -3,7 +3,7 @@ package com.socialsea.model;
 import jakarta.persistence.*;
 import lombok.*;
 
-@Entity
+@Entity(name = "PostLike") // "Like" is a reserved JPQL keyword, so we rename the entity model
 @Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
@@ -17,8 +17,10 @@ public class Like {
     private Long id;
 
     @ManyToOne
+    @JoinColumn(name = "user_id")
     private User user;
 
     @ManyToOne
+    @JoinColumn(name = "post_id")
     private Post post;
 }

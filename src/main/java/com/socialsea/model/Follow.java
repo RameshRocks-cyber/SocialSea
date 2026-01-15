@@ -7,7 +7,7 @@ import lombok.*;
 @Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(
+@Table(name = "follows",
     uniqueConstraints = @UniqueConstraint(
         columnNames = {"follower_id", "following_id"}
     )
@@ -19,8 +19,10 @@ public class Follow {
     private Long id;
 
     @ManyToOne
+    @JoinColumn(name = "follower_id")
     private User follower;
 
     @ManyToOne
+    @JoinColumn(name = "following_id")
     private User following;
 }

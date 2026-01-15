@@ -8,7 +8,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/profile")
-@CrossOrigin
+@CrossOrigin("https://socialsea.netlify.app")
 public class ProfileController {
 
     private final UserRepository userRepo;

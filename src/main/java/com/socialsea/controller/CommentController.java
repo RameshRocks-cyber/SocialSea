@@ -10,7 +10,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/comments")
-@CrossOrigin
+@CrossOrigin("https://socialsea.netlify.app")
 public class CommentController {
 
     private final CommentRepository commentRepo;

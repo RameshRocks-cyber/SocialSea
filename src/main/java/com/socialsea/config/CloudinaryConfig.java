@@ -1,6 +1,8 @@
 package com.socialsea.config;
 
 import com.cloudinary.Cloudinary;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -12,12 +14,12 @@ import java.util.Map;
 public class CloudinaryConfig {
 
     @Bean
+    @ConditionalOnProperty(name = {"cloudinary.cloud-name", "cloudinary.api-key", "cloudinary.api-secret"})
     public Cloudinary cloudinary(Environment env) {
-        String cloudName = env.getProperty("CLOUDINARY_CLOUD_NAME", "dummy");
-        String apiKey = env.getProperty("CLOUDINARY_API_KEY", "dummy");
-        String apiSecret = env.getProperty("CLOUDINARY_API_SECRET", "dummy");
+        String cloudName = env.getProperty("cloudinary.cloud-name");
+        String apiKey = env.getProperty("cloudinary.api-key");
+        String apiSecret = env.getProperty("cloudinary.api-secret");
 
-        // Do not throw if credentials are missing — use safe dummy values so the app can start.
         Map<String, Object> config = new HashMap<>();
         config.put("cloud_name", cloudName);
         config.put("api_key", apiKey);
@@ -26,4 +28,12 @@ public class CloudinaryConfig {
 
         return new Cloudinary(config);
     }
+
+    @Bean
+    @ConditionalOnMissingBean
+    public Cloudinary fallbackCloudinary() {
+        // Provide a harmless fallback so autowiring doesn't fail when credentials are absent.
+        return new Cloudinary(new HashMap<>());
+    }
+
 }
