@@ -2,6 +2,7 @@ package com.socialsea.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
@@ -20,7 +21,11 @@ public class SecurityConfig {
     private final RateLimitFilter rateLimitFilter;
     private final IPBlockFilter ipBlockFilter;
 
-    public SecurityConfig(JwtFilter jwtFilter, RateLimitFilter rateLimitFilter, IPBlockFilter ipBlockFilter) {
+    public SecurityConfig(
+            JwtFilter jwtFilter,
+            RateLimitFilter rateLimitFilter,
+            IPBlockFilter ipBlockFilter
+    ) {
         this.jwtFilter = jwtFilter;
         this.rateLimitFilter = rateLimitFilter;
         this.ipBlockFilter = ipBlockFilter;
@@ -28,22 +33,36 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+
         http
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
+
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()   // 🔥 THIS IS CRITICAL
+                // ✅ Root & health (Render check)
+                .requestMatchers("/", "/health").permitAll()
+
+                // ✅ Preflight
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
+                // ✅ Auth & public APIs
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/videos/public/**").permitAll()
                 .requestMatchers("/api/videos/upload").permitAll()
                 .requestMatchers("/api/reels/**").permitAll()
+                .requestMatchers("/api/anonymous/**").permitAll()
+
+                // 🔐 Everything else requires JWT
                 .anyRequest().authenticated()
             )
+
             .httpBasic(basic -> basic.disable())
-            .formLogin(form -> form.disable())
-            .addFilterBefore(ipBlockFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
-            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+            .formLogin(form -> form.disable());
+
+        // 🔥 ORDER MATTERS
+        http.addFilterBefore(ipBlockFilter, UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -56,7 +75,10 @@ public class SecurityConfig {
             "https://socialsea.netlify.app"
         ));
 
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of(
+            "GET", "POST", "PUT", "DELETE", "OPTIONS"
+        ));
+
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 
