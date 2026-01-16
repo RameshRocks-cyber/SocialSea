@@ -40,7 +40,12 @@ public class SecurityConfig {
 
             .authorizeHttpRequests(auth -> auth
                 // ✅ Root & health (Render check)
-                .requestMatchers("/", "/health").permitAll()
+                .requestMatchers(
+                    "/",
+                    "/health",
+                    "/error",
+                    "/api/auth/**"
+                ).permitAll()
 
                 // ✅ Preflight
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
