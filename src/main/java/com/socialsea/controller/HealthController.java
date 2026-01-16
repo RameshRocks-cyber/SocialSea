@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class HealthController {
 
     @GetMapping("/")
-    public String home() {
+    public String root() {
         return "SocialSea backend is running";
     }
 
