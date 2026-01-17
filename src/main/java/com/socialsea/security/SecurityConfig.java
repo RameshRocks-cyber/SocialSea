@@ -42,7 +42,9 @@ public class SecurityConfig {
                     "/health",
                     "/api/health",
                     "/error",
-                    "/api/auth/**"
+                    "/api/auth/**",
+                    "/auth/**",
+                    "/anonymous/**"
                 ).permitAll()
 
                 // ✅ Preflight
