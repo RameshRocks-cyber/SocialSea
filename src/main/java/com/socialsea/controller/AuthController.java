@@ -1,6 +1,12 @@
 package com.socialsea.controller;
 
+import com.socialsea.model.User;
+import com.socialsea.repository.UserRepository;
+import com.socialsea.security.JwtUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -12,9 +18,16 @@ import java.util.Random;
 @CrossOrigin("https://socialsea.netlify.app")
 public class AuthController {
 
-    // In-memory storage for demonstration. 
-    // In a real application, replace these with a Database (UserRepository) and Redis (for OTPs).
-    private static final Map<String, String> users = new HashMap<>();
+    @Autowired
+    private UserRepository userRepo;
+
+    @Autowired
+    private JavaMailSender mailSender;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    // Temporary OTP storage (Use Redis in production for better scalability)
     private static final Map<String, String> otpStorage = new HashMap<>();
 
     @PostMapping("/send-otp")
@@ -26,7 +39,7 @@ public class AuthController {
         }
 
         // Check if user already exists (Enforces one account per email/phone)
-        if (users.containsKey(username)) {
+        if (userRepo.findByUsername(username).isPresent()) {
             return ResponseEntity.badRequest().body("Account already exists with this identifier");
         }
 
@@ -36,8 +49,12 @@ public class AuthController {
         // Store OTP temporarily
         otpStorage.put(username, otp);
 
-        // Simulate sending OTP (Check your server console to see the code)
-        System.out.println(">>> OTP for " + username + " is: " + otp);
+        // Send OTP via Email
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setTo(username);
+        message.setSubject("Your SocialSea OTP");
+        message.setText("Your OTP code is: " + otp);
+        mailSender.send(message);
 
         return ResponseEntity.ok("OTP sent successfully");
     }
@@ -59,7 +76,11 @@ public class AuthController {
         }
 
         // Register User
-        users.put(username, password);
+        User newUser = new User();
+        newUser.setUsername(username);
+        newUser.setPassword(password); // Note: Add BCrypt encoding here in production
+        userRepo.save(newUser);
+        
         otpStorage.remove(username); // Clear OTP after successful registration
 
         return ResponseEntity.ok("User registered successfully");
@@ -70,11 +91,14 @@ public class AuthController {
         String username = request.get("username");
         String password = request.get("password");
 
-        if (users.containsKey(username) && users.get(username).equals(password)) {
-            // Return a dummy token for now
-            return ResponseEntity.ok(Map.of("token", "dummy-jwt-token-" + System.currentTimeMillis()));
+        User user = userRepo.findByUsername(username).orElse(null);
+
+        if (user != null && user.getPassword().equals(password)) {
+            String token = jwtUtil.generateToken(username);
+            return ResponseEntity.ok(Map.of("token", token));
         }
 
         return ResponseEntity.status(401).body("Invalid credentials");
     }
+}
 }
