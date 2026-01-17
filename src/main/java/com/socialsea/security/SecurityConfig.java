@@ -19,16 +19,13 @@ public class SecurityConfig {
 
     private final JwtFilter jwtFilter;
     private final RateLimitFilter rateLimitFilter;
-    private final IPBlockFilter ipBlockFilter;
 
     public SecurityConfig(
             JwtFilter jwtFilter,
-            RateLimitFilter rateLimitFilter,
-            IPBlockFilter ipBlockFilter
+            RateLimitFilter rateLimitFilter
     ) {
         this.jwtFilter = jwtFilter;
         this.rateLimitFilter = rateLimitFilter;
-        this.ipBlockFilter = ipBlockFilter;
     }
 
     @Bean
@@ -43,6 +40,7 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/",
                     "/health",
+                    "/api/health",
                     "/error",
                     "/api/auth/**"
                 ).permitAll()
@@ -65,7 +63,6 @@ public class SecurityConfig {
             .formLogin(form -> form.disable());
 
         // 🔥 ORDER MATTERS
-        http.addFilterBefore(ipBlockFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
         http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
