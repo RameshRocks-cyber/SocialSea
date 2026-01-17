@@ -42,20 +42,19 @@ public class SecurityConfig {
                     "/health",
                     "/api/health",
                     "/error",
-                    "/api/auth/**",
                     "/auth/**",
-                    "/anonymous/**"
+                    "/api/auth/**",
+                    "/anonymous/**",
+                    "/api/anonymous/**"
                 ).permitAll()
 
                 // ✅ Preflight
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
                 // ✅ Auth & public APIs
-                .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/videos/public/**").permitAll()
                 .requestMatchers("/api/videos/upload").permitAll()
                 .requestMatchers("/api/reels/**").permitAll()
-                .requestMatchers("/api/anonymous/**").permitAll()
 
                 // 🔐 Everything else requires JWT
                 .anyRequest().authenticated()
