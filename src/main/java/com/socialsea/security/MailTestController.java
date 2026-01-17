@@ -1,4 +1,4 @@
-package com.socialsea.controller;
+package com.socialsea.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.javamail.JavaMailSender;
