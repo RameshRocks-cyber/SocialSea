@@ -41,6 +41,7 @@ public class SecurityConfig {
                     "/",
                     "/health",
                     "/api/health",
+                    "/mail-test",
                     "/error",
                     "/auth/**",
                     "/api/auth/**",
