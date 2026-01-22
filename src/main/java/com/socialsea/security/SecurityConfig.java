@@ -21,46 +21,25 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-
         http
-            .csrf(csrf -> csrf.disable())
             .cors(Customizer.withDefaults())
+            .csrf(csrf -> csrf.disable())
             .sessionManagement(sess -> 
                 sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authorizeHttpRequests(auth -> auth
-
-                // ✅ LOGIN MUST BE PUBLIC (VERY IMPORTANT)
-                .requestMatchers(
-                    "/admin/login",
-                    "/auth/admin/login",
-                    "/api/auth/admin/login"
-                ).permitAll()
-
-                // ✅ PUBLIC APIs (Reports, Anonymous Feed, etc.)
+                // ✅ PUBLIC ENDPOINTS
                 .requestMatchers(
                     "/",
                     "/health",
-                    "/public/**",
-                    "/anonymous/**",
-                    "/api/anonymous/**",
-                    "/anonymous-upload/**",
-                    "/anonymous/posts/**",
-                    "/uploads/**",
-                    "/api/public/**",
-                    "/h2-console/**",
-                    "/api/auth/**",
                     "/auth/**",
-                    "/posts/**",
-                    "/api/notifications/**"
+                    "/api/anonymous/**",
+                    "/api/public/**"
                 ).permitAll()
 
-                // 🔒 ADMIN APIs
-                .requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")
-
+                // 🔐 EVERYTHING ELSE
                 .anyRequest().authenticated()
             )
-            .headers(headers -> headers.frameOptions(frame -> frame.disable()))
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

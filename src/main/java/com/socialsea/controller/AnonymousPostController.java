@@ -11,7 +11,10 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/anonymous")
-@CrossOrigin("https://socialsea.netlify.app")
+@CrossOrigin(origins = {
+    "http://localhost:5173",
+    "https://socialsea.netlify.app"
+})
 public class AnonymousPostController {
 
     private final AnonymousPostRepository anonymousPostRepo;
