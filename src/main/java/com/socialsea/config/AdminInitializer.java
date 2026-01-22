@@ -5,14 +5,17 @@ import com.socialsea.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
 public class AdminInitializer {
 
     @Bean
-    CommandLineRunner initAdmin(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    CommandLineRunner initAdmin(UserRepository userRepository, PasswordEncoder passwordEncoder, Environment env) {
         return args -> {
+            
+            System.out.println("🚀 ACTIVE PROFILES: " + java.util.Arrays.toString(env.getActiveProfiles()));
 
             try {
                 String adminEmail = "jekkaramesh788@gmail.com";
