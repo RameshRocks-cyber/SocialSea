@@ -25,18 +25,22 @@ public class AnonymousPostController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("caption") String caption
     ) {
-        // TODO: Inject CloudinaryService and upload file
-        // String url = cloudinaryService.upload(file);
-        String url = "https://placehold.co/600x400?text=Uploaded+Image"; // Placeholder
+        try {
+            // TODO: Inject CloudinaryService and upload file
+            // String fileUrl = cloudinaryService.upload(file);
+            String fileUrl = "https://placehold.co/600x400?text=Uploaded+Image"; // Placeholder
 
-        AnonymousPost post = new AnonymousPost();
-        post.setUrl(url);
-        post.setCaption(caption);
-        post.setCreatedAt(LocalDateTime.now());
-        post.setApproved(false); // Requires admin approval
+            AnonymousPost post = new AnonymousPost();
+            post.setContentUrl(fileUrl);
+            post.setDescription(caption);
+            post.setType("IMAGE"); // Defaulting to IMAGE for the placeholder
+            post.setApproved(false);
 
-        anonymousPostRepo.save(post);
+            anonymousPostRepo.save(post);
 
-        return ResponseEntity.ok(Map.of("message", "Upload successful! Waiting for approval."));
+            return ResponseEntity.ok(Map.of("message", "Anonymous post submitted for review"));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
     }
 }

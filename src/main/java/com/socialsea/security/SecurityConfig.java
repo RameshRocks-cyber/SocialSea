@@ -45,6 +45,7 @@ public class SecurityConfig {
                     "/api/anonymous/**",
                     "/anonymous-upload/**",
                     "/anonymous/posts/**",
+                    "/uploads/**",
                     "/h2-console/**",
                     "/api/auth/**",
                     "/auth/**",
