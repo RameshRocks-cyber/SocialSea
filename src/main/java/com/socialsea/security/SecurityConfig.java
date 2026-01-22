@@ -37,6 +37,8 @@ public class SecurityConfig {
 
                 // ✅ PUBLIC APIs (Reports, Anonymous Feed, etc.)
                 .requestMatchers(
+                    "/",
+                    "/health",
                     "/public/**",
                     "/anonymous/**",
                     "/h2-console/**",
