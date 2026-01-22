@@ -23,6 +23,7 @@ public class SecurityConfig {
 
         http
             .csrf(csrf -> csrf.disable())
+            .cors(cors -> {})
             .sessionManagement(sess -> 
                 sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
@@ -41,6 +42,9 @@ public class SecurityConfig {
                     "/health",
                     "/public/**",
                     "/anonymous/**",
+                    "/api/anonymous/**",
+                    "/anonymous-upload/**",
+                    "/anonymous/posts/**",
                     "/h2-console/**",
                     "/api/auth/**",
                     "/auth/**",
