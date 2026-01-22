@@ -1,5 +1,7 @@
 package com.socialsea.security;
 
+import com.socialsea.model.User;
+import com.socialsea.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,6 +21,9 @@ public class JwtFilter extends OncePerRequestFilter {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
@@ -45,9 +50,12 @@ public class JwtFilter extends OncePerRequestFilter {
                     String email = jwtUtil.extractEmail(token);
                     String role = jwtUtil.extractRole(token);
 
-                    // Optional: Check if user is banned
-                    // User user = userRepository.findByEmail(email).orElse(null);
-                    // if (user != null && user.isBanned()) { ... }
+                    // Check if user is banned
+                    User user = userRepository.findByEmail(email).orElse(null);
+                    if (user != null && user.isBanned()) {
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        return;
+                    }
 
                     UsernamePasswordAuthenticationToken auth =
                             new UsernamePasswordAuthenticationToken(

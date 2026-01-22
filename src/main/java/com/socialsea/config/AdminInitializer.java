@@ -23,7 +23,7 @@ public class AdminInitializer {
                 if (userRepository.findByEmail(adminEmail).isEmpty()) {
                     User admin = new User();
                     admin.setEmail(adminEmail);
-                    admin.setPassword(passwordEncoder.encode("admin123"));
+                    admin.setPassword(passwordEncoder.encode("Root@000"));
                     admin.setRole("ADMIN");
                     admin.setBanned(false);
 

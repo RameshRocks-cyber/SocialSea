@@ -1,32 +1,29 @@
 package com.socialsea.controller;
 
-import com.socialsea.service.AnonymousPostService;
-import org.springframework.http.ResponseEntity;
+import com.socialsea.model.AnonymousPost;
+import com.socialsea.repository.AnonymousPostRepository;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
 
 @RestController
-@RequestMapping("/anonymous")
-@CrossOrigin("https://socialsea.netlify.app")
+@RequestMapping("/api/anonymous")
 public class AnonymousPostController {
 
-    private final AnonymousPostService service;
+    private final AnonymousPostRepository repo;
 
-    public AnonymousPostController(AnonymousPostService service) {
-        this.service = service;
+    public AnonymousPostController(AnonymousPostRepository repo) {
+        this.repo = repo;
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<?> uploadAnonymous(
-            @RequestParam("file") MultipartFile file,
-            @RequestParam("description") String description
-    ) {
-        System.out.println("🔥 UPLOAD CONTROLLER HIT 🔥");
-        System.out.println("File name = " + file.getOriginalFilename());
-        System.out.println("Description = " + description);
+    public AnonymousPost upload(@RequestBody AnonymousPost post) {
+        post.setApproved(false);
+        return repo.save(post);
+    }
 
-        service.save(file, description);
-
-        return ResponseEntity.ok("Uploaded. Waiting for admin approval.");
+    @GetMapping("/feed")
+    public List<AnonymousPost> feed() {
+        return repo.findByApprovedTrue();
     }
 }

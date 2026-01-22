@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "ANONYMOUS_POST")
+@Table(name = "anonymous_posts")
 public class AnonymousPost {
 
     @Id
@@ -12,23 +12,31 @@ public class AnonymousPost {
     private Long id;
 
     @Column(length = 1000)
-    private String contentUrl;   // video / image / text
-    private String type;         // VIDEO | IMAGE | TEXT
     private String description;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
-
-    // 🔐 INTERNAL ONLY (never exposed)
-    private String uploaderEmail;
+    private String contentUrl;   // image / video URL
+    private String type;         // IMAGE | VIDEO | TEXT
 
     private boolean approved = false;
     private boolean rejected = false;
 
-    @Column(length = 500)
     private String rejectionReason;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    // ---------- GETTERS & SETTERS ----------
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
 
     public String getContentUrl() {
         return contentUrl;
@@ -46,31 +54,35 @@ public class AnonymousPost {
         this.type = type;
     }
 
-    public String getDescription() {
-        return description;
+    public boolean isApproved() {
+        return approved;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
+    public void setApproved(boolean approved) {
+        this.approved = approved;
     }
 
-    public LocalDateTime getCreatedAt() { return createdAt; }
-    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
-
-    public String getUploaderEmail() {
-        return uploaderEmail;
+    public boolean isRejected() {
+        return rejected;
     }
 
-    public void setUploaderEmail(String uploaderEmail) {
-        this.uploaderEmail = uploaderEmail;
+    public void setRejected(boolean rejected) {
+        this.rejected = rejected;
     }
 
-    public boolean isApproved() { return approved; }
-    public void setApproved(boolean approved) { this.approved = approved; }
+    public String getRejectionReason() {
+        return rejectionReason;
+    }
 
-    public boolean isRejected() { return rejected; }
-    public void setRejected(boolean rejected) { this.rejected = rejected; }
+    public void setRejectionReason(String rejectionReason) {
+        this.rejectionReason = rejectionReason;
+    }
 
-    public String getRejectionReason() { return rejectionReason; }
-    public void setRejectionReason(String rejectionReason) { this.rejectionReason = rejectionReason; }
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
 }

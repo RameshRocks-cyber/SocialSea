@@ -47,7 +47,7 @@ public class SecurityConfig {
                 ).permitAll()
 
                 // 🔒 ADMIN APIs
-                .requestMatchers("/admin/**").hasRole("ADMIN")
+                .requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN")
 
                 .anyRequest().authenticated()
             )

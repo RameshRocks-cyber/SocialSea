@@ -1,95 +1,74 @@
 package com.socialsea.controller;
 
-import com.socialsea.model.*;
-import com.socialsea.repository.*;
+import com.socialsea.model.AnonymousPost;
+import com.socialsea.model.User;
+import com.socialsea.repository.AnonymousPostRepository;
+import com.socialsea.repository.PostRepository;
+import com.socialsea.repository.UserRepository;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/admin")
-@PreAuthorize("hasAuthority('ROLE_ADMIN')")
+@RequestMapping("/api/admin")
+@PreAuthorize("hasRole('ADMIN')")
 @CrossOrigin("https://socialsea.netlify.app")
 public class AdminController {
 
-    private final UserRepository userRepo;
-    private final PostRepository postRepo;
+    private final UserRepository userRepository;
+    private final PostRepository postRepository;
     private final AnonymousPostRepository anonRepo;
 
     public AdminController(
-        UserRepository userRepo,
-        PostRepository postRepo,
+        UserRepository userRepository,
+        PostRepository postRepository,
         AnonymousPostRepository anonRepo
     ) {
-        this.userRepo = userRepo;
-        this.postRepo = postRepo;
+        this.userRepository = userRepository;
+        this.postRepository = postRepository;
         this.anonRepo = anonRepo;
     }
 
     // 👤 All users
     @GetMapping("/users")
-    public List<User> users() {
-        return userRepo.findAll();
+    public List<User> getAllUsers() {
+        return userRepository.findAll();
     }
 
     // 🚫 Ban user
-    @PostMapping("/ban/{userId}")
-    public String banUser(@PathVariable Long userId) {
-        User user = userRepo.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
+    @PutMapping("/users/{id}/ban")
+    public void banUser(@PathVariable Long id) {
+        User user = userRepository.findById(id).orElseThrow();
         user.setBanned(true);
-        userRepo.save(user);
-        return "User banned successfully";
+        userRepository.save(user);
     }
 
     // ✅ Unban user
-    @PostMapping("/unban/{userId}")
-    public String unbanUser(@PathVariable Long userId) {
-        User user = userRepo.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
+    @PutMapping("/users/{id}/unban")
+    public void unbanUser(@PathVariable Long id) {
+        User user = userRepository.findById(id).orElseThrow();
         user.setBanned(false);
-        userRepo.save(user);
-        return "User unbanned successfully";
+        userRepository.save(user);
     }
 
-    // 📸 All posts
-    @GetMapping("/posts")
-    public List<Post> posts() {
-        return postRepo.findAll();
+    // 🗑 Delete post
+    @DeleteMapping("/posts/{id}")
+    public void deletePost(@PathVariable Long id) {
+        postRepository.deleteById(id);
     }
 
-    // 🆕 Pending posts (Waiting for approval)
-    @GetMapping("/posts/pending")
-    public List<Post> pendingPosts() {
-        return postRepo.findAll().stream()
-                .filter(p -> !p.isApproved())
-                .toList();
+    // 👻 Anonymous Posts Moderation
+    @GetMapping("/anonymous/pending")
+    public List<AnonymousPost> pendingAnon() {
+        return anonRepo.findByApprovedFalse();
     }
 
-    // 🆕 Approve post
-    @PostMapping("/posts/{id}/approve")
-    public String approvePost(@PathVariable Long id) {
-        Post post = postRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Post not found"));
+    @PutMapping("/anonymous/{id}/approve")
+    public void approveAnon(@PathVariable Long id) {
+        AnonymousPost post = anonRepo.findById(id).orElseThrow();
         post.setApproved(true);
-        postRepo.save(post);
-        return "Post approved";
-    }
-
-    // ❌ Delete post
-    @DeleteMapping("/post/{postId}")
-    public String deletePost(@PathVariable Long postId) {
-        postRepo.deleteById(postId);
-        return "Post deleted by admin";
-    }
-
-    // 👻 Anonymous videos
-    @GetMapping("/anonymous")
-    public List<AnonymousPost> anonymous() {
-        return anonRepo.findAll();
+        anonRepo.save(post);
     }
 
     @DeleteMapping("/anonymous/{id}")
