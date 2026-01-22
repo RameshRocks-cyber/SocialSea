@@ -3,6 +3,7 @@ package com.socialsea.security;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -23,7 +24,7 @@ public class SecurityConfig {
 
         http
             .csrf(csrf -> csrf.disable())
-            .cors(cors -> {})
+            .cors(Customizer.withDefaults())
             .sessionManagement(sess -> 
                 sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
@@ -46,6 +47,7 @@ public class SecurityConfig {
                     "/anonymous-upload/**",
                     "/anonymous/posts/**",
                     "/uploads/**",
+                    "/api/public/**",
                     "/h2-console/**",
                     "/api/auth/**",
                     "/auth/**",
