@@ -23,6 +23,9 @@ public class ReelController {
 
     @GetMapping
     public List<Post> reels() {
-        return postRepo.findByReelTrueOrderByCreatedAtDesc();
+        return postRepo.findByReelTrueOrderByCreatedAtDesc()
+                .stream()
+                .filter(Post::isApproved)
+                .toList();
     }
 }

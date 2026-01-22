@@ -29,8 +29,8 @@ public class FollowController {
     @PostMapping("/{username}")
     public String follow(@PathVariable String username, Authentication auth) {
 
-        User follower = userRepo.findByUsername(auth.getName()).orElseThrow();
-        User following = userRepo.findByUsername(username).orElseThrow();
+        User follower = userRepo.findByEmail(auth.getName()).orElseThrow();
+        User following = userRepo.findByEmail(username).orElseThrow();
 
         if (follower.getId().equals(following.getId())) {
             return "Cannot follow yourself";
@@ -43,9 +43,9 @@ public class FollowController {
         followRepo.save(new Follow(null, follower, following));
 
         // 🔔 NOTIFICATION
-        notificationService.notify(
-            following,
-            follower.getUsername() + " started following you"
+        notificationService.notifyUser(
+            following.getEmail(),
+            follower.getEmail() + " started following you"
         );
 
         return "Followed";
@@ -55,8 +55,8 @@ public class FollowController {
     @DeleteMapping("/{username}")
     public String unfollow(@PathVariable String username, Authentication auth) {
 
-        User follower = userRepo.findByUsername(auth.getName()).orElseThrow();
-        User following = userRepo.findByUsername(username).orElseThrow();
+        User follower = userRepo.findByEmail(auth.getName()).orElseThrow();
+        User following = userRepo.findByEmail(username).orElseThrow();
 
         followRepo.findAll().stream()
             .filter(f -> f.getFollower().equals(follower)
@@ -70,14 +70,14 @@ public class FollowController {
     // Followers count
     @GetMapping("/{username}/followers")
     public long followers(@PathVariable String username) {
-        User user = userRepo.findByUsername(username).orElseThrow();
+        User user = userRepo.findByEmail(username).orElseThrow();
         return followRepo.countByFollowing(user);
     }
 
     // Following count
     @GetMapping("/{username}/following")
     public long following(@PathVariable String username) {
-        User user = userRepo.findByUsername(username).orElseThrow();
+        User user = userRepo.findByEmail(username).orElseThrow();
         return followRepo.countByFollower(user);
     }
 }

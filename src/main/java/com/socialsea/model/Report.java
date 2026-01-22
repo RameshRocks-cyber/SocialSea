@@ -1,6 +1,7 @@
 package com.socialsea.model;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "reports")
@@ -10,11 +11,16 @@ public class Report {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long postId;
+    private Long postId;          // For regular posts
+
+    private Long anonymousPostId; // For anonymous posts (Public Report)
 
     private String type;
 
     private String reason;
+    @Column(nullable = false)
+    private boolean resolved = false;
+    private LocalDateTime createdAt = LocalDateTime.now();
 
     @ManyToOne
     private User reporter;
@@ -31,6 +37,10 @@ public class Report {
         return postId;
     }
 
+    public Long getAnonymousPostId() {
+        return anonymousPostId;
+    }
+
     public String getType() {
         return type;
     }
@@ -43,9 +53,21 @@ public class Report {
         return reporter;
     }
 
+    public boolean isResolved() {
+        return resolved;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
     // ✅ SETTERS (THIS FIXES YOUR ERROR)
     public void setPostId(Long postId) {
         this.postId = postId;
+    }
+
+    public void setAnonymousPostId(Long anonymousPostId) {
+        this.anonymousPostId = anonymousPostId;
     }
 
     public void setType(String type) {
@@ -58,5 +80,13 @@ public class Report {
 
     public void setReporter(User reporter) {
         this.reporter = reporter;
+    }
+
+    public void setResolved(boolean resolved) {
+        this.resolved = resolved;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

@@ -1,0 +1,45 @@
+package com.socialsea.controller;
+
+import com.socialsea.model.Report;
+import com.socialsea.repository.ReportRepository;
+import com.socialsea.service.NotificationService;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/admin/reports")
+@CrossOrigin("https://socialsea.netlify.app")
+public class AdminReportController {
+
+    private final ReportRepository reportRepository;
+    private final NotificationService notificationService;
+
+    public AdminReportController(ReportRepository reportRepository, NotificationService notificationService) {
+        this.reportRepository = reportRepository;
+        this.notificationService = notificationService;
+    }
+
+    // 📋 View Pending Reports
+    @GetMapping("/pending")
+    public List<Report> pendingReports() {
+        return reportRepository.findByResolvedFalse();
+    }
+
+    // ✅ Resolve Report
+    @PostMapping("/resolve/{id}")
+    public String resolve(@PathVariable Long id) {
+        Report report = reportRepository.findById(id).orElseThrow();
+        report.setResolved(true);
+        reportRepository.save(report);
+
+        if (report.getReporter() != null) {
+            notificationService.notifyUser(
+                report.getReporter().getEmail(),
+                "Your report has been resolved."
+            );
+        }
+
+        return "Report resolved";
+    }
+}

@@ -32,7 +32,7 @@ public class LikeController {
     @PostMapping("/{postId}")
     public String like(@PathVariable Long postId, Authentication auth) {
 
-        User user = userRepo.findByUsername(auth.getName()).orElseThrow();
+        User user = userRepo.findByEmail(auth.getName()).orElseThrow();
         Post post = postRepo.findById(postId).orElseThrow();
 
         if (likeRepo.existsByUserAndPost(user, post)) {
@@ -43,8 +43,8 @@ public class LikeController {
         likeRepo.save(like);
 
         // 🔔 NOTIFICATION (must be before return)
-        notificationService.notify(
-            post.getUser(),
+        notificationService.notifyUser(
+            post.getUser().getEmail(),
             auth.getName() + " liked your post"
         );
 

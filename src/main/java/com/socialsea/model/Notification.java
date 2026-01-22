@@ -17,14 +17,12 @@ public class Notification {
 
     private LocalDateTime createdAt = LocalDateTime.now();
 
-    @ManyToOne
-    @JoinColumn(name = "user_id")
-    private User user; // receiver
+    private String recipient;   // email or "ADMIN"
 
     public Notification() {}
 
-    public Notification(User user, String message) {
-        this.user = user;
+    public Notification(String recipient, String message) {
+        this.recipient = recipient;
         this.message = message;
     }
 
@@ -40,6 +38,6 @@ public class Notification {
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
-    public User getUser() { return user; }
-    public void setUser(User user) { this.user = user; }
+    public String getRecipient() { return recipient; }
+    public void setRecipient(String recipient) { this.recipient = recipient; }
 }

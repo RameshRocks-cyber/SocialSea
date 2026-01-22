@@ -29,13 +29,13 @@ public class ProfileController {
     @GetMapping("/{username}")
     public ProfileResponse profile(@PathVariable String username) {
 
-        User user = userRepo.findByUsername(username).orElseThrow();
+        User user = userRepo.findByEmail(username).orElseThrow();
 
         long followers = followRepo.countByFollowing(user);
         long following = followRepo.countByFollower(user);
 
         return new ProfileResponse(
-            user.getUsername(),
+            user.getEmail(),
             followers,
             following
         );
@@ -44,7 +44,10 @@ public class ProfileController {
     // User posts
     @GetMapping("/{username}/posts")
     public List<Post> posts(@PathVariable String username) {
-        User user = userRepo.findByUsername(username).orElseThrow();
-        return postRepo.findByUser(user);
+        User user = userRepo.findByEmail(username).orElseThrow();
+        return postRepo.findByUser(user)
+                .stream()
+                .filter(Post::isApproved)
+                .toList();
     }
 }

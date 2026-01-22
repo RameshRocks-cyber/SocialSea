@@ -31,7 +31,7 @@ public class FeedController {
     public List<Post> feed(Authentication auth) {
 
         // Logged-in user
-        User currentUser = userRepo.findByUsername(auth.getName()).orElseThrow();
+        User currentUser = userRepo.findByEmail(auth.getName()).orElseThrow();
 
         // Users I follow
         List<User> followedUsers = followRepo
@@ -44,6 +44,9 @@ public class FeedController {
         followedUsers.add(currentUser);
 
         // Posts from followed users
-        return postRepo.findByUserIn(followedUsers);
+        return postRepo.findByUserIn(followedUsers)
+                .stream()
+                .filter(Post::isApproved)
+                .collect(Collectors.toList());
     }
 }

@@ -1,93 +1,64 @@
 package com.socialsea.security;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
-import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
-import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    private final JwtFilter jwtFilter;
-    private final RateLimitFilter rateLimitFilter;
-
-    public SecurityConfig(
-            JwtFilter jwtFilter,
-            RateLimitFilter rateLimitFilter
-    ) {
-        this.jwtFilter = jwtFilter;
-        this.rateLimitFilter = rateLimitFilter;
-    }
+    @Autowired
+    private JwtFilter jwtFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .csrf(csrf -> csrf.disable())
-
+            .sessionManagement(sess -> 
+                sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
             .authorizeHttpRequests(auth -> auth
-                // ✅ Root & health (Render check)
+
+                // ✅ LOGIN MUST BE PUBLIC (VERY IMPORTANT)
                 .requestMatchers(
-                    "/",
-                    "/health",
-                    "/api/health",
-                    "/mail-test",
-                    "/error",
-                    "/auth/**",
-                    "/api/auth/**",
-                    "/anonymous/**",
-                    "/api/anonymous/**"
+                    "/admin/login",
+                    "/auth/admin/login",
+                    "/api/auth/admin/login"
                 ).permitAll()
 
-                // ✅ Preflight
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                // ✅ PUBLIC APIs (Reports, Anonymous Feed, etc.)
+                .requestMatchers(
+                    "/public/**",
+                    "/anonymous/**",
+                    "/h2-console/**",
+                    "/api/auth/**",
+                    "/auth/**",
+                    "/posts/**",
+                    "/api/notifications/**"
+                ).permitAll()
 
-                // ✅ Auth & public APIs
-                .requestMatchers("/api/videos/public/**").permitAll()
-                .requestMatchers("/api/videos/upload").permitAll()
-                .requestMatchers("/api/reels/**").permitAll()
+                // 🔒 ADMIN APIs
+                .requestMatchers("/admin/**").hasRole("ADMIN")
 
-                // 🔐 Everything else requires JWT
                 .anyRequest().authenticated()
             )
-
-            .httpBasic(basic -> basic.disable())
-            .formLogin(form -> form.disable());
-
-        // 🔥 ORDER MATTERS
-        http.addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class);
-        http.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+            .headers(headers -> headers.frameOptions(frame -> frame.disable()))
+            .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration config = new CorsConfiguration();
-
-        config.setAllowedOrigins(List.of(
-            "https://socialsea.netlify.app"
-        ));
-
-        config.setAllowedMethods(List.of(
-            "GET", "POST", "PUT", "DELETE", "OPTIONS"
-        ));
-
-        config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
-
-        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        source.registerCorsConfiguration("/**", config);
-        return source;
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
     }
 }

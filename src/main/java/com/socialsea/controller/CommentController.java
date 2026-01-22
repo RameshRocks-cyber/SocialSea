@@ -36,7 +36,7 @@ public class CommentController {
         @RequestBody String text,
         Authentication auth
     ) {
-        User user = userRepo.findByUsername(auth.getName()).orElseThrow();
+        User user = userRepo.findByEmail(auth.getName()).orElseThrow();
         Post post = postRepo.findById(postId).orElseThrow();
 
         Comment c = new Comment();
@@ -48,9 +48,9 @@ public class CommentController {
 
         // 🔔 Notify post owner (not yourself)
         if (!post.getUser().getId().equals(user.getId())) {
-            notificationService.notify(
-                post.getUser(),
-                user.getUsername() + " commented on your post"
+            notificationService.notifyUser(
+                post.getUser().getEmail(),
+                user.getEmail() + " commented on your post"
             );
         }
 

@@ -1,12 +1,16 @@
 package com.socialsea.controller;
 
+import com.socialsea.model.LoginRequest;
 import com.socialsea.model.User;
 import com.socialsea.repository.UserRepository;
+import com.socialsea.service.UserService;
 import com.socialsea.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -19,10 +23,16 @@ import java.util.Random;
 public class AuthController {
 
     @Autowired
-    private UserRepository userRepo;
+    private UserService userService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Autowired
     private JavaMailSender mailSender;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -32,26 +42,21 @@ public class AuthController {
 
     @PostMapping("/send-otp")
     public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> request) {
-        String username = request.get("username");
+        String email = request.get("email");
         
-        if (username == null || username.trim().isEmpty()) {
-            return ResponseEntity.badRequest().body("Phone number or Email is required");
-        }
-
-        // Check if user already exists (Enforces one account per email/phone)
-        if (userRepo.findByUsername(username).isPresent()) {
-            return ResponseEntity.badRequest().body("Account already exists with this identifier");
+        if (email == null || email.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("Email is required");
         }
 
         // Generate a 6-digit OTP
         String otp = String.format("%06d", new Random().nextInt(999999));
         
         // Store OTP temporarily
-        otpStorage.put(username, otp);
+        otpStorage.put(email, otp);
 
         // Send OTP via Email
         SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(username);
+        message.setTo(email);
         message.setSubject("Your SocialSea OTP");
         message.setText("Your OTP code is: " + otp);
         mailSender.send(message);
@@ -59,45 +64,50 @@ public class AuthController {
         return ResponseEntity.ok("OTP sent successfully");
     }
 
-    @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody Map<String, String> request) {
-        String username = request.get("username");
-        String password = request.get("password");
-        String otp = request.get("otp");
-
-        if (username == null || password == null || otp == null) {
-            return ResponseEntity.badRequest().body("All fields are required");
-        }
-
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyOtp(
+            @RequestParam String email,
+            @RequestParam String otp
+    ) {
         // Verify OTP
-        String storedOtp = otpStorage.get(username);
+        String storedOtp = otpStorage.get(email);
         if (storedOtp == null || !storedOtp.equals(otp)) {
             return ResponseEntity.badRequest().body("Invalid or expired OTP");
         }
 
-        // Register User
-        User newUser = new User();
-        newUser.setUsername(username);
-        newUser.setPassword(password); // Note: Add BCrypt encoding here in production
-        userRepo.save(newUser);
-        
-        otpStorage.remove(username); // Clear OTP after successful registration
+        otpStorage.remove(email); // Clear OTP
 
-        return ResponseEntity.ok("User registered successfully");
+        User user = userService.getOrCreateVerifiedUser(email);
+        String role = user.getRole();
+
+        String token = jwtUtil.generateToken(user.getEmail(), role);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Login successful",
+                "role", role,
+                "token", token
+        ));
     }
 
-    @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody Map<String, String> request) {
-        String username = request.get("username");
-        String password = request.get("password");
+    @PostMapping("/admin/login")
+    public ResponseEntity<?> adminLogin(@RequestBody LoginRequest request) {
 
-        User user = userRepo.findByUsername(username).orElse(null);
+        User admin = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new RuntimeException("Admin not found"));
 
-        if (user != null && user.getPassword().equals(password)) {
-            String token = jwtUtil.generateToken(username);
-            return ResponseEntity.ok(Map.of("token", token));
+        if (admin.getPassword() == null || !passwordEncoder.matches(request.getPassword(), admin.getPassword())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid password");
         }
 
-        return ResponseEntity.status(401).body("Invalid credentials");
+        if (!admin.getRole().contains("ADMIN")) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Not an admin");
+        }
+
+        String token = jwtUtil.generateToken(admin.getEmail(), "ADMIN");
+
+        return ResponseEntity.ok(Map.of(
+                "token", token,
+                "role", "ADMIN"
+        ));
     }
 }

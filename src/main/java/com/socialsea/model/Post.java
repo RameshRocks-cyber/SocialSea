@@ -13,6 +13,8 @@ public class Post {
     private String mediaUrl;
 
     private boolean reel;    
+    
+    private boolean approved = false; // 🆕 Admin Approval
 
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -36,6 +38,9 @@ public class Post {
 
     public boolean isReel() { return reel; }
     public void setReel(boolean reel) { this.reel = reel; }
+
+    public boolean isApproved() { return approved; }
+    public void setApproved(boolean approved) { this.approved = approved; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

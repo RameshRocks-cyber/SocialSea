@@ -13,23 +13,19 @@ import java.util.List;
 public class NotificationController {
 
     private final NotificationRepository repo;
-    private final UserRepository userRepo;
 
-    public NotificationController(NotificationRepository repo, UserRepository userRepo) {
+    public NotificationController(NotificationRepository repo) {
         this.repo = repo;
-        this.userRepo = userRepo;
     }
 
     @GetMapping
     public List<Notification> list(Authentication auth) {
-        User user = userRepo.findByUsername(auth.getName()).orElseThrow();
-        return repo.findByUserOrderByCreatedAtDesc(user);
+        return repo.findByRecipientOrderByCreatedAtDesc(auth.getName());
     }
 
     @GetMapping("/unread-count")
     public long unread(Authentication auth) {
-        User user = userRepo.findByUsername(auth.getName()).orElseThrow();
-        return repo.countByUserAndReadFalse(user);
+        return repo.countByRecipientAndReadFalse(auth.getName());
     }
 
     @PostMapping("/{id}/read")
