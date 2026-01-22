@@ -14,19 +14,23 @@ public class AdminInitializer {
     CommandLineRunner initAdmin(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         return args -> {
 
-            String adminEmail = "jekkaramesh788@gmail.com";
+            try {
+                String adminEmail = "jekkaramesh788@gmail.com";
 
-            if (userRepository.findByEmail(adminEmail).isEmpty()) {
-                User admin = new User();
-                admin.setEmail(adminEmail);
-                admin.setPassword(passwordEncoder.encode("admin123"));
-                admin.setRole("ADMIN");
-                admin.setBanned(false);
+                if (userRepository.findByEmail(adminEmail).isEmpty()) {
+                    User admin = new User();
+                    admin.setEmail(adminEmail);
+                    admin.setPassword(passwordEncoder.encode("admin123"));
+                    admin.setRole("ADMIN");
+                    admin.setBanned(false);
 
-                userRepository.save(admin);
-                System.out.println("✅ DEFAULT ADMIN CREATED");
-            } else {
-                System.out.println("ℹ️ ADMIN ALREADY EXISTS");
+                    userRepository.save(admin);
+                    System.out.println("✅ DEFAULT ADMIN CREATED");
+                } else {
+                    System.out.println("ℹ️ ADMIN ALREADY EXISTS");
+                }
+            } catch (Exception e) {
+                System.err.println("⚠️ ADMIN INIT FAILED (Likely DB not ready): " + e.getMessage());
             }
         };
     }
