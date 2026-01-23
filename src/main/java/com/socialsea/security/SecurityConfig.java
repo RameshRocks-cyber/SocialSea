@@ -33,6 +33,7 @@ public class SecurityConfig {
                     "/",
                     "/health",
                     "/auth/**",
+                    "/api/auth/**",
                     "/api/anonymous/**",     // 🔥 THIS IS THE KEY
                     "/api/public/**"
                 ).permitAll()

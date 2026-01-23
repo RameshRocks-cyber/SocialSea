@@ -11,6 +11,10 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/auth")
+@CrossOrigin(origins = {
+    "http://localhost:5173",
+    "https://socialsea.netlify.app"
+})
 public class OtpController {
 
     private final OtpService otpService;
@@ -31,7 +35,13 @@ public class OtpController {
     }
 
     @PostMapping("/send-otp")
-    public ResponseEntity<String> sendOtp(@RequestParam String email) {
+    public ResponseEntity<String> sendOtp(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest().body("Email is required");
+        }
+
         try {
             String otp = otpService.generateOtp(email);
             emailService.sendOtpEmail(email, otp);
