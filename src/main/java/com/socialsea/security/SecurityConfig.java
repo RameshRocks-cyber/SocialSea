@@ -24,18 +24,21 @@ public class SecurityConfig {
         http
             .cors(Customizer.withDefaults())
             .csrf(csrf -> csrf.disable())
-            .sessionManagement(sess -> 
-                sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            .sessionManagement(session -> 
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authorizeHttpRequests(auth -> auth
-                // ✅ PUBLIC ENDPOINTS
+                // ✅ PUBLIC / ANONYMOUS
                 .requestMatchers(
                     "/",
                     "/health",
                     "/auth/**",
-                    "/api/anonymous/**",
+                    "/api/anonymous/**",     // 🔥 THIS IS THE KEY
                     "/api/public/**"
                 ).permitAll()
+
+                // 🔐 ADMIN
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
                 // 🔐 EVERYTHING ELSE
                 .anyRequest().authenticated()
