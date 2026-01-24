@@ -5,6 +5,9 @@ import com.socialsea.model.User;
 import com.socialsea.repository.AnonymousPostRepository;
 import com.socialsea.repository.PostRepository;
 import com.socialsea.repository.UserRepository;
+import com.socialsea.service.UserService;
+import com.socialsea.service.AnonymousPostService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -19,15 +22,21 @@ public class AdminController {
     private final UserRepository userRepository;
     private final PostRepository postRepository;
     private final AnonymousPostRepository anonRepo;
+    private final AnonymousPostService anonymousPostService;
+    private final UserService userService;
 
     public AdminController(
         UserRepository userRepository,
         PostRepository postRepository,
-        AnonymousPostRepository anonRepo
+        AnonymousPostRepository anonRepo,
+        AnonymousPostService anonymousPostService,
+        UserService userService
     ) {
         this.userRepository = userRepository;
         this.postRepository = postRepository;
         this.anonRepo = anonRepo;
+        this.anonymousPostService = anonymousPostService;
+        this.userService = userService;
     }
 
     // 👤 All users
@@ -39,17 +48,17 @@ public class AdminController {
     // 🚫 Ban user
     @PutMapping("/users/{id}/ban")
     public void banUser(@PathVariable Long id) {
-        User user = userRepository.findById(id).orElseThrow();
-        user.setBanned(true);
-        userRepository.save(user);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        userService.banUser(user.getEmail());
     }
 
     // ✅ Unban user
     @PutMapping("/users/{id}/unban")
     public void unbanUser(@PathVariable Long id) {
-        User user = userRepository.findById(id).orElseThrow();
-        user.setBanned(false);
-        userRepository.save(user);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        userService.unbanUser(user.getEmail());
     }
 
     // 🗑 Delete post
@@ -58,21 +67,32 @@ public class AdminController {
         postRepository.deleteById(id);
     }
 
-    // 👻 Anonymous Posts Moderation
-    @GetMapping("/anonymous/pending")
-    public List<AnonymousPost> pendingAnon() {
-        return anonRepo.findByApprovedFalse();
-    }
-
     @PutMapping("/anonymous/{id}/approve")
-    public void approveAnon(@PathVariable Long id) {
+    public ResponseEntity<?> approve(@PathVariable Long id) {
         AnonymousPost post = anonRepo.findById(id).orElseThrow();
         post.setApproved(true);
         anonRepo.save(post);
+        return ResponseEntity.ok("Approved");
     }
 
     @DeleteMapping("/anonymous/{id}")
-    public void deleteAnon(@PathVariable Long id) {
+    public ResponseEntity<?> reject(@PathVariable Long id) {
         anonRepo.deleteById(id);
+        return ResponseEntity.ok("Deleted");
+    }
+
+    @PostMapping("/anonymous/bulk-approve")
+    public ResponseEntity<?> bulkApprove(@RequestBody List<Long> postIds) {
+        anonymousPostService.bulkApprove(postIds);
+        return ResponseEntity.ok("Posts approved successfully");
+    }
+
+    @PostMapping("/anonymous/bulk-reject")
+    public ResponseEntity<?> bulkReject(
+            @RequestParam String reason,
+            @RequestBody List<Long> postIds
+    ) {
+        anonymousPostService.bulkReject(postIds, reason);
+        return ResponseEntity.ok("Posts rejected successfully");
     }
 }

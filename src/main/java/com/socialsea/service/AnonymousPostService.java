@@ -1,9 +1,11 @@
 package com.socialsea.service;
 
 import com.cloudinary.Cloudinary;
+import com.socialsea.dto.AdminStatsDto;
 import com.socialsea.model.AnonymousPost;
 import com.socialsea.repository.AnonymousPostRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
@@ -51,32 +53,63 @@ public class AnonymousPostService {
     }
 
     public List<AnonymousPost> getPendingPosts() {
-        return repository.findByApprovedFalse();
+        return repository.findByApprovedFalseAndRejectedFalse();
     }
 
     public List<AnonymousPost> getApprovedPosts() {
         return repository.findByApprovedTrueOrderByCreatedAtDesc();
     }
 
-    public AnonymousPost approvePost(Long id) {
-        AnonymousPost post = repository.findById(id).orElseThrow(() -> new RuntimeException("Post not found"));
+    public void approvePost(Long id) {
+        AnonymousPost post = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
         post.setApproved(true);
-        return repository.save(post);
+        repository.save(post);
     }
 
     public void deletePost(Long id) {
         repository.deleteById(id);
     }
 
-    public void reject(Long id, String reason) {
+    public void rejectPost(Long id, String reason) {
         AnonymousPost post = repository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
-
-        post.setApproved(false);
         post.setRejected(true);
         post.setRejectionReason(reason);
-
         repository.save(post);
-        System.out.println("❌ Post rejected: " + id);
+    }
+
+    @Transactional
+    public void bulkApprove(List<Long> postIds) {
+        List<AnonymousPost> posts = repository.findAllById(postIds);
+
+        for (AnonymousPost post : posts) {
+            post.setApproved(true);
+            post.setRejected(false);
+            post.setRejectionReason(null);
+        }
+
+        repository.saveAll(posts);
+    }
+
+    @Transactional
+    public void bulkReject(List<Long> postIds, String reason) {
+        List<AnonymousPost> posts = repository.findAllById(postIds);
+
+        for (AnonymousPost post : posts) {
+            post.setApproved(false);
+            post.setRejected(true);
+            post.setRejectionReason(reason);
+        }
+
+        repository.saveAll(posts);
+    }
+
+    public AdminStatsDto getAdminStats() {
+        long total = repository.count();
+        long pending = repository.countByApprovedFalseAndRejectedFalse();
+        long approved = repository.countByApprovedTrue();
+
+        return new AdminStatsDto(total, approved, pending);
     }
 }

@@ -65,12 +65,14 @@ public class AuthController {
         User user = userService.getOrCreateVerifiedUser(email);
         String role = user.getRole();
 
-        String token = jwtUtil.generateToken(user.getEmail(), role);
+        String accessToken = jwtUtil.generateAccessToken(user.getEmail());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getEmail());
 
         return ResponseEntity.ok(Map.of(
                 "message", "Login successful",
                 "role", role,
-                "token", token
+                "accessToken", accessToken,
+                "refreshToken", refreshToken
         ));
     }
 
@@ -88,11 +90,28 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Not an admin");
         }
 
-        String token = jwtUtil.generateToken(admin.getEmail(), "ADMIN");
+        String accessToken = jwtUtil.generateAccessToken(admin.getEmail());
+        String refreshToken = jwtUtil.generateRefreshToken(admin.getEmail());
 
         return ResponseEntity.ok(Map.of(
-                "token", token,
-                "role", "ADMIN"
+                "role", "ADMIN",
+                "accessToken", accessToken,
+                "refreshToken", refreshToken
         ));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refresh(@RequestBody Map<String, String> body) {
+        String refreshToken = body.get("refreshToken");
+
+        if (refreshToken == null || jwtUtil.isExpired(refreshToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Refresh token expired");
+        }
+
+        String username = jwtUtil.extractUsername(refreshToken);
+        String newAccessToken = jwtUtil.generateAccessToken(username);
+
+        return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
     }
 }

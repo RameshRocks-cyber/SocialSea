@@ -2,47 +2,61 @@ package com.socialsea.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.security.Key;
 import java.util.Date;
 
 @Component
 public class JwtUtil {
 
-    @Value("${jwt.secret}")
-    private String secret;
+    // Using a secure key for HS256 (must be >= 32 bytes)
+    private final String SECRET = "socialsea_secret_key_123_secure_and_long_enough_for_hs256";
+    private final Key key = Keys.hmacShaKeyFor(SECRET.getBytes());
 
-    @Value("${jwt.expiration}")
-    private long expiration;
+    private final long ACCESS_EXP = 1000 * 60 * 15; // 15 min
+    private final long REFRESH_EXP = 1000 * 60 * 60 * 24 * 7; // 7 days
 
-    public String generateToken(String email, String role) {
+    public String generateAccessToken(String username) {
         return Jwts.builder()
-                .setSubject(email)
-                .claim("role", role)
+                .setSubject(username)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + expiration))
-                .signWith(Keys.hmacShaKeyFor(secret.getBytes()), SignatureAlgorithm.HS256)
+                .setExpiration(new Date(System.currentTimeMillis() + ACCESS_EXP))
+                .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 
-    public Claims extractClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(secret.getBytes())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
+    public String generateRefreshToken(String username) {
+        return Jwts.builder()
+                .setSubject(username)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + REFRESH_EXP))
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
     }
 
+    // Compatibility for existing code
+    public String generateToken(String email, String role) {
+        return generateAccessToken(email);
+    }
+
+    public String extractUsername(String token) {
+        return Jwts.parserBuilder().setSigningKey(key).build()
+                .parseClaimsJws(token).getBody().getSubject();
+    }
+
+    // Alias for compatibility
     public String extractEmail(String token) {
-        return extractClaims(token).getSubject();
+        return extractUsername(token);
     }
 
-    public String extractRole(String token) {
-        return extractClaims(token).get("role", String.class);
+    public boolean isExpired(String token) {
+        return Jwts.parserBuilder().setSigningKey(key).build()
+                .parseClaimsJws(token).getBody().getExpiration().before(new Date());
     }
 
+    // Alias for compatibility
     public boolean isTokenExpired(String token) {
-        return extractClaims(token).getExpiration().before(new Date());
+        return isExpired(token);
     }
 }

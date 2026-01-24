@@ -34,12 +34,13 @@ public class SecurityConfig {
                     "/health",
                     "/auth/**",
                     "/api/auth/**",
+                    "/api/auth/refresh",
                     "/api/anonymous/**",     // 🔥 THIS IS THE KEY
                     "/api/public/**"
                 ).permitAll()
 
                 // 🔐 ADMIN
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                .requestMatchers("/api/admin/**", "/admin/**").hasRole("ADMIN")
 
                 // 🔐 EVERYTHING ELSE
                 .anyRequest().authenticated()
