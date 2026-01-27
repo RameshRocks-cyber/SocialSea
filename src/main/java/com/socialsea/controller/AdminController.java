@@ -69,15 +69,18 @@ public class AdminController {
 
     @PutMapping("/anonymous/{id}/approve")
     public ResponseEntity<?> approve(@PathVariable Long id) {
-        AnonymousPost post = anonRepo.findById(id).orElseThrow();
+        AnonymousPost post = anonRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+
         post.setApproved(true);
         anonRepo.save(post);
+
         return ResponseEntity.ok("Approved");
     }
 
     @DeleteMapping("/anonymous/{id}")
     public ResponseEntity<?> reject(@PathVariable Long id) {
-        anonRepo.deleteById(id);git 
+        anonRepo.deleteById(id);
         return ResponseEntity.ok("Deleted");
     }
 
