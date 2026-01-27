@@ -77,7 +77,7 @@ public class AdminController {
 
     @DeleteMapping("/anonymous/{id}")
     public ResponseEntity<?> reject(@PathVariable Long id) {
-        anonRepo.deleteById(id);
+        anonRepo.deleteById(id);git 
         return ResponseEntity.ok("Deleted");
     }
 
