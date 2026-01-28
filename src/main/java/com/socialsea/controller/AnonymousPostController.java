@@ -7,8 +7,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.Map;
-
 @RestController
 @RequestMapping("/api/anonymous")
 @CrossOrigin(origins = "*")
@@ -28,20 +26,18 @@ public class AnonymousPostController {
     @PostMapping("/upload")
     public ResponseEntity<?> upload(
         @RequestParam("file") MultipartFile file,
-        @RequestParam("caption") String caption
+        @RequestParam("description") String description
     ) {
         String url = cloudinaryService.upload(file);
 
         AnonymousPost post = new AnonymousPost();
         post.setContentUrl(url);
-        post.setDescription(caption);
+        post.setDescription(description);
         post.setType(file.getContentType().startsWith("video") ? "VIDEO" : "IMAGE");
         post.setApproved(false);
 
-        repo.save(post);
+        AnonymousPost saved = repo.save(post);
 
-        return ResponseEntity.ok(
-            Map.of("message", "Anonymous post submitted for review")
-        );
+        return ResponseEntity.ok(saved);
     }
 }

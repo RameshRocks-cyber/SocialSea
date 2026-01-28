@@ -1,5 +1,6 @@
 package com.socialsea.service;
 
+import com.socialsea.model.Role;
 import com.socialsea.model.User;
 import com.socialsea.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -19,7 +20,7 @@ public class UserService {
                 .orElseGet(() -> {
                     User user = new User();
                     user.setEmail(email);
-                    user.setRole("USER");
+                    user.setRole(Role.USER);
                     return userRepository.save(user);
                 });
     }

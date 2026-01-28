@@ -8,4 +8,6 @@ import java.util.List;
 public interface ReportRepository extends JpaRepository<Report, Long> {
     // 🔍 Find pending reports
     List<Report> findByResolvedFalse();
+
+    long countByResolvedFalse();
 }

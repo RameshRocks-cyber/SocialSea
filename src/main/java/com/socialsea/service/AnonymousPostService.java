@@ -1,7 +1,6 @@
 package com.socialsea.service;
 
 import com.cloudinary.Cloudinary;
-import com.socialsea.dto.AdminStatsDto;
 import com.socialsea.model.AnonymousPost;
 import com.socialsea.repository.AnonymousPostRepository;
 import org.springframework.stereotype.Service;
@@ -17,10 +16,12 @@ public class AnonymousPostService {
 
     private final AnonymousPostRepository repository;
     private final Cloudinary cloudinary;
+    private final NotificationService notificationService;
 
-    public AnonymousPostService(AnonymousPostRepository repository, Cloudinary cloudinary) {
+    public AnonymousPostService(AnonymousPostRepository repository, Cloudinary cloudinary, NotificationService notificationService) {
         this.repository = repository;
         this.cloudinary = cloudinary;
+        this.notificationService = notificationService;
     }
 
     public AnonymousPost save(MultipartFile file, String description) {
@@ -41,6 +42,12 @@ public class AnonymousPostService {
             post.setCreatedAt(LocalDateTime.now());
 
             AnonymousPost saved = repository.save(post);
+
+            notificationService.notify(
+                "🕵️ Anonymous Post",
+                "New anonymous post pending approval",
+                "ANON_POST"
+            );
 
             System.out.println("✅ SAVED WITH ID = " + saved.getId());
             System.out.println("🎥 VIDEO URL = " + videoUrl);
@@ -103,13 +110,5 @@ public class AnonymousPostService {
         }
 
         repository.saveAll(posts);
-    }
-
-    public AdminStatsDto getAdminStats() {
-        long total = repository.count();
-        long pending = repository.countByApprovedFalseAndRejectedFalse();
-        long approved = repository.countByApprovedTrue();
-
-        return new AdminStatsDto(total, approved, pending);
     }
 }

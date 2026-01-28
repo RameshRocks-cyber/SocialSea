@@ -3,6 +3,7 @@ package com.socialsea.controller;
 import com.socialsea.model.Report;
 import com.socialsea.repository.ReportRepository;
 import com.socialsea.service.NotificationService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/admin/reports")
 @CrossOrigin("https://socialsea.netlify.app")
+@PreAuthorize("hasAuthority('REPORT_RESOLVE')")
 public class AdminReportController {
 
     private final ReportRepository reportRepository;

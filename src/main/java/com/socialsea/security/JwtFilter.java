@@ -53,6 +53,7 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         String token = authHeader.substring(7);
+        System.out.println("🔍 JWT Token received: " + token.substring(0, Math.min(token.length(), 15)) + "...");
 
         try {
             String username = jwtUtil.extractEmail(token);
@@ -76,11 +77,13 @@ public class JwtFilter extends OncePerRequestFilter {
 
                     // 🔥 THIS LINE IS CRITICAL
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                    System.out.println("✅ JWT Verified. User: " + username + " | Role: " + userDetails.getAuthorities());
                 }
             }
 
         } catch (Exception e) {
             // optional: log token errors
+            System.out.println("❌ JWT Verification Failed: " + e.getMessage());
         }
 
         filterChain.doFilter(request, response);

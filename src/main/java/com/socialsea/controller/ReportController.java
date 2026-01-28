@@ -5,6 +5,7 @@ import com.socialsea.repository.*;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import com.socialsea.service.NotificationService;
 
 @RestController
 @RequestMapping("/api/report")
@@ -13,10 +14,12 @@ public class ReportController {
 
     private final ReportRepository reportRepo;
     private final UserRepository userRepo;
+    private final NotificationService notificationService;
 
-    public ReportController(ReportRepository reportRepo, UserRepository userRepo) {
+    public ReportController(ReportRepository reportRepo, UserRepository userRepo, NotificationService notificationService) {
         this.reportRepo = reportRepo;
         this.userRepo = userRepo;
+        this.notificationService = notificationService;
     }
 
     @PostMapping
@@ -35,5 +38,11 @@ public class ReportController {
         r.setReporter(u);
 
         reportRepo.save(r);
+
+        notificationService.notify(
+            "🚩 New Report",
+            "Post #" + postId + " reported by " + u.getEmail(),
+            "REPORT"
+        );
     }
 }

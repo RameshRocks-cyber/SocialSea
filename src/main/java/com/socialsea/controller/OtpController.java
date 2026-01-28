@@ -51,6 +51,16 @@ public class OtpController {
         }
     }
 
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        String otp = body.get("otp");
+
+        System.out.println("Login request received for: " + email);
+
+        return verifyOtp(email, otp);
+    }
+
     @PostMapping("/verify-otp")
     public ResponseEntity<?> verifyOtp(@RequestParam String email, @RequestParam String otp) {
         try {
@@ -61,7 +71,7 @@ public class OtpController {
             User user = userService.getOrCreateVerifiedUser(email);
 
             // 3. Read Role from DB
-            String role = user.getRole();
+            String role = user.getRole().name();
 
             // 4. Generate Token with DB Role
             String token = jwtUtil.generateToken(user.getEmail(), role);

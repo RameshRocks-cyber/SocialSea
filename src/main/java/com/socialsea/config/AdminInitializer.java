@@ -1,5 +1,6 @@
 package com.socialsea.config;
 
+import com.socialsea.model.Role;
 import com.socialsea.model.User;
 import com.socialsea.repository.UserRepository;
 import org.springframework.boot.CommandLineRunner;
@@ -24,7 +25,7 @@ public class AdminInitializer {
                     User admin = new User();
                     admin.setEmail(adminEmail);
                     admin.setPassword(passwordEncoder.encode("Root@000"));
-                    admin.setRole("ADMIN");
+                    admin.setRole(Role.ADMIN);
                     admin.setBanned(false);
 
                     userRepository.save(admin);

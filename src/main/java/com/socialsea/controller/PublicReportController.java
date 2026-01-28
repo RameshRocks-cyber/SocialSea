@@ -30,8 +30,10 @@ public class PublicReportController {
 
         reportRepository.save(report);
 
-        notificationService.notifyAdmin(
-            "New report received for post ID " + postId
+        notificationService.notify(
+            "🚩 New Report",
+            "New report received for post ID " + postId,
+            "REPORT"
         );
 
         return "Report submitted";

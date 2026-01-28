@@ -8,7 +8,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
@@ -24,10 +25,18 @@ public class CustomUserDetailsService implements UserDetailsService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
 
+        Set<SimpleGrantedAuthority> authorities = new HashSet<>();
+        // Add Role
+        authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+        // Add Permissions
+        user.getRole().getPermissions().forEach(permission -> 
+            authorities.add(new SimpleGrantedAuthority(permission.name()))
+        );
+
         return new org.springframework.security.core.userdetails.User(
                 user.getEmail(),
                 user.getPassword(),
-                List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole()))
+                authorities
         );
     }
 }

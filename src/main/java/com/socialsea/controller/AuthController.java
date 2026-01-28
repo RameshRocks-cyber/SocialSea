@@ -1,6 +1,7 @@
 package com.socialsea.controller;
 
 import com.socialsea.model.LoginRequest;
+import com.socialsea.model.Role;
 import com.socialsea.model.User;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.UserService;
@@ -63,7 +64,7 @@ public class AuthController {
         }
 
         User user = userService.getOrCreateVerifiedUser(email);
-        String role = user.getRole();
+        String role = user.getRole().name();
 
         String accessToken = jwtUtil.generateAccessToken(user.getEmail());
         String refreshToken = jwtUtil.generateRefreshToken(user.getEmail());
@@ -86,7 +87,7 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid password");
         }
 
-        if (!admin.getRole().contains("ADMIN")) {
+        if (admin.getRole() != Role.ADMIN && admin.getRole() != Role.SUPER_ADMIN) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Not an admin");
         }
 

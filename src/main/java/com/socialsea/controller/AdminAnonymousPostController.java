@@ -2,6 +2,7 @@ package com.socialsea.controller;
 
 import com.socialsea.model.AnonymousPost;
 import com.socialsea.service.AnonymousPostService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -9,6 +10,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/admin/anonymous")
 @CrossOrigin
+@PreAuthorize("hasAuthority('POST_REVIEW')")
 public class AdminAnonymousPostController {
 
     private final AnonymousPostService service;

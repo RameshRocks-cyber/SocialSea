@@ -109,7 +109,7 @@ const styles = {
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    minHeight: "100vh",
+    minBlockSize: "100vh",
     backgroundColor: "#fafafa",
     color: "#262626",
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
@@ -119,9 +119,9 @@ const styles = {
     border: "1px solid #dbdbdb",
     backgroundColor: "#fff",
     padding: "20px",
-    width: "100%",
-    maxWidth: "350px",
-    marginBottom: "10px",
+    inlineSize: "100%",
+    maxInlineSize: "350px",
+    marginBlockEnd: "10px",
     textAlign: "center",
     display: "flex",
     flexDirection: "column",
@@ -130,21 +130,21 @@ const styles = {
   },
   logo: {
     fontSize: "3rem",
-    marginBottom: "20px",
-    marginTop: "0",
+    marginBlockEnd: "20px",
+    marginBlockStart: "0",
     fontFamily: "cursive"
   },
   subtitle: {
     fontSize: "17px",
     fontWeight: "600",
     color: "#8e8e8e",
-    marginBottom: "20px",
+    marginBlockEnd: "20px",
     lineHeight: "20px"
   },
   input: {
-    width: "100%",
+    inlineSize: "100%",
     padding: "9px 8px",
-    marginBottom: "6px",
+    marginBlockEnd: "6px",
     backgroundColor: "#fafafa",
     border: "1px solid #dbdbdb",
     borderRadius: "3px",
@@ -154,7 +154,7 @@ const styles = {
     boxSizing: "border-box"
   },
   button: {
-    width: "100%",
+    inlineSize: "100%",
     backgroundColor: "#0095f6",
     color: "#fff",
     border: "none",
@@ -162,7 +162,7 @@ const styles = {
     padding: "7px 16px",
     fontWeight: "600",
     cursor: "pointer",
-    marginTop: "15px",
+    marginBlockStart: "15px",
     fontSize: "14px"
   },
   terms: {
@@ -183,6 +183,6 @@ const styles = {
   error: {
     color: "#ed4956",
     fontSize: "14px",
-    marginTop: "10px"
+    marginBlockStart: "10px"
   }
 }

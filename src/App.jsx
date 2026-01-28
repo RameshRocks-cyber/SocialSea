@@ -5,6 +5,7 @@ import AnonymousUpload from "./pages/AnonymousUpload"
 import AnonymousFeed from "./pages/AnonymousFeed"
 import Login from "./pages/Login"
 import Navbar from "./components/Navbar"
+import AdminDashboard from "./admin/AdminDashboard";
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route path="/upload" element={<Upload />} />
         <Route path="/anonymous-upload" element={<AnonymousUpload />} />
         <Route path="/anonymous-feed" element={<AnonymousFeed />} />
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
       </Routes>
     </BrowserRouter>
   )

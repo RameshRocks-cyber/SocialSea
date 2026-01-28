@@ -9,7 +9,7 @@ export default function AnonymousUpload() {
     try {
       const form = new FormData()
       form.append("file", file)
-      form.append("title", title)
+      form.append("description", title)
 
       const res = await fetch("http://localhost:8080/api/anonymous/upload", {
         method: "POST",
