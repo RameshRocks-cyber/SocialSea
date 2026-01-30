@@ -50,10 +50,9 @@ public class SecurityConfig {
                 // 🔐 EVERYTHING ELSE
                 .anyRequest().authenticated()
             )
-            // ⚠️ UNCOMMENT BELOW AFTER ADDING spring-boot-starter-oauth2-client TO POM.XML
-            // .oauth2Login(oauth -> oauth
-            //     .defaultSuccessUrl("/oauth2/success", true)
-            // )
+            .oauth2Login(oauth -> oauth
+                .defaultSuccessUrl("/oauth2/success", true)
+            )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
