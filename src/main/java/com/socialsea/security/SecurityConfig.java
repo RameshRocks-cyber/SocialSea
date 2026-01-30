@@ -50,9 +50,9 @@ public class SecurityConfig {
                 // 🔐 EVERYTHING ELSE
                 .anyRequest().authenticated()
             )
-            .oauth2Login(oauth -> oauth
-                .defaultSuccessUrl("/oauth2/success", true)
-            )
+            // .oauth2Login(oauth -> oauth
+            //     .defaultSuccessUrl("/oauth2/success", true)
+            // )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
