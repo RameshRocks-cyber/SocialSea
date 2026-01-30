@@ -38,7 +38,6 @@ public class SecurityConfig {
                     "/api/auth/**",
                     "/api/auth/refresh",
                     "/api/anonymous/**",     // 🔥 THIS IS THE KEY
-                    "/api/public/**"
                     "/api/public/**",
                     "/oauth2/**",      // 🔥 REQUIRED
                     "/login/**",
@@ -51,9 +50,10 @@ public class SecurityConfig {
                 // 🔐 EVERYTHING ELSE
                 .anyRequest().authenticated()
             )
-            .oauth2Login(oauth -> oauth
-                .defaultSuccessUrl("/oauth2/success", true)
-            )
+            // ⚠️ UNCOMMENT BELOW AFTER ADDING spring-boot-starter-oauth2-client TO POM.XML
+            // .oauth2Login(oauth -> oauth
+            //     .defaultSuccessUrl("/oauth2/success", true)
+            // )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
