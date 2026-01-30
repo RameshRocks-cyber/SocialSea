@@ -34,6 +34,7 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/",
                     "/health",
+                    "/actuator/**",    // ✅ Allow Actuator health checks
                     "/auth/**",
                     "/api/auth/**",
                     "/api/auth/refresh",
