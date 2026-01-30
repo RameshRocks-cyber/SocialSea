@@ -1,10 +1,11 @@
 package com.socialsea.service;
 
-import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.json.jackson2.JacksonFactory;
+import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.gmail.Gmail;
 import com.google.api.services.gmail.model.Message;
+import com.google.auth.http.HttpCredentialsAdapter;
+import com.google.auth.oauth2.GoogleCredentials;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
@@ -28,13 +29,13 @@ public class GmailService {
             byte[] decoded = Base64.getDecoder().decode(base64Creds);
             ByteArrayInputStream credStream = new ByteArrayInputStream(decoded);
 
-            GoogleCredential credential = GoogleCredential.fromStream(credStream)
+            GoogleCredentials credentials = GoogleCredentials.fromStream(credStream)
                     .createScoped(Collections.singleton("https://www.googleapis.com/auth/gmail.send"));
 
             gmail = new Gmail.Builder(
                     GoogleNetHttpTransport.newTrustedTransport(),
-                    JacksonFactory.getDefaultInstance(),
-                    credential
+                    GsonFactory.getDefaultInstance(),
+                    new HttpCredentialsAdapter(credentials)
             ).setApplicationName("SocialSea").build();
 
         } catch (Exception e) {
