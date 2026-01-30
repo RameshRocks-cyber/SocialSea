@@ -39,6 +39,10 @@ public class SecurityConfig {
                     "/api/auth/refresh",
                     "/api/anonymous/**",     // 🔥 THIS IS THE KEY
                     "/api/public/**"
+                    "/api/public/**",
+                    "/oauth2/**",      // 🔥 REQUIRED
+                    "/login/**",
+                    "/error"
                 ).permitAll()
 
                 // 🔐 ADMIN
@@ -46,6 +50,9 @@ public class SecurityConfig {
 
                 // 🔐 EVERYTHING ELSE
                 .anyRequest().authenticated()
+            )
+            .oauth2Login(oauth -> oauth
+                .defaultSuccessUrl("/oauth2/success", true)
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
