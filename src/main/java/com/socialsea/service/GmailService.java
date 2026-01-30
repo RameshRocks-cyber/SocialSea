@@ -1,74 +1,68 @@
 package com.socialsea.service;
 
-import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
-import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
-import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
-import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
-import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.gmail.Gmail;
-import com.google.api.services.gmail.GmailScopes;
 import com.google.api.services.gmail.model.Message;
 import org.springframework.stereotype.Service;
 
-import jakarta.mail.Session;
-import jakarta.mail.internet.InternetAddress;
-import jakarta.mail.internet.MimeMessage;
-
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Collections;
-import java.util.List;
-import java.util.Properties;
 
-@SuppressWarnings("deprecation")
 @Service
 public class GmailService {
 
-    private static final String APPLICATION_NAME = "SocialSea";
-    private static final JsonFactory JSON_FACTORY = JacksonFactory.getDefaultInstance();
-    private static final List<String> SCOPES = Collections.singletonList(GmailScopes.GMAIL_SEND);
+    private Gmail gmail;
 
-    private Gmail getGmail() throws Exception {
-        InputStream in = getClass().getResourceAsStream("/credentials.json");
-        if (in == null) {
-            throw new FileNotFoundException("Resource not found: /credentials.json");
+    public GmailService() {
+        try {
+            String base64Creds = System.getenv("GMAIL_CREDENTIALS_BASE64");
+
+            if (base64Creds == null || base64Creds.isEmpty()) {
+                throw new RuntimeException("GMAIL_CREDENTIALS_BASE64 not set");
+            }
+
+            byte[] decoded = Base64.getDecoder().decode(base64Creds);
+            ByteArrayInputStream credStream = new ByteArrayInputStream(decoded);
+
+            GoogleCredential credential = GoogleCredential.fromStream(credStream)
+                    .createScoped(Collections.singleton("https://www.googleapis.com/auth/gmail.send"));
+
+            gmail = new Gmail.Builder(
+                    GoogleNetHttpTransport.newTrustedTransport(),
+                    JacksonFactory.getDefaultInstance(),
+                    credential
+            ).setApplicationName("SocialSea").build();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to initialize Gmail API", e);
         }
-
-        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
-
-        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-                GoogleNetHttpTransport.newTrustedTransport(),
-                JSON_FACTORY,
-                clientSecrets,
-                SCOPES)
-                .setDataStoreFactory(new FileDataStoreFactory(new File("tokens")))
-                .setAccessType("offline")
-                .build();
-
-        LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
-        Credential credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
-
-        return new Gmail.Builder(GoogleNetHttpTransport.newTrustedTransport(), JSON_FACTORY, credential)
-                .setApplicationName(APPLICATION_NAME)
-                .build();
     }
 
-    public void sendEmail(String to, String subject, String body) throws Exception {
-        MimeMessage email = new MimeMessage(Session.getDefaultInstance(new Properties()));
-        email.setFrom(new InternetAddress("me"));
-        email.addRecipient(jakarta.mail.Message.RecipientType.TO, new InternetAddress(to));
-        email.setSubject(subject);
-        email.setText(body);
+    public void sendOtp(String to, String otp) {
+        try {
+            String from = System.getenv("GMAIL_SENDER");
 
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        email.writeTo(buffer);
-        String encodedEmail = Base64.getUrlEncoder().encodeToString(buffer.toByteArray());
+            String email =
+                    "From: " + from + "\n" +
+                    "To: " + to + "\n" +
+                    "Subject: Your SocialSea OTP\n\n" +
+                    "Your OTP is: " + otp + "\n\n" +
+                    "Valid for 5 minutes.";
 
-        Message msg = new Message().setRaw(encodedEmail);
-        getGmail().users().messages().send("me", msg).execute();
+            Message message = new Message();
+            message.setRaw(
+                    Base64.getUrlEncoder()
+                            .encodeToString(email.getBytes(StandardCharsets.UTF_8))
+            );
+
+            gmail.users().messages().send("me", message).execute();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to send OTP email", e);
+        }
     }
 }

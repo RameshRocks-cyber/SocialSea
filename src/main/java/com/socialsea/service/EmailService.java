@@ -18,7 +18,8 @@ public class EmailService {
         log.info("📧 Attempting to send email to {}", to);
 
         try {
-            gmailService.sendEmail(to, subject, body);
+            // gmailService.sendEmail(to, subject, body);
+            log.warn("Generic email sending is temporarily disabled during migration.");
         } catch (Exception e) {
             log.error("❌ Failed to send email via Gmail API", e);
             throw new RuntimeException(e);
@@ -34,8 +35,6 @@ public class EmailService {
     // ✅ THIS IS THE MISSING METHOD
     @Async
     public void sendOtpEmail(String to, String otp) {
-        String subject = "SocialSea - Email Verification OTP";
-        String body = "Your OTP is: " + otp + "\n\nThis OTP will expire in 5 minutes.";
-        sendEmail(to, subject, body);
+        gmailService.sendOtp(to, otp);
     }
 }
