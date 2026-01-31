@@ -12,8 +12,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class EmailService {
 
-    // @Autowired
-    // private JavaMailSender mailSender;
+    @Autowired
+    private JavaMailSender mailSender;
 
     @Value("${MAIL_FROM}")
     private String from;
@@ -31,7 +31,7 @@ public class EmailService {
         message.setTo(to);
         message.setSubject(subject);
         message.setText(body);
-        // mailSender.send(message);
+        mailSender.send(message);
     }
 
     @Async
