@@ -15,36 +15,29 @@ public class EmailService {
     @Autowired
     private JavaMailSender mailSender;
 
-    @Value("${spring.mail.username}")
+    @Value("${MAIL_FROM}")
     private String from;
 
     private static final Logger log = LoggerFactory.getLogger(EmailService.class);
 
     public void sendEmail(String to, String subject, String body) {
-        log.info("📧 Attempting to send email to {}", to);
-
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(from);
-            message.setTo(to);
-            message.setSubject(subject);
-            message.setText(body);
-            mailSender.send(message);
-            log.info("✅ Email sent successfully to {}", to);
-        } catch (Exception e) {
-            log.error("❌ Failed to send email via SMTP", e);
-            throw new RuntimeException(e);
-        }
+        send(to, subject, body);
     }
 
     public void send(String to, String subject, String body) {
-        sendEmail(to, subject, body);
+        log.info("Sending email to {}", to);
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(from);
+        message.setTo(to);
+        message.setSubject(subject);
+        message.setText(body);
+        mailSender.send(message);
     }
 
     @Async
     public void sendOtpEmail(String to, String otp) {
         String subject = "Your SocialSea OTP";
         String body = "Your OTP is: " + otp + "\n\nValid for 5 minutes.";
-        sendEmail(to, subject, body);
+        send(to, subject, body);
     }
 }
