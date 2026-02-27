@@ -1,0 +1,13 @@
+package com.socialsea.repository;
+
+import com.socialsea.model.FollowRequest;
+import com.socialsea.model.User;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+
+public interface FollowRequestRepository extends JpaRepository<FollowRequest, Long> {
+
+    boolean existsBySenderAndReceiver(User sender, User receiver);
+
+    List<FollowRequest> findByReceiverAndStatus(User receiver, String status);
+}
