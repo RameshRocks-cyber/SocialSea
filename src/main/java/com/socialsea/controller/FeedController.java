@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("/api/feed")
-@CrossOrigin("https://socialsea.netlify.app")
+@CrossOrigin(origins = {"https://socialsea.netlify.app", "http://localhost:5173", "http://13.234.110.186:5173"})
 @RequiredArgsConstructor
 public class FeedController {
 

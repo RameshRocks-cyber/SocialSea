@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/likes")
-@CrossOrigin("https://socialsea.netlify.app")
+@CrossOrigin(origins = {"https://socialsea.netlify.app", "http://localhost:5173", "http://13.234.110.186:5173"})
 public class LikeController {
 
     private final LikeRepository likeRepo;
@@ -30,7 +30,7 @@ public class LikeController {
     }
 
     @PostMapping("/{postId}")
-    public String like(@PathVariable Long postId, Authentication auth) {
+    public String like(@PathVariable long postId, Authentication auth) {
 
         User user = userRepo.findByEmail(auth.getName()).orElseThrow();
         Post post = postRepo.findById(postId).orElseThrow();
@@ -55,7 +55,7 @@ public class LikeController {
     }
 
     @GetMapping("/{postId}/count")
-    public long count(@PathVariable Long postId) {
+    public long count(@PathVariable long postId) {
         Post post = postRepo.findById(postId).orElseThrow();
         return likeRepo.countByPost(post);
     }

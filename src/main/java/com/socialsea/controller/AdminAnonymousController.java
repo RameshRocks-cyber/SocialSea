@@ -22,31 +22,35 @@ public class AdminAnonymousController {
 
     @GetMapping("/pending")
     public List<AnonymousPost> getPendingPosts() {
-        return repository.findByStatus("PENDING");
+        return repository.findByApprovedFalseAndRejectedFalse();
     }
 
     @GetMapping("/approved")
     public List<AnonymousPost> getApprovedPosts() {
-        return repository.findByStatus("APPROVED");
+        return repository.findByApprovedTrueOrderByCreatedAtDesc();
     }
 
     @GetMapping("/rejected")
     public List<AnonymousPost> getRejectedPosts() {
-        return repository.findByStatus("REJECTED");
+        return repository.findAll().stream()
+                .filter(AnonymousPost::isRejected)
+                .toList();
     }
 
     @PutMapping("/approve/{id}")
-    public ResponseEntity<?> approve(@PathVariable Long id) {
+    public ResponseEntity<?> approve(@PathVariable long id) {
         AnonymousPost post = repository.findById(id).orElseThrow();
-        post.setStatus("APPROVED");
+        post.setApproved(true);
+        post.setRejected(false);
         repository.save(post);
         return ResponseEntity.ok("Approved");
     }
 
     @PutMapping("/reject/{id}")
-    public ResponseEntity<?> reject(@PathVariable Long id) {
+    public ResponseEntity<?> reject(@PathVariable long id) {
         AnonymousPost post = repository.findById(id).orElseThrow();
-        post.setStatus("REJECTED");
+        post.setApproved(false);
+        post.setRejected(true);
         repository.save(post);
         return ResponseEntity.ok("Rejected");
     }

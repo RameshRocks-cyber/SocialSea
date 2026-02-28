@@ -37,7 +37,7 @@ public class NotificationController {
     }
 
     @PostMapping("/{id}/read")
-    public void markRead(@PathVariable Long id) {
+    public void markRead(@PathVariable long id) {
         Notification n = repo.findById(id).orElseThrow();
         n.setRead(true);
         repo.save(n);

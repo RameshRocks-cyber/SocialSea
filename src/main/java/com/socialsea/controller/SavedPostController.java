@@ -21,7 +21,8 @@ import java.util.Map;
 @CrossOrigin(origins = {
     "https://socialsea.netlify.app",
     "http://localhost:5173",
-    "http://localhost:3000"
+    "http://localhost:3000",
+    "http://13.234.110.186:5173"
 })
 public class SavedPostController {
 
@@ -30,7 +31,8 @@ public class SavedPostController {
     private final PostRepository postRepo;
 
     @PostMapping("/{postId}")
-    public ResponseEntity<?> toggleSave(@PathVariable Long postId, Authentication auth) {
+    @SuppressWarnings("null")
+    public ResponseEntity<?> toggleSave(@PathVariable long postId, Authentication auth) {
         User user = userRepo.findByEmail(auth.getName()).orElseThrow();
         Post post = postRepo.findById(postId).orElseThrow();
 

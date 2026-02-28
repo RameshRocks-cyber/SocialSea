@@ -18,7 +18,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/profile")
-@CrossOrigin("https://socialsea.netlify.app")
+@CrossOrigin(origins = {"https://socialsea.netlify.app", "http://localhost:5173", "http://13.234.110.186:5173"})
 @RequiredArgsConstructor
 public class ProfileController {
 
@@ -81,7 +81,7 @@ public class ProfileController {
 
     // User posts by id (frontend path: /api/profile/{id}/posts)
     @GetMapping("/{id}/posts")
-    public ResponseEntity<?> posts(@PathVariable Long id) {
+    public ResponseEntity<?> posts(@PathVariable long id) {
         if (!userRepo.existsById(id)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "User not found"));

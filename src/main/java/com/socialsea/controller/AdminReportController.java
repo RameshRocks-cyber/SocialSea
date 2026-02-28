@@ -30,7 +30,7 @@ public class AdminReportController {
 
     // ✅ Resolve Report
     @PostMapping("/resolve/{id}")
-    public String resolve(@PathVariable Long id) {
+    public String resolve(@PathVariable long id) {
         Report report = reportRepository.findById(id).orElseThrow();
         report.setResolved(true);
         reportRepository.save(report);
