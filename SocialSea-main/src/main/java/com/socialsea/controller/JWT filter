@@ -1,0 +1,3 @@
+if (user.isBanned()) {
+    throw new RuntimeException("User banned");
+}
