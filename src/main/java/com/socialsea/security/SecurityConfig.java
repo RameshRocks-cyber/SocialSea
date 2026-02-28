@@ -41,23 +41,34 @@ public class SecurityConfig {
                     "/",
                     "/health",
                     "/actuator/**",
+
+                    // AUTH
                     "/auth/**",
                     "/api/auth/**",
                     "/api/auth/refresh",
+
+                    // PUBLIC CONTENT
+                    "/api/posts/**",
+                    "/api/reels/**",
                     "/api/feed/**",
                     "/api/profile/**",
                     "/anonymous/**",
                     "/api/anonymous/**",
-                    "/api/admin/anonymous/pending",
                     "/api/public/**",
+
+                    // SWAGGER
                     "/swagger-ui/**",
                     "/swagger-ui.html",
                     "/v3/api-docs/**",
+
                     "/oauth2/**",
                     "/login/**",
                     "/error"
                 ).permitAll()
+
+                // ADMIN PROTECTION
                 .requestMatchers("/api/admin/**", "/admin/**").hasRole("ADMIN")
+
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
@@ -89,10 +100,10 @@ public class SecurityConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/**")
-                        .allowedOriginPatterns("*")
-                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                        .allowedHeaders("*")
-                        .allowCredentials(true);
+                    .allowedOriginPatterns("*")
+                    .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                    .allowedHeaders("*")
+                    .allowCredentials(true);
             }
         };
     }
