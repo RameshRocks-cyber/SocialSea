@@ -18,7 +18,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/profile")
-@CrossOrigin(origins = {"https://socialsea.netlify.app", "http://localhost:5173", "http://13.234.110.186:5173"})
+@CrossOrigin(origins = {"https://socialsea.netlify.app", "http://localhost:5173", "http://43.205.213.14:5173"})
 @RequiredArgsConstructor
 public class ProfileController {
 
@@ -79,15 +79,69 @@ public class ProfileController {
         return ResponseEntity.ok(posts);
     }
 
-    // User posts by id (frontend path: /api/profile/{id}/posts)
-    @GetMapping("/{id}/posts")
-    public ResponseEntity<?> posts(@PathVariable long id) {
-        if (!userRepo.existsById(id)) {
+    @GetMapping("/me")
+    public ResponseEntity<?> myProfile(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Login required");
+        }
+
+        User user = userRepo.findByEmail(auth.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        long followers = followRepo.countByFollowing(user);
+        long following = followRepo.countByFollower(user);
+        long postsCount = postRepo.countByUser(user);
+
+        Map<String, Object> profile = new HashMap<>();
+        profile.put("id", user.getId());
+        profile.put("username", user.getEmail());
+        profile.put("email", user.getEmail());
+        profile.put("name", user.getName() != null ? user.getName() : user.getEmail());
+        profile.put("bio", user.getBio());
+        profile.put("profilePic", user.getProfilePic());
+        profile.put("profilePicUrl", user.getProfilePic());
+        profile.put("followers", followers);
+        profile.put("following", following);
+        profile.put("postsCount", postsCount);
+
+        return ResponseEntity.ok(profile);
+    }
+
+    @GetMapping("/me/posts")
+    public ResponseEntity<?> myPostsByMe(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Login required");
+        }
+
+        User user = userRepo.findByEmail(auth.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<FeedItemDto> posts = postRepo.findByUserIdOrderByCreatedAtDesc(user.getId())
+                .stream()
+                .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
+                .map(FeedItemDto::fromEntity)
+                .toList();
+
+        return ResponseEntity.ok(posts);
+    }
+
+    @GetMapping("/{identifier}/posts")
+    public ResponseEntity<?> posts(@PathVariable String identifier) {
+        Optional<User> userOpt;
+
+        if (identifier.matches("\\d+")) {
+            userOpt = userRepo.findById(Long.parseLong(identifier));
+        } else {
+            userOpt = userRepo.findByEmail(identifier);
+        }
+
+        if (userOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "User not found"));
         }
 
-        List<FeedItemDto> posts = postRepo.findByUserIdOrderByCreatedAtDesc(id)
+        long userId = userOpt.get().getId();
+        List<FeedItemDto> posts = postRepo.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
                 .map(FeedItemDto::fromEntity)

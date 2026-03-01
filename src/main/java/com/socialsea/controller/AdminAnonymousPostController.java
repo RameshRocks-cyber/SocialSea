@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/admin/anonymous")
+@RequestMapping("/api/admin/anonymous/moderation")
 @CrossOrigin
 public class AdminAnonymousPostController {
 

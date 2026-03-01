@@ -15,12 +15,14 @@ import org.springframework.http.ResponseEntity;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.beans.factory.annotation.Value;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = {"https://socialsea.netlify.app", "http://localhost:5173", "http://13.234.110.186:5173"})
+@CrossOrigin(origins = {"https://socialsea.netlify.app", "http://localhost:5173", "http://43.205.213.14:5173"})
 public class AuthController {
 
     @Autowired
@@ -38,6 +40,9 @@ public class AuthController {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Value("${app.otp.expose-debug-otp:false}")
+    private boolean exposeDebugOtp;
+
     @PostMapping("/send-otp")
     public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> body) {
         String email = normalize(body.get("email"));
@@ -49,8 +54,15 @@ public class AuthController {
             return ResponseEntity.badRequest().body("Email is required");
         }
 
-        otpService.sendOtp(email);
-        return ResponseEntity.ok(Map.of("message", "OTP sent"));
+        String otp = otpService.sendOtp(email);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "OTP sent");
+        if (exposeDebugOtp) {
+            response.put("debugOtp", otp);
+        }
+
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/verify-otp")

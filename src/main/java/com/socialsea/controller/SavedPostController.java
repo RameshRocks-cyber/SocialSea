@@ -22,7 +22,7 @@ import java.util.Map;
     "https://socialsea.netlify.app",
     "http://localhost:5173",
     "http://localhost:3000",
-    "http://13.234.110.186:5173"
+    "http://43.205.213.14:5173"
 })
 public class SavedPostController {
 

@@ -2,7 +2,10 @@ package com.socialsea.service;
 
 import com.socialsea.model.EmailOtp;
 import com.socialsea.repository.EmailOtpRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,6 +17,7 @@ import java.util.Random;
 
 @Service
 public class OtpService {
+    private static final Logger log = LoggerFactory.getLogger(OtpService.class);
 
     @Autowired
     private EmailOtpRepository otpRepository;
@@ -21,10 +25,13 @@ public class OtpService {
     @Autowired
     private EmailService emailService;
 
-    @Transactional
-    public void sendOtp(String email) {
+    @Value("${app.otp.allow-email-failure:false}")
+    private boolean allowEmailFailure;
 
-        System.out.println("OTP SERVICE HIT - VERSION 2026-02-06-B");
+    @Transactional
+    public String sendOtp(String email) {
+
+        log.info("OTP service hit for {}", email);
 
         List<EmailOtp> otps = otpRepository.findByEmailOrderByExpiresAtDesc(email);
         EmailOtp otp = otps.isEmpty() ? null : otps.get(0);
@@ -51,7 +58,16 @@ public class OtpService {
         otp.setVerified(false);
 
         otpRepository.save(otp);
-        emailService.sendOtpEmail(email, code);
+        try {
+            emailService.sendOtpEmail(email, code);
+        } catch (RuntimeException ex) {
+            if (!allowEmailFailure) {
+                throw ex;
+            }
+            log.warn("OTP email send skipped/failure for {}: {}", email, ex.getMessage());
+        }
+
+        return code;
     }
 
     @Transactional
