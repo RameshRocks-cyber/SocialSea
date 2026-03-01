@@ -43,6 +43,12 @@ public class AdminService {
         dto.posts = posts;
         dto.pendingAnonymous = pending;
         dto.unresolvedReports = reports;
+
+        // Backward-compatible aliases
+        dto.totalUsers = users;
+        dto.totalPosts = posts;
+        dto.pendingAnonymousPosts = pending;
+        dto.reports = reports;
         return dto;
     }
 

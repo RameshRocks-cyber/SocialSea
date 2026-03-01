@@ -14,7 +14,9 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/comments")
-@CrossOrigin(origins = {"https://socialsea.netlify.app", "http://localhost:5173", "http://43.205.213.14:5173"})
+@CrossOrigin(origins = {"https://socialsea.netlify.app",
+    "https://socialsea.co.in",
+    "https://www.socialsea.co.in", "http://localhost:5173", "http://43.205.213.14:5173"})
 public class CommentController {
 
     private final CommentRepository commentRepo;
@@ -70,3 +72,4 @@ public class CommentController {
         return commentRepo.findByPost(post);
     }
 }
+

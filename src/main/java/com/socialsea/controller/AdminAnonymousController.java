@@ -13,6 +13,8 @@ import java.util.List;
 @RequiredArgsConstructor
 @CrossOrigin(origins = {
     "https://socialsea.netlify.app",
+    "https://socialsea.co.in",
+    "https://www.socialsea.co.in",
     "http://localhost:5173",
     "http://localhost:3000"
 })
@@ -46,6 +48,11 @@ public class AdminAnonymousController {
         return ResponseEntity.ok("Approved");
     }
 
+    @PostMapping("/approve/{id}")
+    public ResponseEntity<?> approvePost(@PathVariable long id) {
+        return approve(id);
+    }
+
     @PutMapping("/reject/{id}")
     public ResponseEntity<?> reject(@PathVariable long id) {
         AnonymousPost post = repository.findById(id).orElseThrow();
@@ -54,4 +61,10 @@ public class AdminAnonymousController {
         repository.save(post);
         return ResponseEntity.ok("Rejected");
     }
+
+    @PostMapping("/reject/{id}")
+    public ResponseEntity<?> rejectPost(@PathVariable long id, @RequestBody(required = false) String reason) {
+        return reject(id);
+    }
 }
+

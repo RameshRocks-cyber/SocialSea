@@ -14,6 +14,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmail(String email);
 
+    List<User> findTop20ByEmailContainingIgnoreCaseOrNameContainingIgnoreCase(String email, String name);
+
     @Query("""
         SELECT new com.socialsea.dto.ChartPointDto(
             CONCAT('', FUNCTION('DATE', u.createdAt)),

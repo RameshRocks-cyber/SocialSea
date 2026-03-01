@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/admin")
 @CrossOrigin(origins = {
     "https://socialsea.netlify.app",
+    "https://socialsea.co.in",
+    "https://www.socialsea.co.in",
     "http://localhost:5173",
     "http://127.0.0.1:5173"
 })
@@ -21,8 +23,9 @@ public class AdminController {
 
     public AdminController(DashboardService dashboardService) { this.dashboardService = dashboardService; }
 
-    @GetMapping("/dashboard")
+    @GetMapping("/dashboard/legacy")
     public ResponseEntity<AdminDashboardStatsDto> getDashboardStats() {
         return ResponseEntity.ok(dashboardService.getDashboardStats());
     }
 }
+

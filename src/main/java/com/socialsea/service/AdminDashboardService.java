@@ -35,6 +35,12 @@ public class AdminDashboardService {
         dto.likes = likeRepo.count();
         dto.pendingAnonymous = anonRepo.countByApprovedFalseAndRejectedFalse();
         dto.unresolvedReports = reportRepo.countByResolvedFalse();
+
+        // Backward-compatible aliases
+        dto.totalUsers = dto.users;
+        dto.totalPosts = dto.posts;
+        dto.pendingAnonymousPosts = dto.pendingAnonymous;
+        dto.reports = dto.unresolvedReports;
         return dto;
     }
 

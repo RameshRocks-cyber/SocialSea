@@ -6,4 +6,10 @@ public class AdminStatsDto {
     public long likes;
     public long pendingAnonymous;
     public long unresolvedReports;
+
+    // Backward-compatible aliases used by different frontend variants
+    public long totalUsers;
+    public long totalPosts;
+    public long pendingAnonymousPosts;
+    public long reports;
 }

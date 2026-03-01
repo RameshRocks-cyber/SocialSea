@@ -20,6 +20,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 @CrossOrigin(origins = {
     "https://socialsea.netlify.app",
+    "https://socialsea.co.in",
+    "https://www.socialsea.co.in",
     "http://localhost:5173",
     "http://localhost:3000",
     "http://43.205.213.14:5173"

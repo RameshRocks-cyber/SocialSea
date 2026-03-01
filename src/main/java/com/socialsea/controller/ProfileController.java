@@ -15,10 +15,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/profile")
-@CrossOrigin(origins = {"https://socialsea.netlify.app", "http://localhost:5173", "http://43.205.213.14:5173"})
+@CrossOrigin(origins = {"https://socialsea.netlify.app",
+    "https://socialsea.co.in",
+    "https://www.socialsea.co.in", "http://localhost:5173", "http://43.205.213.14:5173"})
 @RequiredArgsConstructor
 public class ProfileController {
 
@@ -56,6 +59,7 @@ public class ProfileController {
         profile.put("bio", user.getBio());
         profile.put("profilePic", user.getProfilePic());
         profile.put("profilePicUrl", user.getProfilePic());
+        profile.put("profileCompleted", user.isProfileCompleted());
         profile.put("followers", followers);
         profile.put("following", following);
         profile.put("postsCount", postsCount);
@@ -100,6 +104,7 @@ public class ProfileController {
         profile.put("bio", user.getBio());
         profile.put("profilePic", user.getProfilePic());
         profile.put("profilePicUrl", user.getProfilePic());
+        profile.put("profileCompleted", user.isProfileCompleted());
         profile.put("followers", followers);
         profile.put("following", following);
         profile.put("postsCount", postsCount);
@@ -123,6 +128,39 @@ public class ProfileController {
                 .toList();
 
         return ResponseEntity.ok(posts);
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<?> searchUsers(
+            @RequestParam(name = "q", defaultValue = "") String q,
+            Authentication auth
+    ) {
+        String query = q == null ? "" : q.trim();
+        if (query.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+
+        Long myUserId = null;
+        if (auth != null && auth.isAuthenticated()) {
+            myUserId = userRepo.findByEmail(auth.getName()).map(User::getId).orElse(null);
+        }
+
+        Long finalMyUserId = myUserId;
+        List<Map<String, Object>> users = userRepo
+                .findTop20ByEmailContainingIgnoreCaseOrNameContainingIgnoreCase(query, query)
+                .stream()
+                .filter(u -> finalMyUserId == null || !u.getId().equals(finalMyUserId))
+                .map(u -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("id", u.getId());
+                    item.put("email", u.getEmail());
+                    item.put("name", u.getName() != null && !u.getName().isBlank() ? u.getName() : u.getEmail());
+                    item.put("profilePic", u.getProfilePic());
+                    return item;
+                })
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(users);
     }
 
     @GetMapping("/{identifier}/posts")
@@ -163,3 +201,6 @@ public class ProfileController {
         return ResponseEntity.ok().build();
     }
 }
+
+
+

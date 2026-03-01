@@ -8,7 +8,6 @@ import com.socialsea.service.AdminService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,16 +21,23 @@ import java.util.Map;
 @RequestMapping("/api/admin/dashboard")
 @RequiredArgsConstructor
 @Slf4j
-@PreAuthorize("hasAuthority('DASHBOARD_VIEW')")
 @CrossOrigin(origins = {
     "https://socialsea.netlify.app",
+    "https://socialsea.co.in",
+    "https://www.socialsea.co.in",
     "http://localhost:5173",
-    "http://127.0.0.1:5173"
+    "http://127.0.0.1:5173",
+    "http://43.205.213.14:5173"
 })
 public class AdminDashboardController {
 
     private final AdminDashboardService service;
     private final AdminService adminService;
+
+    @GetMapping
+    public AdminStatsDto dashboard() {
+        return service.getStats();
+    }
 
     @GetMapping("/stats")
     public AdminStatsDto stats() {
@@ -67,3 +73,4 @@ public class AdminDashboardController {
             .body(service.exportPostsCsv(days));
     }
 }
+

@@ -22,7 +22,9 @@ import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = {"https://socialsea.netlify.app", "http://localhost:5173", "http://43.205.213.14:5173"})
+@CrossOrigin(origins = {"https://socialsea.netlify.app",
+    "https://socialsea.co.in",
+    "https://www.socialsea.co.in", "http://localhost:5173", "http://43.205.213.14:5173"})
 public class AuthController {
 
     @Autowired
@@ -208,3 +210,4 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
     }
 }
+

@@ -15,7 +15,9 @@ import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("/api/feed")
-@CrossOrigin(origins = {"https://socialsea.netlify.app", "http://localhost:5173", "http://43.205.213.14:5173"})
+@CrossOrigin(origins = {"https://socialsea.netlify.app",
+    "https://socialsea.co.in",
+    "https://www.socialsea.co.in", "http://localhost:5173", "http://43.205.213.14:5173"})
 @RequiredArgsConstructor
 public class FeedController {
 
@@ -48,3 +50,4 @@ public class FeedController {
         return anonymousPostService.getApprovedFeed();
     }
 }
+
