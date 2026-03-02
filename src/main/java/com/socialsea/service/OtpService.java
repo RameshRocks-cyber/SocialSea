@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,9 @@ public class OtpService {
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private Environment environment;
 
     @Value("${app.otp.allow-email-failure:false}")
     private boolean allowEmailFailure;
@@ -58,13 +62,20 @@ public class OtpService {
         otp.setVerified(false);
 
         otpRepository.save(otp);
+        if (isDevProfile()) {
+            log.info("DEV OTP for {} is {}", email, code);
+            return code;
+        }
         try {
             emailService.sendOtpEmail(email, code);
         } catch (RuntimeException ex) {
-            if (!allowEmailFailure) {
+            if (!allowEmailFailure && isProdProfile()) {
                 throw ex;
             }
             log.warn("OTP email send skipped/failure for {}: {}", email, ex.getMessage());
+            if (!isProdProfile()) {
+                log.info("Fallback OTP for {} is {}", email, code);
+            }
         }
 
         return code;
@@ -92,5 +103,31 @@ public class OtpService {
         }
 
         otpRepository.delete(emailOtp);
+    }
+
+    private boolean isDevProfile() {
+        try {
+            for (String profile : environment.getActiveProfiles()) {
+                if ("dev".equalsIgnoreCase(profile)) {
+                    return true;
+                }
+            }
+        } catch (Exception ignored) {
+            // fall through
+        }
+        return false;
+    }
+
+    private boolean isProdProfile() {
+        try {
+            for (String profile : environment.getActiveProfiles()) {
+                if ("prod".equalsIgnoreCase(profile)) {
+                    return true;
+                }
+            }
+        } catch (Exception ignored) {
+            // fall through
+        }
+        return false;
     }
 }
