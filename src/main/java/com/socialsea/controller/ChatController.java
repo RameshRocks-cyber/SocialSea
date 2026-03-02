@@ -1,0 +1,135 @@
+package com.socialsea.controller;
+
+import com.socialsea.model.ChatMessage;
+import com.socialsea.model.User;
+import com.socialsea.repository.ChatMessageRepository;
+import com.socialsea.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.util.*;
+
+@RestController
+@RequestMapping("/api/chat")
+@CrossOrigin(origins = {
+        "https://socialsea.netlify.app",
+        "https://socialsea.co.in",
+        "https://www.socialsea.co.in",
+        "http://localhost:5173",
+        "http://43.205.213.14:5173"
+})
+@RequiredArgsConstructor
+public class ChatController {
+
+    private final UserRepository userRepo;
+    private final ChatMessageRepository chatRepo;
+
+    @GetMapping("/conversations")
+    public ResponseEntity<?> conversations(Authentication auth) {
+        User me = currentUser(auth);
+        if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+
+        List<ChatMessage> messages = chatRepo.findBySenderIdOrReceiverIdOrderByCreatedAtDesc(me.getId(), me.getId());
+        Map<Long, Map<String, Object>> byOtherUser = new LinkedHashMap<>();
+
+        for (ChatMessage m : messages) {
+            User sender = m.getSender();
+            User receiver = m.getReceiver();
+            if (sender == null || receiver == null) continue;
+            Long otherId = Objects.equals(sender.getId(), me.getId()) ? receiver.getId() : sender.getId();
+            User other = Objects.equals(sender.getId(), me.getId()) ? receiver : sender;
+            if (otherId == null || other == null || byOtherUser.containsKey(otherId)) continue;
+
+            Map<String, Object> item = new HashMap<>();
+            item.put("id", String.valueOf(other.getId()));
+            item.put("userId", other.getId());
+            item.put("name", displayName(other));
+            item.put("email", other.getEmail());
+            item.put("profilePic", other.getProfilePic());
+            item.put("lastMessage", m.getText());
+            item.put("lastAt", m.getCreatedAt());
+            byOtherUser.put(otherId, item);
+        }
+
+        return ResponseEntity.ok(new ArrayList<>(byOtherUser.values()));
+    }
+
+    @GetMapping("/{otherUserId}/messages")
+    public ResponseEntity<?> messages(@PathVariable Long otherUserId, Authentication auth) {
+        User me = currentUser(auth);
+        if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+
+        Optional<User> otherOpt = userRepo.findById(otherUserId);
+        if (otherOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+
+        List<ChatMessage> list = chatRepo.findBySenderIdAndReceiverIdOrSenderIdAndReceiverIdOrderByCreatedAtAsc(
+                me.getId(), otherUserId, otherUserId, me.getId()
+        );
+
+        List<Map<String, Object>> payload = list.stream().map(m -> {
+            Map<String, Object> item = new HashMap<>();
+            item.put("id", m.getId());
+            item.put("senderId", m.getSender().getId());
+            item.put("receiverId", m.getReceiver().getId());
+            item.put("text", m.getText());
+            item.put("createdAt", m.getCreatedAt());
+            item.put("mine", Objects.equals(m.getSender().getId(), me.getId()));
+            return item;
+        }).toList();
+
+        return ResponseEntity.ok(payload);
+    }
+
+    @PostMapping("/{otherUserId}/send")
+    public ResponseEntity<?> send(
+            @PathVariable Long otherUserId,
+            @RequestBody Map<String, String> body,
+            Authentication auth
+    ) {
+        User me = currentUser(auth);
+        if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+
+        Optional<User> otherOpt = userRepo.findById(otherUserId);
+        if (otherOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+
+        String text = body == null ? "" : String.valueOf(body.getOrDefault("text", "")).trim();
+        if (text.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Message text required"));
+        }
+        if (text.length() > 2000) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Message too long"));
+        }
+
+        User receiver = otherOpt.get();
+        ChatMessage message = new ChatMessage();
+        message.setSender(me);
+        message.setReceiver(receiver);
+        message.setText(text);
+        message.setCreatedAt(LocalDateTime.now());
+        ChatMessage saved = chatRepo.save(message);
+
+        return ResponseEntity.ok(Map.of(
+                "id", saved.getId(),
+                "senderId", me.getId(),
+                "receiverId", receiver.getId(),
+                "text", saved.getText(),
+                "createdAt", saved.getCreatedAt(),
+                "mine", true
+        ));
+    }
+
+    private User currentUser(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) return null;
+        return userRepo.findByEmail(auth.getName()).orElse(null);
+    }
+
+    private String displayName(User user) {
+        String raw = user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getEmail();
+        if (raw == null || raw.isBlank()) return "User";
+        return raw;
+    }
+}

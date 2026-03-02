@@ -6,7 +6,6 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
@@ -23,7 +22,6 @@ public class EmailService {
 
     private static final String RESEND_URL = "https://api.resend.com/emails";
 
-    @Async
     public void sendOtpEmail(String to, String otp) {
         ensureConfigured();
 

@@ -1,8 +1,11 @@
 import { useState } from "react"
+import { useLocation, useNavigate } from "react-router-dom"
 import { API_BASE } from "../services/api"
 import { setTokens } from "../services/auth"
 
 export default function Login() {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
   const [msg, setMsg] = useState("")
@@ -23,8 +26,11 @@ export default function Login() {
       const token = data.token || data.accessToken
       const refreshToken = data.refreshToken
       const userId = data.userId || data.user?.id
-      setTokens({ token, refreshToken, userId })
+      const role = data.role || data.user?.role
+      setTokens({ token, refreshToken, userId, role, user: data.user })
       setMsg("Login successful")
+      const from = location.state?.from
+      navigate(from || "/feed", { replace: true })
     } catch (error) {
       setMsg("Error: " + error.message)
     }

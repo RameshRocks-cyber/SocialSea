@@ -53,9 +53,9 @@ public class ProfileController {
 
         Map<String, Object> profile = new HashMap<>();
         profile.put("id", user.getId());
-        profile.put("username", user.getEmail());
+        profile.put("username", user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getEmail());
         profile.put("email", user.getEmail());
-        profile.put("name", user.getName() != null ? user.getName() : user.getEmail());
+        profile.put("name", user.getName());
         profile.put("bio", user.getBio());
         profile.put("profilePic", user.getProfilePic());
         profile.put("profilePicUrl", user.getProfilePic());
@@ -98,9 +98,9 @@ public class ProfileController {
 
         Map<String, Object> profile = new HashMap<>();
         profile.put("id", user.getId());
-        profile.put("username", user.getEmail());
+        profile.put("username", user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getEmail());
         profile.put("email", user.getEmail());
-        profile.put("name", user.getName() != null ? user.getName() : user.getEmail());
+        profile.put("name", user.getName());
         profile.put("bio", user.getBio());
         profile.put("profilePic", user.getProfilePic());
         profile.put("profilePicUrl", user.getProfilePic());
@@ -110,6 +110,18 @@ public class ProfileController {
         profile.put("postsCount", postsCount);
 
         return ResponseEntity.ok(profile);
+    }
+
+    @GetMapping("/name/check")
+    public ResponseEntity<?> checkName(
+            @RequestParam(name = "name", defaultValue = "") String name,
+            Authentication auth
+    ) {
+        Long myUserId = null;
+        if (auth != null && auth.isAuthenticated()) {
+            myUserId = userRepo.findByEmail(auth.getName()).map(User::getId).orElse(null);
+        }
+        return ResponseEntity.ok(profileService.checkNameAvailability(name, myUserId));
     }
 
     @GetMapping("/me/posts")
@@ -192,13 +204,32 @@ public class ProfileController {
             @RequestParam(required = false) Long userId,
             @RequestParam String name,
             @RequestParam(required = false) MultipartFile profilePic,
-            @RequestParam(required = false) String bio
+            @RequestParam(required = false) String bio,
+            Authentication auth
     ) {
-        if (userId == null) {
-            return ResponseEntity.badRequest().body("UserId missing");
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         }
-        profileService.setupProfile(userId, name, bio, profilePic);
-        return ResponseEntity.ok().build();
+
+        User currentUser = userRepo.findByEmail(auth.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Long effectiveUserId = currentUser.getId();
+        if (userId != null && !userId.equals(effectiveUserId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Cannot edit another user"));
+        }
+
+        try {
+            Map<String, Object> updated = profileService.setupProfile(effectiveUserId, name, bio, profilePic);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            Map<String, Object> availability = profileService.checkNameAvailability(name, effectiveUserId);
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", e.getMessage(),
+                    "available", availability.get("available"),
+                    "suggestions", availability.get("suggestions")
+            ));
+        }
     }
 }
 
