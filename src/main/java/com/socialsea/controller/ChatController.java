@@ -5,11 +5,14 @@ import com.socialsea.model.User;
 import com.socialsea.repository.ChatMessageRepository;
 import com.socialsea.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -27,6 +30,7 @@ public class ChatController {
 
     private final UserRepository userRepo;
     private final ChatMessageRepository chatRepo;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @GetMapping("/conversations")
     public ResponseEntity<?> conversations(Authentication auth) {
@@ -111,6 +115,23 @@ public class ChatController {
         message.setText(text);
         message.setCreatedAt(LocalDateTime.now());
         ChatMessage saved = chatRepo.save(message);
+
+        Map<String, Object> receiverPayload = Map.of(
+                "id", saved.getId(),
+                "senderId", me.getId(),
+                "receiverId", receiver.getId(),
+                "senderName", displayName(me),
+                "senderEmail", me.getEmail(),
+                "text", saved.getText(),
+                "createdAt", saved.getCreatedAt(),
+                "mine", false
+        );
+        messagingTemplate.convertAndSend("/topic/chat/" + receiver.getId(), receiverPayload);
+        if (receiver.getEmail() != null && !receiver.getEmail().isBlank()) {
+            String encodedEmail = URLEncoder.encode(receiver.getEmail(), StandardCharsets.UTF_8);
+            messagingTemplate.convertAndSend("/topic/chat/email/" + encodedEmail, receiverPayload);
+            messagingTemplate.convertAndSendToUser(receiver.getEmail(), "/queue/chat", receiverPayload);
+        }
 
         return ResponseEntity.ok(Map.of(
                 "id", saved.getId(),

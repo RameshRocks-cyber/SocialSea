@@ -61,6 +61,7 @@ public class CallSignalingController {
         if (target.getEmail() != null && !target.getEmail().isBlank()) {
             String encodedEmail = URLEncoder.encode(target.getEmail(), StandardCharsets.UTF_8);
             messagingTemplate.convertAndSend("/topic/calls/email/" + encodedEmail, outbound);
+            messagingTemplate.convertAndSendToUser(target.getEmail(), "/queue/calls", outbound);
         }
     }
 
