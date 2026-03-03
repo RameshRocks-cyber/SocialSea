@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/posts")
 public class PostController {
@@ -45,8 +47,19 @@ public class PostController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Login required");
         }
 
-        User user = userRepo.findByEmail(auth.getName()).orElseThrow();
-        String url = cloudinaryService.upload(file);
+        User user = userRepo.findByEmail(auth.getName()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("message", "Session expired. Please login again."));
+        }
+
+        String url;
+        try {
+            url = cloudinaryService.upload(file);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                .body(Map.of("message", e.getMessage()));
+        }
 
         Post post = new Post();
         post.setMediaUrl(url);
@@ -54,7 +67,20 @@ public class PostController {
         post.setApproved(true);
         post.setUser(user);
 
-        return ResponseEntity.ok(postRepo.save(post));
+        try {
+            Post saved = postRepo.save(post);
+            return ResponseEntity.ok(Map.of(
+                "id", saved.getId(),
+                "mediaUrl", saved.getMediaUrl(),
+                "reel", saved.isReel(),
+                "approved", saved.isApproved(),
+                "createdAt", String.valueOf(saved.getCreatedAt()),
+                "userId", saved.getUser() != null ? saved.getUser().getId() : null
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("message", "Post save failed: " + e.getMessage()));
+        }
     }
 
     private boolean isVideo(MultipartFile file) {

@@ -33,6 +33,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
 
         return path.startsWith("/auth")
+            || path.startsWith("/api/auth")
             || path.startsWith("/anonymous")
             || path.startsWith("/h2-console");
     }
@@ -45,7 +46,8 @@ public class RateLimitFilter extends OncePerRequestFilter {
         @NonNull FilterChain chain
     ) throws IOException, ServletException {
 
-        if ("/auth/send-otp".equals(request.getRequestURI())) {
+        if ("/auth/send-otp".equals(request.getRequestURI())
+            || "/api/auth/send-otp".equals(request.getRequestURI())) {
             chain.doFilter(request, response);
             return;
         }

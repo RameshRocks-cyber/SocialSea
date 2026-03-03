@@ -11,6 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
 import java.io.IOException;
+import java.time.Duration;
 
 @Service
 public class EmailService {
@@ -21,6 +22,12 @@ public class EmailService {
     private static final String FROM = "SocialSea <no-reply@socialsea.co.in>";
 
     private static final String RESEND_URL = "https://api.resend.com/emails";
+    private final OkHttpClient client = new OkHttpClient.Builder()
+            .connectTimeout(Duration.ofSeconds(4))
+            .readTimeout(Duration.ofSeconds(6))
+            .writeTimeout(Duration.ofSeconds(6))
+            .callTimeout(Duration.ofSeconds(8))
+            .build();
 
     public void sendOtpEmail(String to, String otp) {
         ensureConfigured();
@@ -62,8 +69,6 @@ public class EmailService {
                 .addHeader("Authorization", "Bearer " + apiKey)
                 .addHeader("Content-Type", "application/json")
                 .build();
-
-        OkHttpClient client = new OkHttpClient();
 
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful()) {

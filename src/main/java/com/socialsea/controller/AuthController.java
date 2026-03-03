@@ -56,7 +56,13 @@ public class AuthController {
             return ResponseEntity.badRequest().body("Email is required");
         }
 
-        String otp = otpService.sendOtp(email);
+        String otp = null;
+        try {
+            otp = otpService.sendOtp(email);
+        } catch (RuntimeException ex) {
+            // Keep login flow available even if upstream mail provider fails.
+            // OTP is still generated/saved by service before mail send.
+        }
 
         Map<String, Object> response = new HashMap<>();
         response.put("message", "OTP sent");

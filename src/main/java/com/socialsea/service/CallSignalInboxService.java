@@ -13,22 +13,31 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 @Service
 public class CallSignalInboxService {
 
+    private static final long KEEP_MS = 90_000;
+    private static final int MAX_PER_USER = 200;
+
     private final Map<Long, Queue<CallSignalDto>> inboxByUserId = new ConcurrentHashMap<>();
 
     public void enqueue(Long targetUserId, CallSignalDto signal) {
         if (targetUserId == null || signal == null) return;
-        inboxByUserId.computeIfAbsent(targetUserId, ignored -> new ConcurrentLinkedQueue<>()).offer(signal);
+        Queue<CallSignalDto> queue = inboxByUserId.computeIfAbsent(targetUserId, ignored -> new ConcurrentLinkedQueue<>());
+        queue.offer(signal);
+        prune(queue, System.currentTimeMillis());
     }
 
     public List<CallSignalDto> drain(Long userId) {
         if (userId == null) return List.of();
         Queue<CallSignalDto> queue = inboxByUserId.get(userId);
         if (queue == null) return List.of();
-        List<CallSignalDto> out = new ArrayList<>();
-        CallSignalDto next;
-        while ((next = queue.poll()) != null) {
-            out.add(next);
+        long now = System.currentTimeMillis();
+        prune(queue, now);
+        return new ArrayList<>(queue);
+    }
+
+    private void prune(Queue<CallSignalDto> queue, long now) {
+        queue.removeIf(item -> item == null || item.getTimestamp() <= 0 || (now - item.getTimestamp()) > KEEP_MS);
+        while (queue.size() > MAX_PER_USER) {
+            queue.poll();
         }
-        return out;
     }
 }

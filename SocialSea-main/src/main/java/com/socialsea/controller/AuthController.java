@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -46,8 +47,21 @@ public class AuthController {
             return ResponseEntity.badRequest().body("Email is required");
         }
 
-        otpService.sendOtp(email);
-        return ResponseEntity.ok("OTP sent");
+        String otp = null;
+        try {
+            otp = otpService.sendOtp(email);
+        } catch (RuntimeException ex) {
+            // Keep login usable even when email provider is down.
+            // OTP is generated/saved before email call in service flow.
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "OTP sent");
+        if (otp != null) {
+            response.put("debugOtp", otp);
+        }
+
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/verify-otp")

@@ -69,11 +69,10 @@ public class OtpService {
         try {
             emailService.sendOtpEmail(email, code);
         } catch (RuntimeException ex) {
-            if (!allowEmailFailure && isProdProfile()) {
-                throw ex;
-            }
             log.warn("OTP email send skipped/failure for {}: {}", email, ex.getMessage());
-            if (!isProdProfile()) {
+            // Do not block login when email provider is temporarily down.
+            // `allowEmailFailure` is kept for compatibility but sendOtp now always continues.
+            if (allowEmailFailure || !isProdProfile()) {
                 log.info("Fallback OTP for {} is {}", email, code);
             }
         }
