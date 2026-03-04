@@ -288,7 +288,8 @@ public class ProfileController {
             return userRepo.findById(Long.parseLong(identifier));
         }
 
-        return userRepo.findByEmail(identifier);
+        return userRepo.findByEmail(identifier)
+                .or(() -> userRepo.findByNameIgnoreCase(identifier));
     }
 
     @PostMapping("/setup")

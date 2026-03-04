@@ -113,7 +113,9 @@ public class FollowController {
         if (identifier != null && identifier.matches("\\d+")) {
             return userRepo.findById(Long.parseLong(identifier)).orElseThrow();
         }
-        return userRepo.findByEmail(identifier).orElseThrow();
+        return userRepo.findByEmail(identifier)
+                .or(() -> userRepo.findByNameIgnoreCase(identifier))
+                .orElseThrow();
     }
 
     private Map<String, Object> toUserItem(User user) {
