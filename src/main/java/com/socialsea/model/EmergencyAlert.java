@@ -29,6 +29,11 @@ public class EmergencyAlert {
     private LocalDateTime endedAt;
     private String mediaUrl;
     private Long durationMs;
+    private Double currentLatitude;
+    private Double currentLongitude;
+    private boolean liveAudioActive;
+    private boolean liveVideoActive;
+    private LocalDateTime lastHeartbeatAt;
 
     public Long getId() {
         return id;
@@ -132,5 +137,45 @@ public class EmergencyAlert {
 
     public void setDurationMs(Long durationMs) {
         this.durationMs = durationMs;
+    }
+
+    public Double getCurrentLatitude() {
+        return currentLatitude;
+    }
+
+    public void setCurrentLatitude(Double currentLatitude) {
+        this.currentLatitude = currentLatitude;
+    }
+
+    public Double getCurrentLongitude() {
+        return currentLongitude;
+    }
+
+    public void setCurrentLongitude(Double currentLongitude) {
+        this.currentLongitude = currentLongitude;
+    }
+
+    public boolean isLiveAudioActive() {
+        return liveAudioActive;
+    }
+
+    public void setLiveAudioActive(boolean liveAudioActive) {
+        this.liveAudioActive = liveAudioActive;
+    }
+
+    public boolean isLiveVideoActive() {
+        return liveVideoActive;
+    }
+
+    public void setLiveVideoActive(boolean liveVideoActive) {
+        this.liveVideoActive = liveVideoActive;
+    }
+
+    public LocalDateTime getLastHeartbeatAt() {
+        return lastHeartbeatAt;
+    }
+
+    public void setLastHeartbeatAt(LocalDateTime lastHeartbeatAt) {
+        this.lastHeartbeatAt = lastHeartbeatAt;
     }
 }

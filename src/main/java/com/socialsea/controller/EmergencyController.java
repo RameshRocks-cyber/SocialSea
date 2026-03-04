@@ -7,6 +7,7 @@ import com.socialsea.repository.UserRepository;
 import com.socialsea.service.CloudinaryService;
 import com.socialsea.service.NotificationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -32,12 +33,14 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class EmergencyController {
 
-    private static final int DEFAULT_RADIUS_METERS = 100;
+    private static final int DEFAULT_RADIUS_METERS = 5000;
 
     private final UserRepository userRepo;
     private final EmergencyAlertRepository emergencyRepo;
     private final NotificationService notificationService;
     private final CloudinaryService cloudinaryService;
+    @Value("${app.frontend.base-url:http://localhost:5173}")
+    private String frontendBaseUrl;
 
     @PostMapping("/presence")
     public ResponseEntity<?> presence(@RequestBody PresenceRequest request, Authentication auth) {
@@ -92,14 +95,23 @@ public class EmergencyController {
         alert.setRadiusMeters(radiusMeters);
         alert.setFrontCameraEnabled(Boolean.TRUE.equals(request.frontCameraEnabled));
         alert.setBackCameraEnabled(Boolean.TRUE.equals(request.backCameraEnabled));
+        alert.setLiveAudioActive(Boolean.TRUE.equals(request.audioActive));
+        alert.setLiveVideoActive(Boolean.TRUE.equals(request.videoActive));
+        alert.setCurrentLatitude(request.latitude);
+        alert.setCurrentLongitude(request.longitude);
+        alert.setLastHeartbeatAt(LocalDateTime.now());
         alert.setActive(true);
         alert.setStartedAt(LocalDateTime.now());
         EmergencyAlert saved = emergencyRepo.save(alert);
 
         String mapsUrl = "https://maps.google.com/?q=" + request.latitude + "," + request.longitude;
+        String liveUrl = frontendBaseUrl.replaceAll("/+$", "") + "/sos/live/" + saved.getId();
         String message = "Emergency alert by " + reporter.getEmail()
                 + ". Exact location: " + request.latitude + ", " + request.longitude
-                + " (radius " + radiusMeters + "m). " + mapsUrl;
+                + " (radius " + radiusMeters + "m). "
+                + "Live AV: " + (alert.isLiveAudioActive() || alert.isLiveVideoActive() ? "ON" : "OFF")
+                + ". " + mapsUrl
+                + ". Live page: " + liveUrl;
 
         int notified = 0;
         List<User> users = userRepo.findAll();
@@ -131,12 +143,99 @@ public class EmergencyController {
         response.put("alertId", saved.getId());
         response.put("notifiedUsers", notified);
         response.put("radiusMeters", radiusMeters);
+        response.put("liveUrl", liveUrl);
+        response.put("audioActive", saved.isLiveAudioActive());
+        response.put("videoActive", saved.isLiveVideoActive());
         response.put("location", Map.of(
                 "latitude", request.latitude,
                 "longitude", request.longitude,
                 "accuracyMeters", request.accuracyMeters
         ));
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{alertId}/heartbeat")
+    public ResponseEntity<?> heartbeat(
+            @PathVariable Long alertId,
+            @RequestBody HeartbeatRequest request,
+            Authentication auth
+    ) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+
+        Optional<EmergencyAlert> alertOpt = emergencyRepo.findById(alertId);
+        if (alertOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Alert not found"));
+        }
+
+        EmergencyAlert alert = alertOpt.get();
+        if (!auth.getName().equalsIgnoreCase(alert.getReporterEmail())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Not allowed"));
+        }
+        if (!alert.isActive()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Alert already stopped"));
+        }
+
+        if (request != null && request.latitude != null && request.longitude != null) {
+            alert.setCurrentLatitude(request.latitude);
+            alert.setCurrentLongitude(request.longitude);
+
+            User user = userRepo.findByEmail(auth.getName()).orElse(null);
+            if (user != null) {
+                user.setLastLatitude(request.latitude);
+                user.setLastLongitude(request.longitude);
+                user.setLocationUpdatedAt(LocalDateTime.now());
+                userRepo.save(user);
+            }
+        }
+        if (request != null) {
+            alert.setLiveAudioActive(Boolean.TRUE.equals(request.audioActive));
+            alert.setLiveVideoActive(Boolean.TRUE.equals(request.videoActive));
+        }
+        alert.setLastHeartbeatAt(LocalDateTime.now());
+        emergencyRepo.save(alert);
+
+        return ResponseEntity.ok(Map.of(
+                "alertId", alert.getId(),
+                "active", alert.isActive(),
+                "audioActive", alert.isLiveAudioActive(),
+                "videoActive", alert.isLiveVideoActive(),
+                "lastHeartbeatAt", alert.getLastHeartbeatAt()
+        ));
+    }
+
+    @GetMapping("/{alertId}")
+    public ResponseEntity<?> status(@PathVariable Long alertId, Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+
+        Optional<EmergencyAlert> alertOpt = emergencyRepo.findById(alertId);
+        if (alertOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Alert not found"));
+        }
+
+        EmergencyAlert alert = alertOpt.get();
+        if (!auth.getName().equalsIgnoreCase(alert.getReporterEmail())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Not allowed"));
+        }
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("alertId", alert.getId());
+        payload.put("active", alert.isActive());
+        payload.put("reporterEmail", alert.getReporterEmail());
+        payload.put("radiusMeters", alert.getRadiusMeters());
+        payload.put("startedAt", alert.getStartedAt());
+        payload.put("endedAt", alert.getEndedAt());
+        payload.put("latitude", alert.getCurrentLatitude() != null ? alert.getCurrentLatitude() : alert.getLatitude());
+        payload.put("longitude", alert.getCurrentLongitude() != null ? alert.getCurrentLongitude() : alert.getLongitude());
+        payload.put("audioActive", alert.isLiveAudioActive());
+        payload.put("videoActive", alert.isLiveVideoActive());
+        payload.put("lastHeartbeatAt", alert.getLastHeartbeatAt());
+        payload.put("mediaUrl", alert.getMediaUrl());
+        payload.put("durationMs", alert.getDurationMs());
+        return ResponseEntity.ok(payload);
     }
 
     @PostMapping(path = "/{alertId}/stop", consumes = {"multipart/form-data"})
@@ -163,6 +262,9 @@ public class EmergencyController {
         alert.setActive(false);
         alert.setEndedAt(LocalDateTime.now());
         alert.setDurationMs(durationMs);
+        alert.setLiveAudioActive(false);
+        alert.setLiveVideoActive(false);
+        alert.setLastHeartbeatAt(LocalDateTime.now());
 
         if (media != null && !media.isEmpty()) {
             String url = cloudinaryService.upload(media);
@@ -175,7 +277,9 @@ public class EmergencyController {
                 "alertId", saved.getId(),
                 "active", saved.isActive(),
                 "mediaUrl", saved.getMediaUrl(),
-                "durationMs", saved.getDurationMs()
+                "durationMs", saved.getDurationMs(),
+                "audioActive", saved.isLiveAudioActive(),
+                "videoActive", saved.isLiveVideoActive()
         ));
     }
 
@@ -197,10 +301,19 @@ public class EmergencyController {
         public Integer radiusMeters;
         public Boolean frontCameraEnabled;
         public Boolean backCameraEnabled;
+        public Boolean audioActive;
+        public Boolean videoActive;
     }
 
     public static class PresenceRequest {
         public Double latitude;
         public Double longitude;
+    }
+
+    public static class HeartbeatRequest {
+        public Double latitude;
+        public Double longitude;
+        public Boolean audioActive;
+        public Boolean videoActive;
     }
 }

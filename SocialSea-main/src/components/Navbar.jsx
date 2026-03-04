@@ -11,7 +11,7 @@ export default function Navbar() {
   const [sosBusy, setSosBusy] = useState(false)
   const [sosError, setSosError] = useState("")
   const [stopTapCount, setStopTapCount] = useState(0)
-  const [stopLabel, setStopLabel] = useState("X STOP SOS (tap 4x)")
+  const [stopLabel, setStopLabel] = useState("[SOS] X STOP (tap 4x)")
   const [coordsText, setCoordsText] = useState("")
   const clickTimesRef = useRef([])
   const stopTapMetaRef = useRef({ lastTapAt: 0, count: 0 })
@@ -192,7 +192,7 @@ export default function Navbar() {
     setSosActive(false)
     setSosBusy(false)
     setStopTapCount(0)
-    setStopLabel("X STOP SOS (tap 4x)")
+    setStopLabel("[SOS] X STOP (tap 4x)")
   }
 
   const startSos = async () => {
@@ -254,7 +254,7 @@ export default function Navbar() {
       startedAtRef.current = 0
       stopTapMetaRef.current = { lastTapAt: 0, count: 0 }
       setStopTapCount(0)
-      setStopLabel("X STOP SOS (tap 4x)")
+      setStopLabel("[SOS] X STOP (tap 4x)")
       setSosActive(false)
       setSosBusy(false)
     }
@@ -276,7 +276,7 @@ export default function Navbar() {
     const count = now - previous.lastTapAt <= 1800 ? previous.count + 1 : 1
     stopTapMetaRef.current = { lastTapAt: now, count }
     setStopTapCount(count)
-    setStopLabel(`X STOP SOS (tap 4x) ${count}/4`)
+    setStopLabel(`[SOS] X STOP (tap 4x) ${count}/4`)
     if (count >= 4) {
       stopSos()
     }
@@ -324,6 +324,21 @@ export default function Navbar() {
         style={{ marginInlineEnd: 15, color: "white", background: "transparent", border: "1px solid #3b3b3b", borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}
         title="Tap 3 times quickly to start emergency mode"
       >
+        <span
+          style={{
+            display: "inline-block",
+            marginRight: 8,
+            padding: "1px 6px",
+            borderRadius: 999,
+            background: "#9f1d1d",
+            border: "1px solid #d85f5f",
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: 0.4,
+          }}
+        >
+          SOS
+        </span>
         SocialSea
       </button>
       <Link to="/" style={{ marginInlineEnd: 15, color: "white" }}>Feed</Link>
@@ -355,7 +370,7 @@ export default function Navbar() {
         boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
       }}>
         <div style={{ fontWeight: 700, marginBottom: 6 }}>
-          {sosActive ? "EMERGENCY ACTIVE" : sosBusy ? "Starting emergency..." : "Emergency Status"}
+          {sosActive ? "[SOS] EMERGENCY ACTIVE" : sosBusy ? "[SOS] Starting emergency..." : "[SOS] Emergency Status"}
         </div>
         {coordsText && <div style={{ fontSize: 12, opacity: 0.9, marginBottom: 8 }}>Location: {coordsText}</div>}
         {sosError && <div style={{ fontSize: 12, color: "#ffb5b5", marginBottom: 8 }}>{sosError}</div>}
