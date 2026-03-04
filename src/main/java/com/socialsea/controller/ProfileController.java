@@ -176,14 +176,8 @@ public class ProfileController {
     }
 
     @GetMapping("/{identifier}/posts")
-    public ResponseEntity<?> posts(@PathVariable String identifier) {
-        Optional<User> userOpt;
-
-        if (identifier.matches("\\d+")) {
-            userOpt = userRepo.findById(Long.parseLong(identifier));
-        } else {
-            userOpt = userRepo.findByEmail(identifier);
-        }
+    public ResponseEntity<?> posts(@PathVariable String identifier, Authentication auth) {
+        Optional<User> userOpt = resolveUser(identifier, auth);
 
         if (userOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -200,13 +194,8 @@ public class ProfileController {
     }
 
     @GetMapping("/{identifier}/followers")
-    public ResponseEntity<?> followersList(@PathVariable String identifier) {
-        Optional<User> userOpt;
-        if (identifier.matches("\\d+")) {
-            userOpt = userRepo.findById(Long.parseLong(identifier));
-        } else {
-            userOpt = userRepo.findByEmail(identifier);
-        }
+    public ResponseEntity<?> followersList(@PathVariable String identifier, Authentication auth) {
+        Optional<User> userOpt = resolveUser(identifier, auth);
 
         if (userOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -233,13 +222,8 @@ public class ProfileController {
     }
 
     @GetMapping("/{identifier}/following")
-    public ResponseEntity<?> followingList(@PathVariable String identifier) {
-        Optional<User> userOpt;
-        if (identifier.matches("\\d+")) {
-            userOpt = userRepo.findById(Long.parseLong(identifier));
-        } else {
-            userOpt = userRepo.findByEmail(identifier);
-        }
+    public ResponseEntity<?> followingList(@PathVariable String identifier, Authentication auth) {
+        Optional<User> userOpt = resolveUser(identifier, auth);
 
         if (userOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -263,6 +247,21 @@ public class ProfileController {
                 .toList();
 
         return ResponseEntity.ok(users);
+    }
+
+    private Optional<User> resolveUser(String identifier, Authentication auth) {
+        if ("me".equalsIgnoreCase(identifier)) {
+            if (auth == null || !auth.isAuthenticated()) {
+                return Optional.empty();
+            }
+            return userRepo.findByEmail(auth.getName());
+        }
+
+        if (identifier != null && identifier.matches("\\d+")) {
+            return userRepo.findById(Long.parseLong(identifier));
+        }
+
+        return userRepo.findByEmail(identifier);
     }
 
     @PostMapping("/setup")
