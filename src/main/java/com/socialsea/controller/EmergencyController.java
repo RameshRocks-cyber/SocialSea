@@ -238,6 +238,31 @@ public class EmergencyController {
         return ResponseEntity.ok(payload);
     }
 
+    @GetMapping("/my-recordings")
+    public ResponseEntity<?> myRecordings(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+
+        List<EmergencyAlert> alerts = emergencyRepo.findByReporterEmailOrderByStartedAtDesc(auth.getName());
+        List<Map<String, Object>> items = alerts.stream()
+                .filter(a -> a.getMediaUrl() != null && !a.getMediaUrl().trim().isEmpty())
+                .map(a -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("alertId", a.getId());
+                    item.put("mediaUrl", a.getMediaUrl());
+                    item.put("startedAt", a.getStartedAt());
+                    item.put("endedAt", a.getEndedAt());
+                    item.put("durationMs", a.getDurationMs());
+                    item.put("latitude", a.getLatitude());
+                    item.put("longitude", a.getLongitude());
+                    return item;
+                })
+                .toList();
+
+        return ResponseEntity.ok(items);
+    }
+
     @PostMapping(path = "/{alertId}/stop", consumes = {"multipart/form-data"})
     public ResponseEntity<?> stop(
             @PathVariable Long alertId,
