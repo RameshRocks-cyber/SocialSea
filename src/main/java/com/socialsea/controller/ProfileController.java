@@ -28,6 +28,7 @@ public class ProfileController {
     private final UserRepository userRepo;
     private final PostRepository postRepo;
     private final FollowRepository followRepo;
+    private final EmergencyAlertRepository emergencyRepo;
     private final ProfileService profileService;
 
     // User profile info
@@ -110,6 +111,32 @@ public class ProfileController {
         profile.put("postsCount", postsCount);
 
         return ResponseEntity.ok(profile);
+    }
+
+    @GetMapping({"/live-recordings", "/me/live-recordings"})
+    public ResponseEntity<?> myLiveRecordings(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+
+        List<Map<String, Object>> items = emergencyRepo
+                .findByReporterEmailOrderByStartedAtDesc(auth.getName())
+                .stream()
+                .filter(a -> a.getMediaUrl() != null && !a.getMediaUrl().trim().isEmpty())
+                .map(a -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("alertId", a.getId());
+                    item.put("mediaUrl", a.getMediaUrl());
+                    item.put("startedAt", a.getStartedAt());
+                    item.put("endedAt", a.getEndedAt());
+                    item.put("durationMs", a.getDurationMs());
+                    item.put("latitude", a.getLatitude());
+                    item.put("longitude", a.getLongitude());
+                    return item;
+                })
+                .toList();
+
+        return ResponseEntity.ok(items);
     }
 
     @GetMapping("/name/check")
