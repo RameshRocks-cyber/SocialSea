@@ -47,6 +47,9 @@ public class AuthController {
     @Value("${app.otp.expose-debug-otp:false}")
     private boolean exposeDebugOtp;
 
+    @Value("${app.otp.return-fallback-otp-on-delivery-failure:true}")
+    private boolean returnFallbackOtpOnDeliveryFailure;
+
     @PostMapping("/send-otp")
     public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> body) {
         String email = normalize(body.get("email"));
@@ -59,16 +62,17 @@ public class AuthController {
         }
 
         String otp = null;
+        boolean deliveryFailed = false;
         try {
             otp = otpService.sendOtp(email);
         } catch (RuntimeException ex) {
-            // Keep login flow available even if upstream mail provider fails.
-            // OTP is still generated/saved by service before mail send.
+            deliveryFailed = true;
         }
 
         Map<String, Object> response = new HashMap<>();
-        response.put("message", "OTP sent");
-        if (exposeDebugOtp) {
+        response.put("message", deliveryFailed ? "OTP generated, but email delivery failed" : "OTP sent");
+        response.put("deliveryFailed", deliveryFailed);
+        if (exposeDebugOtp || (deliveryFailed && returnFallbackOtpOnDeliveryFailure)) {
             response.put("debugOtp", otp);
         }
 
