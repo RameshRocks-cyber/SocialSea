@@ -200,6 +200,55 @@ public class AuthController {
         return ResponseEntity.ok(new AuthResponse(accessToken, refreshToken, user));
     }
 
+    @PostMapping({"/reset-password", "/resetPassword"})
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> body) {
+        String identifier = normalize(body.get("identifier"));
+        if (identifier == null) {
+            identifier = normalize(body.get("email"));
+        }
+        if (identifier == null) {
+            identifier = normalize(body.get("username"));
+        }
+        String otp = normalize(body.get("otp"));
+        String password = normalize(body.get("newPassword"));
+        if (password == null) {
+            password = normalize(body.get("new_password"));
+        }
+        if (password == null) {
+            password = normalize(body.get("password"));
+        }
+
+        if (identifier == null || otp == null || password == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Identifier, OTP and new password are required"));
+        }
+        if (password.length() < 6) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Password must be at least 6 characters"));
+        }
+
+        User user = findUserByIdentifier(identifier).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+        }
+
+        String otpEmail = normalize(user.getEmail());
+        if (otpEmail == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "User has no email for OTP verification"));
+        }
+
+        try {
+            otpService.verifyOtp(otpEmail, otp);
+        } catch (Exception ex) {
+            String msg = normalize(ex.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", msg != null ? msg : "Invalid or expired OTP"));
+        }
+
+        user.setPassword(passwordEncoder.encode(password));
+        userRepository.save(user);
+
+        return ResponseEntity.ok(Map.of("message", "Password reset successful"));
+    }
+
     private String normalize(String value) {
         if (value == null) {
             return null;
