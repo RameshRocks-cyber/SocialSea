@@ -8,6 +8,43 @@
   margin-bottom: 16px;
 }
 
+.reels-gesture-toggle {
+  width: min(100%, 760px);
+  margin: 0 auto 14px;
+  padding: 10px 12px;
+  background: #f5f7fb;
+  border: 1px solid #d7dfec;
+  border-radius: 10px;
+  box-sizing: border-box;
+}
+
+.reels-gesture-toggle label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #13233d;
+}
+
+.reels-gesture-help,
+.reels-gesture-status,
+.reels-gesture-error {
+  margin: 8px 0 0;
+  font-size: 0.92rem;
+}
+
+.reels-gesture-help {
+  color: #415575;
+}
+
+.reels-gesture-status {
+  color: #22344f;
+}
+
+.reels-gesture-error {
+  color: #b3261e;
+}
+
 .reels-list {
   display: grid;
   gap: 14px;
@@ -56,6 +93,11 @@
 
   .reels-list {
     gap: 10px;
+  }
+
+  .reels-gesture-toggle {
+    margin-bottom: 10px;
+    padding: 10px;
   }
 
   .reel-card {

@@ -64,7 +64,6 @@ public class OtpService {
         otpRepository.save(otp);
         if (isDevProfile()) {
             log.info("DEV OTP for {} is {}", email, code);
-            return code;
         }
         try {
             emailService.sendOtpEmail(email, code);
@@ -74,6 +73,8 @@ public class OtpService {
             // `allowEmailFailure` is kept for compatibility but sendOtp now always continues.
             if (allowEmailFailure || !isProdProfile()) {
                 log.info("Fallback OTP for {} is {}", email, code);
+            } else {
+                throw ex;
             }
         }
 

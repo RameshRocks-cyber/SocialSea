@@ -19,6 +19,8 @@ import org.springframework.beans.factory.annotation.Value;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Optional;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -92,30 +94,66 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody Map<String, String> body, HttpServletRequest httpRequest) {
+        String username = normalize(body.get("username"));
         String email = normalize(body.get("email"));
-        if (email == null) {
-            email = normalize(body.get("username"));
-        }
         String password = normalize(body.get("password"));
-        String otp = normalize(body.get("otp"));
 
-        if (email == null || password == null || otp == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Email, password, and OTP are required"));
+        if (password == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Password is required"));
+        }
+        if (username == null && email == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Username or email is required"));
         }
 
-        otpService.verifyOtp(email, otp);
+        if (email == null && username != null && username.contains("@")) {
+            email = username;
+        }
 
-        final String emailValue = email;
-        User user = userRepository.findByEmail(emailValue).orElseGet(() -> {
-            User newUser = new User();
-            newUser.setEmail(emailValue);
-            newUser.setRole(Role.USER);
-            newUser.setCreatedAt(LocalDateTime.now());
-            return newUser;
-        });
+        User user = null;
+        if (email != null) {
+            Optional<User> byEmail = userRepository.findByEmail(email);
+            if (byEmail.isPresent()) {
+                user = byEmail.get();
+            }
+        }
+        if (user == null && username != null) {
+            Optional<User> byName = userRepository.findByNameIgnoreCase(username);
+            if (byName.isPresent()) {
+                user = byName.get();
+            }
+        }
 
-        if (user.getPassword() != null && !user.getPassword().isBlank()) {
+        if (user != null && user.getPassword() != null && !user.getPassword().isBlank()) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "User already registered"));
+        }
+
+        if (user == null) {
+            user = new User();
+            user.setRole(Role.USER);
+            user.setCreatedAt(LocalDateTime.now());
+        }
+
+        if (email == null) {
+            email = generateLocalEmail(username != null ? username : "user");
+        }
+
+        if (user.getEmail() == null || user.getEmail().isBlank()) {
+            user.setEmail(email);
+        } else if (!user.getEmail().equalsIgnoreCase(email)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "Email already linked to another account"));
+        }
+
+        String preferredName = username;
+        if (preferredName == null && email != null) {
+            int idx = email.indexOf('@');
+            preferredName = idx > 0 ? email.substring(0, idx) : email;
+        }
+        if (preferredName != null) {
+            preferredName = preferredName.trim();
+            if (!preferredName.isBlank()) {
+                String availableName = ensureAvailableName(preferredName, user.getId());
+                user.setName(availableName);
+            }
         }
 
         user.setPassword(passwordEncoder.encode(password));
@@ -129,21 +167,27 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
+        String identifier = normalize(body.get("identifier"));
+        if (identifier == null) {
+            identifier = normalize(body.get("username"));
+        }
         String email = normalize(body.get("email"));
-        if (email == null) {
-            email = normalize(body.get("username"));
+        if (identifier == null) {
+            identifier = email;
         }
         String password = normalize(body.get("password"));
 
-        if (email == null || password == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Email and password are required"));
+        if (identifier == null || password == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Username/email and password are required"));
         }
 
-        User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = findUserByIdentifier(identifier).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid credentials"));
+        }
 
         if (user.getPassword() == null || !passwordEncoder.matches(password, user.getPassword())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid password"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid credentials"));
         }
 
         String accessToken = jwtUtil.generateAccessToken(user.getEmail());
@@ -158,6 +202,51 @@ public class AuthController {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private Optional<User> findUserByIdentifier(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            return Optional.empty();
+        }
+        Optional<User> byEmail = userRepository.findByEmail(identifier);
+        if (byEmail.isPresent()) {
+            return byEmail;
+        }
+        return userRepository.findByNameIgnoreCase(identifier);
+    }
+
+    private String ensureAvailableName(String rawName, Long excludeId) {
+        String base = rawName.trim();
+        if (base.isBlank()) {
+            base = "user";
+        }
+        String candidate = base;
+        int i = 1;
+        while (true) {
+            Optional<User> existing = userRepository.findByNameIgnoreCase(candidate);
+            if (existing.isEmpty() || (excludeId != null && excludeId.equals(existing.get().getId()))) {
+                return candidate;
+            }
+            candidate = base + i;
+            i++;
+        }
+    }
+
+    private String generateLocalEmail(String username) {
+        String base = String.valueOf(username == null ? "user" : username)
+                .trim()
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9._-]", "");
+        if (base.isBlank()) {
+            base = "user";
+        }
+        String candidate = base + "@socialsea.local";
+        int i = 1;
+        while (userRepository.findByEmail(candidate).isPresent()) {
+            candidate = base + i + "@socialsea.local";
+            i++;
+        }
+        return candidate;
     }
 
     @PostMapping("/admin/login")

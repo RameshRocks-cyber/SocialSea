@@ -9,9 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Comparator;
 import java.util.List;
-import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("/api/feed")
@@ -35,14 +33,7 @@ public class FeedController {
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
                 .map(FeedItemDto::fromEntity)
                 .toList();
-
-        List<FeedItemDto> anonymousPosts = anonymousPostService.getApprovedFeed();
-
-        List<FeedItemDto> items = Stream.concat(normalPosts.stream(), anonymousPosts.stream())
-                .sorted(Comparator.comparing(FeedItemDto::getCreatedAt).reversed())
-                .toList();
-
-        return ResponseEntity.ok(items);
+        return ResponseEntity.ok(normalPosts);
     }
 
     @GetMapping("/anonymous")

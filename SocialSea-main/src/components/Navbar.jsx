@@ -18,6 +18,7 @@ export default function Navbar() {
       <Link to="/" style={{ marginInlineEnd: 15, color: "white" }}>Feed</Link>
       <Link to="/reels" style={{ marginInlineEnd: 15, color: "white" }}>Reels</Link>
       <Link to="/upload" style={{ marginInlineEnd: 15, color: "white" }}>Upload</Link>
+      <Link to="/chat" style={{ marginInlineEnd: 15, color: "white" }}>Chat</Link>
       <Link to="/anonymous-upload" style={{ marginInlineEnd: 15, color: "white" }}>Anonymous Upload</Link>
       <Link to="/anonymous-feed" style={{ marginInlineEnd: 15, color: "white" }}>Anonymous Feed</Link>
       {admin && (

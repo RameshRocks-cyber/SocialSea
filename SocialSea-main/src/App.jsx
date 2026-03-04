@@ -5,6 +5,7 @@ import AnonymousUpload from "./pages/AnonymousUpload"
 import AnonymousFeed from "./pages/AnonymousFeed"
 import Reels from "./pages/Reels"
 import Login from "./pages/Login"
+import Chat from "./pages/Chat"
 import Navbar from "./components/Navbar"
 import AdminDashboard from "./pages/AdminDashboard"
 import AdminPendingAnonymous from "./pages/AdminPendingAnonymous"
@@ -58,6 +59,22 @@ function App() {
           element={
             <ProtectedRoute>
               <Upload />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <Chat />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/chat/:id"
+          element={
+            <ProtectedRoute>
+              <Chat />
             </ProtectedRoute>
           }
         />

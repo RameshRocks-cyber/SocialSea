@@ -199,6 +199,72 @@ public class ProfileController {
         return ResponseEntity.ok(posts);
     }
 
+    @GetMapping("/{identifier}/followers")
+    public ResponseEntity<?> followersList(@PathVariable String identifier) {
+        Optional<User> userOpt;
+        if (identifier.matches("\\d+")) {
+            userOpt = userRepo.findById(Long.parseLong(identifier));
+        } else {
+            userOpt = userRepo.findByEmail(identifier);
+        }
+
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "User not found"));
+        }
+
+        List<Map<String, Object>> users = followRepo.findByFollowing(userOpt.get()).stream()
+                .map(Follow::getFollower)
+                .filter(u -> u != null && u.getId() != null)
+                .map(u -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("id", u.getId());
+                    item.put("email", u.getEmail());
+                    item.put("name", (u.getName() != null && !u.getName().isBlank()) ? u.getName() : u.getEmail());
+                    item.put("username", (u.getName() != null && !u.getName().isBlank()) ? u.getName() : u.getEmail());
+                    item.put("profilePic", u.getProfilePic());
+                    item.put("profilePicUrl", u.getProfilePic());
+                    return item;
+                })
+                .distinct()
+                .toList();
+
+        return ResponseEntity.ok(users);
+    }
+
+    @GetMapping("/{identifier}/following")
+    public ResponseEntity<?> followingList(@PathVariable String identifier) {
+        Optional<User> userOpt;
+        if (identifier.matches("\\d+")) {
+            userOpt = userRepo.findById(Long.parseLong(identifier));
+        } else {
+            userOpt = userRepo.findByEmail(identifier);
+        }
+
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "User not found"));
+        }
+
+        List<Map<String, Object>> users = followRepo.findByFollower(userOpt.get()).stream()
+                .map(Follow::getFollowing)
+                .filter(u -> u != null && u.getId() != null)
+                .map(u -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("id", u.getId());
+                    item.put("email", u.getEmail());
+                    item.put("name", (u.getName() != null && !u.getName().isBlank()) ? u.getName() : u.getEmail());
+                    item.put("username", (u.getName() != null && !u.getName().isBlank()) ? u.getName() : u.getEmail());
+                    item.put("profilePic", u.getProfilePic());
+                    item.put("profilePicUrl", u.getProfilePic());
+                    return item;
+                })
+                .distinct()
+                .toList();
+
+        return ResponseEntity.ok(users);
+    }
+
     @PostMapping("/setup")
     public ResponseEntity<?> setupProfile(
             @RequestParam(required = false) Long userId,

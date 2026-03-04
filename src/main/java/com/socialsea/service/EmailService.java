@@ -5,7 +5,10 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
@@ -19,6 +22,9 @@ public class EmailService {
     @Value("${RESEND_API_KEY:}")
     private String apiKey;
 
+    @Autowired(required = false)
+    private JavaMailSender javaMailSender;
+
     private static final String FROM = "SocialSea <no-reply@socialsea.co.in>";
 
     private static final String RESEND_URL = "https://api.resend.com/emails";
@@ -30,32 +36,39 @@ public class EmailService {
             .build();
 
     public void sendOtpEmail(String to, String otp) {
-        ensureConfigured();
+        String subject = "Your SocialSea OTP";
+        String text = "Your OTP is: " + otp + "\n\nThis OTP expires in 5 minutes.";
 
-        String json = """
-        {
-          "from": "%s",
-          "to": ["%s"],
-          "subject": "Your SocialSea OTP",
-          "html": "<h2>Your OTP</h2><p><b>%s</b></p>"
+        if (hasResend()) {
+            String json = """
+            {
+              "from": "%s",
+              "to": ["%s"],
+              "subject": "%s",
+              "html": "<h2>Your OTP</h2><p><b>%s</b></p>"
+            }
+            """.formatted(FROM, to, subject, otp);
+            sendRequest(json);
+            return;
         }
-        """.formatted(FROM, to, otp);
 
-        sendRequest(json);
+        sendViaSmtp(to, subject, text);
     }
 
     public void send(String to, String subject, String body) {
-        ensureConfigured();
-        String json = """
-        {
-          "from": "%s",
-          "to": ["%s"],
-          "subject": "%s",
-          "html": "<p>%s</p>"
+        if (hasResend()) {
+            String json = """
+            {
+              "from": "%s",
+              "to": ["%s"],
+              "subject": "%s",
+              "html": "<p>%s</p>"
+            }
+            """.formatted(FROM, to, subject, body);
+            sendRequest(json);
+            return;
         }
-        """.formatted(FROM, to, subject, body);
-
-        sendRequest(json);
+        sendViaSmtp(to, subject, body);
     }
 
     public void sendEmail(String to, String subject, String body) {
@@ -88,12 +101,22 @@ public class EmailService {
         }
     }
 
-    private void ensureConfigured() {
-        if (apiKey == null || apiKey.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "Email service not configured"
-            );
+    private boolean hasResend() {
+        return apiKey != null && !apiKey.isBlank();
+    }
+
+    private void sendViaSmtp(String to, String subject, String body) {
+        if (javaMailSender == null) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Email service not configured");
+        }
+        try {
+            SimpleMailMessage msg = new SimpleMailMessage();
+            msg.setTo(to);
+            msg.setSubject(subject);
+            msg.setText(body);
+            javaMailSender.send(msg);
+        } catch (Exception ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "SMTP email send failed", ex);
         }
     }
 }

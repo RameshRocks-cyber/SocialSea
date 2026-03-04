@@ -23,6 +23,18 @@ public class ChatMessage {
     @Column(nullable = false, length = 2000)
     private String text;
 
+    @Column(length = 1200)
+    private String audioUrl;
+
+    @Column(length = 1200)
+    private String mediaUrl;
+
+    @Column(length = 40)
+    private String mediaType;
+
+    @Column(length = 255)
+    private String fileName;
+
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -52,6 +64,38 @@ public class ChatMessage {
 
     public void setText(String text) {
         this.text = text;
+    }
+
+    public String getAudioUrl() {
+        return audioUrl;
+    }
+
+    public void setAudioUrl(String audioUrl) {
+        this.audioUrl = audioUrl;
+    }
+
+    public String getMediaUrl() {
+        return mediaUrl;
+    }
+
+    public void setMediaUrl(String mediaUrl) {
+        this.mediaUrl = mediaUrl;
+    }
+
+    public String getMediaType() {
+        return mediaType;
+    }
+
+    public void setMediaType(String mediaType) {
+        this.mediaType = mediaType;
+    }
+
+    public String getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
     }
 
     public LocalDateTime getCreatedAt() {
