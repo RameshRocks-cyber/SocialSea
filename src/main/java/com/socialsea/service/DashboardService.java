@@ -2,7 +2,6 @@ package com.socialsea.service;
 
 import com.socialsea.dto.AdminDashboardStatsDto;
 import com.socialsea.repository.AnonymousPostRepository;
-import com.socialsea.repository.PostRepository;
 import com.socialsea.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
@@ -11,16 +10,13 @@ public class DashboardService {
 
     private final AnonymousPostRepository anonymousPostRepository;
     private final UserRepository userRepository;
-    private final PostRepository postRepository;
 
     public DashboardService(
         AnonymousPostRepository anonymousPostRepository
-        ,UserRepository userRepository,
-        PostRepository postRepository
+        ,UserRepository userRepository
     ) {
         this.anonymousPostRepository = anonymousPostRepository;
         this.userRepository = userRepository;
-        this.postRepository = postRepository;
     }
 
     public AdminDashboardStatsDto getDashboardStats() {

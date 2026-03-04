@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -22,7 +23,7 @@ public class ProfileService {
     private static final Pattern NAME_ALLOWED = Pattern.compile("^[a-z0-9._]{3,20}$");
 
     public Map<String, Object> setupProfile(Long userId, String name, String bio, MultipartFile pic) {
-        User user = userRepo.findById(userId)
+        User user = userRepo.findById(Objects.requireNonNull(userId, "userId"))
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         String normalizedName = normalizeName(name);

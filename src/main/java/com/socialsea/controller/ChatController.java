@@ -70,11 +70,12 @@ public class ChatController {
         User me = currentUser(auth);
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
 
-        Optional<User> otherOpt = userRepo.findById(otherUserId);
+        Long safeOtherUserId = Objects.requireNonNull(otherUserId, "otherUserId");
+        Optional<User> otherOpt = userRepo.findById(safeOtherUserId);
         if (otherOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
 
         List<ChatMessage> list = chatRepo.findBySenderIdAndReceiverIdOrSenderIdAndReceiverIdOrderByCreatedAtAsc(
-                me.getId(), otherUserId, otherUserId, me.getId()
+                me.getId(), safeOtherUserId, safeOtherUserId, me.getId()
         );
 
         List<Map<String, Object>> payload = list.stream().map(m -> {
@@ -104,7 +105,8 @@ public class ChatController {
         User me = currentUser(auth);
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
 
-        Optional<User> otherOpt = userRepo.findById(otherUserId);
+        Long safeOtherUserId = Objects.requireNonNull(otherUserId, "otherUserId");
+        Optional<User> otherOpt = userRepo.findById(safeOtherUserId);
         if (otherOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
 
         String text = body == null ? "" : String.valueOf(body.getOrDefault("text", "")).trim();
@@ -129,10 +131,16 @@ public class ChatController {
 
         Map<String, Object> receiverPayload = toChatPayload(saved, me, false);
         messagingTemplate.convertAndSend("/topic/chat/" + receiver.getId(), receiverPayload);
-        if (receiver.getEmail() != null && !receiver.getEmail().isBlank()) {
-            String encodedEmail = URLEncoder.encode(receiver.getEmail(), StandardCharsets.UTF_8);
-            messagingTemplate.convertAndSend("/topic/chat/email/" + encodedEmail, receiverPayload);
-            messagingTemplate.convertAndSendToUser(receiver.getEmail(), "/queue/chat", receiverPayload);
+        String receiverEmail = receiver.getEmail();
+        if (receiverEmail != null && !receiverEmail.isBlank()) {
+            String encodedEmail = URLEncoder.encode(receiverEmail, StandardCharsets.UTF_8);
+            Object nonNullPayload = Objects.requireNonNull(receiverPayload);
+            messagingTemplate.convertAndSend("/topic/chat/email/" + encodedEmail, nonNullPayload);
+            messagingTemplate.convertAndSendToUser(
+                    Objects.requireNonNull(receiverEmail),
+                    "/queue/chat",
+                    nonNullPayload
+            );
         }
 
         return ResponseEntity.ok(toChatPayload(saved, me, true));
@@ -147,7 +155,8 @@ public class ChatController {
         User me = currentUser(auth);
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
 
-        Optional<User> otherOpt = userRepo.findById(otherUserId);
+        Long safeOtherUserId = Objects.requireNonNull(otherUserId, "otherUserId");
+        Optional<User> otherOpt = userRepo.findById(safeOtherUserId);
         if (otherOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
         if (audio == null || audio.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("message", "Audio file required"));
@@ -169,10 +178,16 @@ public class ChatController {
 
         Map<String, Object> receiverPayload = toChatPayload(saved, me, false);
         messagingTemplate.convertAndSend("/topic/chat/" + receiver.getId(), receiverPayload);
-        if (receiver.getEmail() != null && !receiver.getEmail().isBlank()) {
-            String encodedEmail = URLEncoder.encode(receiver.getEmail(), StandardCharsets.UTF_8);
-            messagingTemplate.convertAndSend("/topic/chat/email/" + encodedEmail, receiverPayload);
-            messagingTemplate.convertAndSendToUser(receiver.getEmail(), "/queue/chat", receiverPayload);
+        String receiverEmail = receiver.getEmail();
+        if (receiverEmail != null && !receiverEmail.isBlank()) {
+            String encodedEmail = URLEncoder.encode(receiverEmail, StandardCharsets.UTF_8);
+            Object nonNullPayload = Objects.requireNonNull(receiverPayload);
+            messagingTemplate.convertAndSend("/topic/chat/email/" + encodedEmail, nonNullPayload);
+            messagingTemplate.convertAndSendToUser(
+                    Objects.requireNonNull(receiverEmail),
+                    "/queue/chat",
+                    nonNullPayload
+            );
         }
 
         return ResponseEntity.ok(toChatPayload(saved, me, true));
@@ -187,7 +202,8 @@ public class ChatController {
         User me = currentUser(auth);
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
 
-        Optional<User> otherOpt = userRepo.findById(otherUserId);
+        Long safeOtherUserId = Objects.requireNonNull(otherUserId, "otherUserId");
+        Optional<User> otherOpt = userRepo.findById(safeOtherUserId);
         if (otherOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
         if (file == null || file.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("message", "File required"));
@@ -216,10 +232,16 @@ public class ChatController {
 
         Map<String, Object> receiverPayload = toChatPayload(saved, me, false);
         messagingTemplate.convertAndSend("/topic/chat/" + receiver.getId(), receiverPayload);
-        if (receiver.getEmail() != null && !receiver.getEmail().isBlank()) {
-            String encodedEmail = URLEncoder.encode(receiver.getEmail(), StandardCharsets.UTF_8);
-            messagingTemplate.convertAndSend("/topic/chat/email/" + encodedEmail, receiverPayload);
-            messagingTemplate.convertAndSendToUser(receiver.getEmail(), "/queue/chat", receiverPayload);
+        String receiverEmail = receiver.getEmail();
+        if (receiverEmail != null && !receiverEmail.isBlank()) {
+            String encodedEmail = URLEncoder.encode(receiverEmail, StandardCharsets.UTF_8);
+            Object nonNullPayload = Objects.requireNonNull(receiverPayload);
+            messagingTemplate.convertAndSend("/topic/chat/email/" + encodedEmail, nonNullPayload);
+            messagingTemplate.convertAndSendToUser(
+                    Objects.requireNonNull(receiverEmail),
+                    "/queue/chat",
+                    nonNullPayload
+            );
         }
 
         return ResponseEntity.ok(toChatPayload(saved, me, true));

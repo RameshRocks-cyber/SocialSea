@@ -13,6 +13,7 @@ import org.springframework.stereotype.Controller;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.Set;
 
 @Controller
@@ -58,10 +59,15 @@ public class CallSignalingController {
         outbound.setTimestamp(System.currentTimeMillis());
 
         messagingTemplate.convertAndSend("/topic/calls/" + target.getId(), outbound);
-        if (target.getEmail() != null && !target.getEmail().isBlank()) {
-            String encodedEmail = URLEncoder.encode(target.getEmail(), StandardCharsets.UTF_8);
+        String targetEmail = target.getEmail();
+        if (targetEmail != null && !targetEmail.isBlank()) {
+            String encodedEmail = URLEncoder.encode(targetEmail, StandardCharsets.UTF_8);
             messagingTemplate.convertAndSend("/topic/calls/email/" + encodedEmail, outbound);
-            messagingTemplate.convertAndSendToUser(target.getEmail(), "/queue/calls", outbound);
+            messagingTemplate.convertAndSendToUser(
+                    Objects.requireNonNull(targetEmail),
+                    "/queue/calls",
+                    Objects.requireNonNull(outbound)
+            );
         }
     }
 

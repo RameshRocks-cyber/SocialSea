@@ -5,6 +5,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.Objects;
+
 @Service
 public class AdminStatsPublisher {
 
@@ -16,6 +18,6 @@ public class AdminStatsPublisher {
 
     public void publishStats() {
         AdminStatsDto stats = adminService.getDashboardStats();
-        messagingTemplate.convertAndSend("/topic/admin-stats", stats);
+        messagingTemplate.convertAndSend("/topic/admin-stats", Objects.requireNonNull(stats));
     }
 }

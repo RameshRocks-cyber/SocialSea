@@ -1,7 +1,6 @@
 package com.socialsea.controller;
 
 import com.socialsea.dto.FeedItemDto;
-import com.socialsea.model.Post;
 import com.socialsea.repository.PostRepository;
 import com.socialsea.service.AnonymousPostService;
 import lombok.RequiredArgsConstructor;

@@ -38,6 +38,10 @@ public class User implements UserDetails {
     @Column(columnDefinition = "boolean default false")
     private boolean profileCompleted = false;
 
+    private Double lastLatitude;
+    private Double lastLongitude;
+    private LocalDateTime locationUpdatedAt;
+
     public Long getId() {
         return id;
     }
@@ -116,6 +120,30 @@ public class User implements UserDetails {
 
     public void setProfileCompleted(boolean profileCompleted) {
         this.profileCompleted = profileCompleted;
+    }
+
+    public Double getLastLatitude() {
+        return lastLatitude;
+    }
+
+    public void setLastLatitude(Double lastLatitude) {
+        this.lastLatitude = lastLatitude;
+    }
+
+    public Double getLastLongitude() {
+        return lastLongitude;
+    }
+
+    public void setLastLongitude(Double lastLongitude) {
+        this.lastLongitude = lastLongitude;
+    }
+
+    public LocalDateTime getLocationUpdatedAt() {
+        return locationUpdatedAt;
+    }
+
+    public void setLocationUpdatedAt(LocalDateTime locationUpdatedAt) {
+        this.locationUpdatedAt = locationUpdatedAt;
     }
 
     @Override

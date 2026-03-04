@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 public class NotificationService {
@@ -41,7 +42,7 @@ public class NotificationService {
     }
 
     public void markAsRead(Long id) {
-        Notification n = repo.findById(id).orElseThrow();
+        Notification n = repo.findById(Objects.requireNonNull(id, "id")).orElseThrow();
         n.setRead(true);
         repo.save(n);
     }

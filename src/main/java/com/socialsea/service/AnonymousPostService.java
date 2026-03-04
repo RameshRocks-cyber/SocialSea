@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -78,7 +79,7 @@ public class AnonymousPostService {
     }
 
     public void approvePost(Long id) {
-        AnonymousPost post = repository.findById(id)
+        AnonymousPost post = repository.findById(Objects.requireNonNull(id, "id"))
                 .orElseThrow(() -> new RuntimeException("Post not found"));
         post.setApproved(true);
         post.setRejected(false);
@@ -87,11 +88,11 @@ public class AnonymousPostService {
     }
 
     public void deletePost(Long id) {
-        repository.deleteById(id);
+        repository.deleteById(Objects.requireNonNull(id, "id"));
     }
 
     public void rejectPost(Long id, String reason) {
-        AnonymousPost post = repository.findById(id)
+        AnonymousPost post = repository.findById(Objects.requireNonNull(id, "id"))
                 .orElseThrow(() -> new RuntimeException("Post not found"));
         post.setRejected(true);
         post.setRejectionReason(reason);
@@ -100,7 +101,7 @@ public class AnonymousPostService {
 
     @Transactional
     public void bulkApprove(List<Long> postIds) {
-        List<AnonymousPost> posts = repository.findAllById(postIds);
+        List<AnonymousPost> posts = repository.findAllById(Objects.requireNonNull(postIds, "postIds"));
 
         for (AnonymousPost post : posts) {
             post.setApproved(true);
@@ -113,7 +114,7 @@ public class AnonymousPostService {
 
     @Transactional
     public void bulkReject(List<Long> postIds, String reason) {
-        List<AnonymousPost> posts = repository.findAllById(postIds);
+        List<AnonymousPost> posts = repository.findAllById(Objects.requireNonNull(postIds, "postIds"));
 
         for (AnonymousPost post : posts) {
             post.setApproved(false);

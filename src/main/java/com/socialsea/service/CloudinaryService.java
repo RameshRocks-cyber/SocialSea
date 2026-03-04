@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -40,7 +41,7 @@ public class CloudinaryService {
             try {
                 Files.createDirectories(uploadDir);
 
-                String original = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
+                String original = Objects.requireNonNullElse(file.getOriginalFilename(), "");
                 String ext = "";
                 int dot = original.lastIndexOf('.');
                 if (dot >= 0) {
