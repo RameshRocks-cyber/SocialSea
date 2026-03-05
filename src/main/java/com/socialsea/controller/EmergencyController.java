@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,6 +35,7 @@ import java.util.Optional;
 public class EmergencyController {
 
     private static final int DEFAULT_RADIUS_METERS = 5000;
+    private static final long MAX_LOCATION_STALE_MINUTES = 30;
 
     private final UserRepository userRepo;
     private final EmergencyAlertRepository emergencyRepo;
@@ -106,12 +108,14 @@ public class EmergencyController {
 
         String mapsUrl = "https://maps.google.com/?q=" + request.latitude + "," + request.longitude;
         String liveUrl = frontendBaseUrl.replaceAll("/+$", "") + "/sos/live/" + saved.getId();
+        String navigateUrl = frontendBaseUrl.replaceAll("/+$", "") + "/sos/navigate/" + saved.getId();
         String message = "Emergency alert by " + reporter.getEmail()
                 + ". Exact location: " + request.latitude + ", " + request.longitude
                 + " (radius " + radiusMeters + "m). "
                 + "Live AV: " + (alert.isLiveAudioActive() || alert.isLiveVideoActive() ? "ON" : "OFF")
                 + ". " + mapsUrl
-                + ". Live page: " + liveUrl;
+                + ". Live page: " + liveUrl
+                + ". Navigate: " + navigateUrl;
 
         int notified = 0;
         List<User> users = userRepo.findAll();
@@ -119,6 +123,8 @@ public class EmergencyController {
             if (user.getId() == null || user.getEmail() == null) continue;
             if (user.getId().equals(reporter.getId())) continue;
             if (user.getLastLatitude() == null || user.getLastLongitude() == null) continue;
+            if (user.getLocationUpdatedAt() == null) continue;
+            if (Duration.between(user.getLocationUpdatedAt(), LocalDateTime.now()).toMinutes() > MAX_LOCATION_STALE_MINUTES) continue;
 
             double distance = haversineMeters(
                     request.latitude,
@@ -128,7 +134,12 @@ public class EmergencyController {
             );
 
             if (distance <= radiusMeters) {
-                notificationService.notifyUser(user.getEmail(), message);
+                notificationService.notifyUser(
+                        user.getEmail(),
+                        "Emergency Alert Nearby",
+                        message,
+                        "EMERGENCY"
+                );
                 notified++;
             }
         }
@@ -144,6 +155,7 @@ public class EmergencyController {
         response.put("notifiedUsers", notified);
         response.put("radiusMeters", radiusMeters);
         response.put("liveUrl", liveUrl);
+        response.put("navigateUrl", navigateUrl);
         response.put("audioActive", saved.isLiveAudioActive());
         response.put("videoActive", saved.isLiveVideoActive());
         response.put("location", Map.of(
@@ -152,6 +164,43 @@ public class EmergencyController {
                 "accuracyMeters", request.accuracyMeters
         ));
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{alertId}/assist")
+    public ResponseEntity<?> assist(@PathVariable Long alertId, Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+
+        Optional<EmergencyAlert> alertOpt = emergencyRepo.findById(alertId);
+        if (alertOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Alert not found"));
+        }
+
+        EmergencyAlert alert = alertOpt.get();
+        Double targetLat = alert.getCurrentLatitude() != null ? alert.getCurrentLatitude() : alert.getLatitude();
+        Double targetLon = alert.getCurrentLongitude() != null ? alert.getCurrentLongitude() : alert.getLongitude();
+        if (targetLat == null || targetLon == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "SOS location unavailable"));
+        }
+
+        String mapsUrl = "https://www.google.com/maps/dir/?api=1&destination=" + targetLat + "," + targetLon;
+        String liveUrl = frontendBaseUrl.replaceAll("/+$", "") + "/sos/live/" + alert.getId();
+        String navigateUrl = frontendBaseUrl.replaceAll("/+$", "") + "/sos/navigate/" + alert.getId();
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("alertId", alert.getId());
+        payload.put("active", alert.isActive());
+        payload.put("startedAt", alert.getStartedAt());
+        payload.put("endedAt", alert.getEndedAt());
+        payload.put("reporterEmail", alert.getReporterEmail());
+        payload.put("latitude", targetLat);
+        payload.put("longitude", targetLon);
+        payload.put("mapsUrl", mapsUrl);
+        payload.put("liveUrl", liveUrl);
+        payload.put("navigateUrl", navigateUrl);
+        payload.put("radiusMeters", alert.getRadiusMeters());
+        return ResponseEntity.ok(payload);
     }
 
     @PostMapping("/{alertId}/heartbeat")

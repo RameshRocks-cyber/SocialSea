@@ -24,6 +24,7 @@ public class NotificationController {
     private final UserRepository userRepo;
     private static final Pattern EMAIL_PATTERN =
         Pattern.compile("\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b");
+    private static final Pattern URL_PATTERN = Pattern.compile("https?://\\S+");
 
     public NotificationController(NotificationRepository repo, UserRepository userRepo) {
         this.repo = repo;
@@ -75,6 +76,9 @@ public class NotificationController {
         for (Notification n : items) {
             String raw = n.getMessage();
             String kind = deriveKind(raw);
+            if ("EMERGENCY".equalsIgnoreCase(String.valueOf(n.getType()))) {
+                kind = "emergency";
+            }
             String actorEmail = extractFirstEmail(raw);
             Optional<User> actorOpt = actorEmail == null ? Optional.empty() : userRepo.findByEmail(actorEmail);
             String actorName = actorOpt
@@ -105,6 +109,11 @@ public class NotificationController {
             row.put("actorName", actorName);
             row.put("actorProfilePic", actorOpt.map(User::getProfilePic).orElse(null));
             row.put("actorIdentifier", (actorEmail != null && !actorEmail.isBlank()) ? actorEmail : actorName);
+            if ("emergency".equals(kind)) {
+                row.put("liveUrl", extractUrlContaining(raw, "/sos/live/"));
+                row.put("navigateUrl", extractUrlContaining(raw, "/sos/navigate/"));
+                row.put("mapsUrl", extractUrlContaining(raw, "google.com/maps"));
+            }
             out.add(row);
         }
 
@@ -119,10 +128,26 @@ public class NotificationController {
 
     private String deriveKind(String message) {
         String lower = String.valueOf(message).toLowerCase();
+        if (lower.contains("emergency")) return "emergency";
         if (lower.contains("follow")) return "follow";
         if (lower.contains("like")) return "like";
         if (lower.contains("comment")) return "comment";
         return "system";
+    }
+
+    private String extractUrlContaining(String message, String marker) {
+        if (message == null || message.isBlank()) return null;
+        Matcher matcher = URL_PATTERN.matcher(message);
+        while (matcher.find()) {
+            String url = matcher.group();
+            if (url.contains(marker)) return trimUrl(url);
+        }
+        return null;
+    }
+
+    private String trimUrl(String value) {
+        if (value == null) return null;
+        return value.replaceAll("[),.;]+$", "");
     }
 
     private String deriveActorFromMessage(String message) {

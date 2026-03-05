@@ -57,14 +57,20 @@ public class NotificationService {
 
         emailService.send(
             "admin@socialsea.com",
-            "🚨 New Report",
+            "New Report",
             message
         );
     }
 
     public void notifyUser(String email, String message) {
+        notifyUser(email, null, message, null);
+    }
+
+    public void notifyUser(String email, String title, String message, String type) {
         Notification n = new Notification();
         n.setRecipient(email);
+        n.setTitle(title);
+        n.setType(type);
         n.setMessage(message);
         repo.save(n);
 
@@ -72,7 +78,7 @@ public class NotificationService {
 
         emailService.send(
             email,
-            "📢 Report Update",
+            (title != null && !title.isBlank()) ? title : "Report Update",
             message
         );
     }
