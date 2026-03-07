@@ -130,13 +130,17 @@ public class EmergencyController {
                     || user.getLocationUpdatedAt() == null
                     || Duration.between(user.getLocationUpdatedAt(), LocalDateTime.now()).toMinutes() > MAX_LOCATION_STALE_MINUTES) {
                 // Safety first: if location is unavailable/stale, still notify.
-                notificationService.notifyUser(
-                        user.getEmail(),
-                        "Emergency Alert Nearby",
-                        message,
-                        "EMERGENCY"
-                );
-                notified++;
+                try {
+                    notificationService.notifyUser(
+                            user.getEmail(),
+                            "Emergency Alert Nearby",
+                            message,
+                            "EMERGENCY"
+                    );
+                    notified++;
+                } catch (Exception ignored) {
+                    // Keep dispatching to others even if one recipient channel fails.
+                }
                 continue;
             }
 
@@ -148,13 +152,17 @@ public class EmergencyController {
             );
 
             if (distance <= radiusMeters) {
-                notificationService.notifyUser(
-                        user.getEmail(),
-                        "Emergency Alert Nearby",
-                        message,
-                        "EMERGENCY"
-                );
-                notified++;
+                try {
+                    notificationService.notifyUser(
+                            user.getEmail(),
+                            "Emergency Alert Nearby",
+                            message,
+                            "EMERGENCY"
+                    );
+                    notified++;
+                } catch (Exception ignored) {
+                    // Keep dispatching to others even if one recipient channel fails.
+                }
             }
         }
 
@@ -178,6 +186,28 @@ public class EmergencyController {
                 "accuracyMeters", request.accuracyMeters
         ));
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/active")
+    public ResponseEntity<?> activeAlerts(HttpServletRequest httpRequest) {
+        String frontendBase = resolveFrontendBaseUrl(httpRequest);
+        List<Map<String, Object>> items = emergencyRepo.findTop20ByActiveTrueOrderByStartedAtDesc()
+                .stream()
+                .map(a -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("alertId", a.getId());
+                    item.put("reporterEmail", a.getReporterEmail());
+                    item.put("startedAt", a.getStartedAt());
+                    item.put("latitude", a.getCurrentLatitude() != null ? a.getCurrentLatitude() : a.getLatitude());
+                    item.put("longitude", a.getCurrentLongitude() != null ? a.getCurrentLongitude() : a.getLongitude());
+                    item.put("audioActive", a.isLiveAudioActive());
+                    item.put("videoActive", a.isLiveVideoActive());
+                    item.put("liveUrl", frontendBase + "/sos/live/" + a.getId());
+                    item.put("navigateUrl", frontendBase + "/sos/navigate/" + a.getId());
+                    return item;
+                })
+                .toList();
+        return ResponseEntity.ok(items);
     }
 
     @GetMapping("/{alertId}/assist")

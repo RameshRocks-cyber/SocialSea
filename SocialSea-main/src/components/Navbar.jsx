@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { clearTokens, isAdmin, isAuthenticated } from "../services/auth"
+import { clearTokens, getToken, isAdmin, isAuthenticated, parseJwtPayload } from "../services/auth"
 import api from "../services/axios"
 
 export default function Navbar() {
@@ -26,6 +26,7 @@ export default function Navbar() {
   const oscRef = useRef(null)
   const gainRef = useRef(null)
   const seenNotificationIdsRef = useRef(new Set())
+  const seenActiveAlertIdsRef = useRef(new Set())
 
   if (!authed) return null
 
@@ -350,6 +351,50 @@ export default function Navbar() {
 
     checkEmergencyNotifications()
     timer = setInterval(checkEmergencyNotifications, 6000)
+    return () => {
+      mounted = false
+      if (timer) clearInterval(timer)
+    }
+  }, [])
+
+  useEffect(() => {
+    let mounted = true
+    let timer = null
+
+    const checkActiveSos = async () => {
+      try {
+        const res = await api.get("/api/emergency/active")
+        const alerts = Array.isArray(res?.data) ? res.data : []
+        const me = parseJwtPayload(getToken())?.sub || null
+
+        for (const a of alerts) {
+          const id = a?.alertId
+          if (id == null) continue
+          if (seenActiveAlertIdsRef.current.has(id)) continue
+          seenActiveAlertIdsRef.current.add(id)
+          if (me && String(a?.reporterEmail || "").toLowerCase() === String(me).toLowerCase()) continue
+          if (mounted) {
+            setEmergencyPopup({
+              id: `active-${id}`,
+              title: "Emergency Alert Nearby",
+              message: `SOS active by ${a?.reporterEmail || "a user"}`,
+              liveUrl: a?.liveUrl,
+              navigateUrl: a?.navigateUrl,
+              mapsUrl: a?.mapsUrl,
+              type: "EMERGENCY",
+              kind: "emergency",
+              read: false,
+            })
+          }
+          break
+        }
+      } catch {
+        // no-op
+      }
+    }
+
+    checkActiveSos()
+    timer = setInterval(checkActiveSos, 5000)
     return () => {
       mounted = false
       if (timer) clearInterval(timer)

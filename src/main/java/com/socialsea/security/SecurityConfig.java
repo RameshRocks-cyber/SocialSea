@@ -58,6 +58,7 @@ public class SecurityConfig {
                     "/anonymous/**",
                     "/api/anonymous/**",
                     "/api/public/**",
+                    "/api/emergency/active",
 
                     // SWAGGER
                     "/swagger-ui/**",
