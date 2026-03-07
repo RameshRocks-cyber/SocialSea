@@ -71,29 +71,36 @@ public class EmergencyController {
 
     @PostMapping("/trigger")
     public ResponseEntity<?> trigger(@RequestBody TriggerRequest request, Authentication auth, HttpServletRequest httpRequest) {
-        if (auth == null || !auth.isAuthenticated()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
-        }
         if (request == null || request.latitude == null || request.longitude == null) {
             return ResponseEntity.badRequest().body(Map.of("message", "latitude and longitude are required"));
         }
 
-        User reporter = userRepo.findByEmail(auth.getName()).orElse(null);
-        if (reporter == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "User not found"));
+        String reporterEmail = null;
+        if (auth != null && auth.isAuthenticated()) {
+            reporterEmail = auth.getName();
         }
+        if ((reporterEmail == null || reporterEmail.isBlank()) && request.reporterEmail != null) {
+            reporterEmail = request.reporterEmail.trim();
+        }
+        if (reporterEmail == null || reporterEmail.isBlank()) {
+            reporterEmail = "anonymous@socialsea.local";
+        }
+
+        User reporter = userRepo.findByEmail(reporterEmail).orElse(null);
 
         int radiusMeters = request.radiusMeters != null && request.radiusMeters > 0
                 ? request.radiusMeters
                 : DEFAULT_RADIUS_METERS;
 
-        reporter.setLastLatitude(request.latitude);
-        reporter.setLastLongitude(request.longitude);
-        reporter.setLocationUpdatedAt(LocalDateTime.now());
-        userRepo.save(reporter);
+        if (reporter != null) {
+            reporter.setLastLatitude(request.latitude);
+            reporter.setLastLongitude(request.longitude);
+            reporter.setLocationUpdatedAt(LocalDateTime.now());
+            userRepo.save(reporter);
+        }
 
         EmergencyAlert alert = new EmergencyAlert();
-        alert.setReporterEmail(reporter.getEmail());
+        alert.setReporterEmail(reporterEmail);
         alert.setLatitude(request.latitude);
         alert.setLongitude(request.longitude);
         alert.setAccuracyMeters(request.accuracyMeters);
@@ -113,7 +120,7 @@ public class EmergencyController {
         String mapsUrl = "https://maps.google.com/?q=" + request.latitude + "," + request.longitude;
         String liveUrl = frontendBase + "/sos/live/" + saved.getId();
         String navigateUrl = frontendBase + "/sos/navigate/" + saved.getId();
-        String message = "Emergency alert by " + reporter.getEmail()
+        String message = "Emergency alert by " + reporterEmail
                 + ". Exact location: " + request.latitude + ", " + request.longitude
                 + " (radius " + radiusMeters + "m). "
                 + "Live AV: " + (alert.isLiveAudioActive() || alert.isLiveVideoActive() ? "ON" : "OFF")
@@ -125,7 +132,8 @@ public class EmergencyController {
         List<User> users = userRepo.findAll();
         for (User user : users) {
             if (user.getId() == null || user.getEmail() == null) continue;
-            if (user.getId().equals(reporter.getId())) continue;
+            if (user.getEmail().equalsIgnoreCase(reporterEmail)) continue;
+            if (reporter != null && user.getId().equals(reporter.getId())) continue;
             if (user.getLastLatitude() == null || user.getLastLongitude() == null
                     || user.getLocationUpdatedAt() == null
                     || Duration.between(user.getLocationUpdatedAt(), LocalDateTime.now()).toMinutes() > MAX_LOCATION_STALE_MINUTES) {
@@ -448,6 +456,7 @@ public class EmergencyController {
         public Double longitude;
         public Double accuracyMeters;
         public Integer radiusMeters;
+        public String reporterEmail;
         public Boolean frontCameraEnabled;
         public Boolean backCameraEnabled;
         public Boolean audioActive;
