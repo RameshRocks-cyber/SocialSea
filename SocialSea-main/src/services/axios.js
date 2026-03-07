@@ -1,12 +1,13 @@
 import axios from "axios";
+import { API_BASE } from "./api";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "http://43.205.213.14:8080",
+  baseURL: API_BASE || undefined,
   withCredentials: true,
 });
 
 const refreshClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "http://43.205.213.14:8080",
+  baseURL: API_BASE || undefined,
   withCredentials: true,
 });
 

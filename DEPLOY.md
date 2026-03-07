@@ -5,10 +5,10 @@
 - Build command: `npm run build`
 - Publish directory: `dist`
 - SPA routing: configured in `netlify.toml`
-- Production API URL: `.env.production` -> `VITE_API_URL=https://api.socialsea.co.in`
+- Production API URL: `.env.production` -> `VITE_API_URL=https://socialsea.co.in`
 
 ### Netlify env vars
-- `VITE_API_URL=https://api.socialsea.co.in`
+- `VITE_API_URL=https://socialsea.co.in`
 
 ## Backend (Spring Boot)
 - Project path: `SocialSea-main`
@@ -35,7 +35,7 @@
 
 ## Verification checklist
 1. Frontend loads at `https://socialsea.co.in`.
-2. API reachable at `https://api.socialsea.co.in`.
+2. API reachable at `https://socialsea.co.in/api/...`.
 3. Login/register works.
 4. Feed, reels, chat, notifications work.
 5. Upload and long-video pages work.

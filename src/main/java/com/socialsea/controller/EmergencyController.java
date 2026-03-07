@@ -13,9 +13,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.time.LocalDateTime;
 import java.time.Duration;
+import java.net.URI;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,6 +38,7 @@ public class EmergencyController {
 
     private static final int DEFAULT_RADIUS_METERS = 5000;
     private static final long MAX_LOCATION_STALE_MINUTES = 30;
+    private static final String DEFAULT_FRONTEND_BASE = "https://socialsea.co.in";
 
     private final UserRepository userRepo;
     private final EmergencyAlertRepository emergencyRepo;
@@ -67,7 +70,7 @@ public class EmergencyController {
     }
 
     @PostMapping("/trigger")
-    public ResponseEntity<?> trigger(@RequestBody TriggerRequest request, Authentication auth) {
+    public ResponseEntity<?> trigger(@RequestBody TriggerRequest request, Authentication auth, HttpServletRequest httpRequest) {
         if (auth == null || !auth.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         }
@@ -106,9 +109,10 @@ public class EmergencyController {
         alert.setStartedAt(LocalDateTime.now());
         EmergencyAlert saved = emergencyRepo.save(alert);
 
+        String frontendBase = resolveFrontendBaseUrl(httpRequest);
         String mapsUrl = "https://maps.google.com/?q=" + request.latitude + "," + request.longitude;
-        String liveUrl = frontendBaseUrl.replaceAll("/+$", "") + "/sos/live/" + saved.getId();
-        String navigateUrl = frontendBaseUrl.replaceAll("/+$", "") + "/sos/navigate/" + saved.getId();
+        String liveUrl = frontendBase + "/sos/live/" + saved.getId();
+        String navigateUrl = frontendBase + "/sos/navigate/" + saved.getId();
         String message = "Emergency alert by " + reporter.getEmail()
                 + ". Exact location: " + request.latitude + ", " + request.longitude
                 + " (radius " + radiusMeters + "m). "
@@ -167,7 +171,7 @@ public class EmergencyController {
     }
 
     @GetMapping("/{alertId}/assist")
-    public ResponseEntity<?> assist(@PathVariable Long alertId, Authentication auth) {
+    public ResponseEntity<?> assist(@PathVariable Long alertId, Authentication auth, HttpServletRequest httpRequest) {
         if (auth == null || !auth.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         }
@@ -184,9 +188,10 @@ public class EmergencyController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "SOS location unavailable"));
         }
 
+        String frontendBase = resolveFrontendBaseUrl(httpRequest);
         String mapsUrl = "https://www.google.com/maps/dir/?api=1&destination=" + targetLat + "," + targetLon;
-        String liveUrl = frontendBaseUrl.replaceAll("/+$", "") + "/sos/live/" + alert.getId();
-        String navigateUrl = frontendBaseUrl.replaceAll("/+$", "") + "/sos/navigate/" + alert.getId();
+        String liveUrl = frontendBase + "/sos/live/" + alert.getId();
+        String navigateUrl = frontendBase + "/sos/navigate/" + alert.getId();
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("alertId", alert.getId());
@@ -366,6 +371,36 @@ public class EmergencyController {
                 * Math.sin(dLon / 2) * Math.sin(dLon / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return r * c;
+    }
+
+    private String resolveFrontendBaseUrl(HttpServletRequest request) {
+        String origin = String.valueOf(request.getHeader("Origin")).trim();
+        String originBase = normalizeHttpBase(origin);
+        if (originBase != null) return originBase;
+
+        String referer = String.valueOf(request.getHeader("Referer")).trim();
+        String refererBase = normalizeHttpBase(referer);
+        if (refererBase != null) return refererBase;
+
+        String configuredBase = normalizeHttpBase(frontendBaseUrl);
+        if (configuredBase != null) return configuredBase;
+        return DEFAULT_FRONTEND_BASE;
+    }
+
+    private String normalizeHttpBase(String value) {
+        if (value == null || value.isBlank() || "null".equalsIgnoreCase(value)) return null;
+        try {
+            URI uri = URI.create(value.trim());
+            String scheme = uri.getScheme();
+            String host = uri.getHost();
+            if (scheme == null || host == null) return null;
+            if (!"http".equalsIgnoreCase(scheme) && !"https".equalsIgnoreCase(scheme)) return null;
+            int port = uri.getPort();
+            String portPart = port > 0 ? ":" + port : "";
+            return (scheme + "://" + host + portPart).replaceAll("/+$", "");
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     public static class TriggerRequest {
