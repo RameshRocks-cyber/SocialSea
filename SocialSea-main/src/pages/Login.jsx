@@ -8,17 +8,33 @@ export default function Login() {
   const location = useLocation()
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [msg, setMsg] = useState("")
 
   const handleLogin = async () => {
     try {
+      const identifier = username.trim()
+      const trimmedPassword = password
       const res = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({
+          identifier,
+          username: identifier,
+          email: identifier.includes("@") ? identifier : undefined,
+          password: trimmedPassword
+        })
       })
       if (!res.ok) {
-        setMsg("Login failed")
+        const text = await res.text()
+        let message = "Login failed"
+        try {
+          const parsed = JSON.parse(text)
+          message = parsed?.message || parsed?.error || message
+        } catch {
+          if (text) message = text
+        }
+        setMsg(message)
         return
       }
 
@@ -40,7 +56,20 @@ export default function Login() {
     <div style={{ padding: 20 }}>
       <h2>Login</h2>
       <input placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} /><br /><br />
-      <input placeholder="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} /><br /><br />
+      <input
+        placeholder="Password"
+        type={showPassword ? "text" : "password"}
+        value={password}
+        onChange={e => setPassword(e.target.value)}
+      /><br />
+      <label style={{ display: "inline-flex", alignItems: "center", gap: 6, margin: "8px 0 16px" }}>
+        <input
+          type="checkbox"
+          checked={showPassword}
+          onChange={e => setShowPassword(e.target.checked)}
+        />
+        Show password
+      </label><br />
       <button onClick={handleLogin}>Login</button>
       <p>{msg}</p>
     </div>

@@ -10,6 +10,7 @@ export default function Navbar() {
   const [sosActive, setSosActive] = useState(false)
   const [sosBusy, setSosBusy] = useState(false)
   const [sosError, setSosError] = useState("")
+  const [emergencyPopup, setEmergencyPopup] = useState(null)
   const [stopTapCount, setStopTapCount] = useState(0)
   const [stopLabel, setStopLabel] = useState("[SOS] X STOP (tap 4x)")
   const [coordsText, setCoordsText] = useState("")
@@ -24,6 +25,7 @@ export default function Navbar() {
   const audioCtxRef = useRef(null)
   const oscRef = useRef(null)
   const gainRef = useRef(null)
+  const seenNotificationIdsRef = useRef(new Set())
 
   if (!authed) return null
 
@@ -211,7 +213,7 @@ export default function Navbar() {
         latitude,
         longitude,
         accuracyMeters: accuracy,
-        radiusMeters: 100,
+        radiusMeters: 5000,
         frontCameraEnabled: cameraInfo.frontCameraEnabled,
         backCameraEnabled: cameraInfo.backCameraEnabled,
       })
@@ -315,6 +317,56 @@ export default function Navbar() {
     }
   }, [])
 
+  useEffect(() => {
+    let mounted = true
+    let timer = null
+
+    const checkEmergencyNotifications = async () => {
+      try {
+        const res = await api.get("/api/notifications")
+        const items = Array.isArray(res?.data) ? res.data : []
+
+        // Prime seen IDs with existing rows on first fetch to avoid old-popup replay.
+        if (seenNotificationIdsRef.current.size === 0) {
+          items.forEach((n) => {
+            if (n?.id != null) seenNotificationIdsRef.current.add(n.id)
+          })
+          return
+        }
+
+        for (const n of items) {
+          if (n?.id == null) continue
+          if (seenNotificationIdsRef.current.has(n.id)) continue
+          seenNotificationIdsRef.current.add(n.id)
+          if ((n.kind === "emergency" || String(n.type || "").toUpperCase() === "EMERGENCY") && !n.read) {
+            if (mounted) setEmergencyPopup(n)
+            break
+          }
+        }
+      } catch {
+        // no-op
+      }
+    }
+
+    checkEmergencyNotifications()
+    timer = setInterval(checkEmergencyNotifications, 6000)
+    return () => {
+      mounted = false
+      if (timer) clearInterval(timer)
+    }
+  }, [])
+
+  const dismissEmergencyPopup = async () => {
+    const id = emergencyPopup?.id
+    setEmergencyPopup(null)
+    if (!id) return
+    try {
+      await api.post(`/api/notifications/${id}/read`)
+    } catch {
+      // no-op
+    }
+  }
+
   return (
     <>
     <nav style={{ padding: 12, background: "#111" }}>
@@ -400,6 +452,55 @@ export default function Navbar() {
             </div>
           </>
         )}
+      </div>
+    )}
+    {emergencyPopup && (
+      <div
+        style={{
+          position: "fixed",
+          left: 16,
+          bottom: 16,
+          zIndex: 10000,
+          width: "min(94vw, 440px)",
+          background: "#3a0707",
+          border: "1px solid #d45a5a",
+          borderRadius: 12,
+          padding: 12,
+          color: "#fff",
+          boxShadow: "0 12px 30px rgba(0,0,0,0.45)",
+        }}
+      >
+        <div style={{ fontWeight: 800, marginBottom: 6 }}>
+          [EMERGENCY] {emergencyPopup.title || "Emergency Alert Nearby"}
+        </div>
+        <div style={{ fontSize: 13, lineHeight: 1.4, marginBottom: 10 }}>
+          {emergencyPopup.message || "Someone nearby triggered SOS."}
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {emergencyPopup.liveUrl && (
+            <a
+              href={emergencyPopup.liveUrl}
+              style={{ color: "#fff", textDecoration: "none", border: "1px solid #ff9d9d", borderRadius: 8, padding: "6px 10px" }}
+            >
+              Open Live
+            </a>
+          )}
+          {(emergencyPopup.navigateUrl || emergencyPopup.mapsUrl) && (
+            <a
+              href={emergencyPopup.navigateUrl || emergencyPopup.mapsUrl}
+              style={{ color: "#fff", textDecoration: "none", border: "1px solid #ff9d9d", borderRadius: 8, padding: "6px 10px" }}
+            >
+              Navigate
+            </a>
+          )}
+          <button
+            type="button"
+            onClick={dismissEmergencyPopup}
+            style={{ border: "1px solid #ff9d9d", background: "#6e0f0f", color: "#fff", borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}
+          >
+            Dismiss
+          </button>
+        </div>
       </div>
     )}
     </>

@@ -126,9 +126,19 @@ public class EmergencyController {
         for (User user : users) {
             if (user.getId() == null || user.getEmail() == null) continue;
             if (user.getId().equals(reporter.getId())) continue;
-            if (user.getLastLatitude() == null || user.getLastLongitude() == null) continue;
-            if (user.getLocationUpdatedAt() == null) continue;
-            if (Duration.between(user.getLocationUpdatedAt(), LocalDateTime.now()).toMinutes() > MAX_LOCATION_STALE_MINUTES) continue;
+            if (user.getLastLatitude() == null || user.getLastLongitude() == null
+                    || user.getLocationUpdatedAt() == null
+                    || Duration.between(user.getLocationUpdatedAt(), LocalDateTime.now()).toMinutes() > MAX_LOCATION_STALE_MINUTES) {
+                // Safety first: if location is unavailable/stale, still notify.
+                notificationService.notifyUser(
+                        user.getEmail(),
+                        "Emergency Alert Nearby",
+                        message,
+                        "EMERGENCY"
+                );
+                notified++;
+                continue;
+            }
 
             double distance = haversineMeters(
                     request.latitude,
