@@ -179,8 +179,10 @@ export default function Feed() {
         const trimmedUrl = rawUrl.trim()
         const mediaUrl = trimmedUrl ? resolveUrl(trimmedUrl) : ""
         const type = getMediaType(post)
-        const authorEmail = post.username || post.user?.email || ""
-        const displayName = authorEmail || "Anonymous"
+        const isAnonymousPost =
+          !!post.isAnonymous || String(post.username || "").trim().toLowerCase() === "anonymous post"
+        const authorEmail = isAnonymousPost ? "" : post.username || post.user?.email || ""
+        const displayName = isAnonymousPost ? "Anonymous Post" : (authorEmail || "Anonymous")
         const isOwnPost = !!currentEmail && authorEmail === currentEmail
         const isLongVideo = type === "VIDEO" && (videoDurationByPost[post.id] || 0) > MAX_REEL_SECONDS
         return (

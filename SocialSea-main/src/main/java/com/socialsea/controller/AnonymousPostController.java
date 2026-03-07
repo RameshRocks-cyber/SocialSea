@@ -3,9 +3,13 @@ package com.socialsea.controller;
 import com.socialsea.model.AnonymousPost;
 import com.socialsea.repository.AnonymousPostRepository;
 import com.socialsea.service.CloudinaryService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/anonymous")
@@ -20,6 +24,42 @@ public class AnonymousPostController {
     ) {
         this.repo = repo;
         this.cloudinaryService = cloudinaryService;
+    }
+
+    @GetMapping("/feed")
+    public ResponseEntity<?> feed() {
+        List<AnonymousPost> items = repo.findByApprovedTrueAndRejectedFalseOrderByCreatedAtDesc();
+        return ResponseEntity.ok(items);
+    }
+
+    @PostMapping("/{id}/like")
+    public ResponseEntity<?> like(@PathVariable Long id) {
+        AnonymousPost post = repo.findById(id).orElse(null);
+        if (post == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Anonymous post not found"));
+        }
+        post.setLikeCount(Math.max(0, post.getLikeCount() + 1));
+        AnonymousPost saved = repo.save(post);
+        return ResponseEntity.ok(Map.of(
+            "id", saved.getId(),
+            "likeCount", saved.getLikeCount(),
+            "viewCount", saved.getViewCount()
+        ));
+    }
+
+    @PostMapping("/{id}/view")
+    public ResponseEntity<?> view(@PathVariable Long id) {
+        AnonymousPost post = repo.findById(id).orElse(null);
+        if (post == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Anonymous post not found"));
+        }
+        post.setViewCount(Math.max(0, post.getViewCount() + 1));
+        AnonymousPost saved = repo.save(post);
+        return ResponseEntity.ok(Map.of(
+            "id", saved.getId(),
+            "likeCount", saved.getLikeCount(),
+            "viewCount", saved.getViewCount()
+        ));
     }
 
     @PostMapping("/upload")

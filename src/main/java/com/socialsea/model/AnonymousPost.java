@@ -15,6 +15,12 @@ public class AnonymousPost {
     private String contentUrl;
     private String type; // IMAGE or VIDEO
 
+    @Column(nullable = false)
+    private long likeCount = 0;
+
+    @Column(nullable = false)
+    private long viewCount = 0;
+
     private boolean approved = false;
     private boolean rejected = false;
     private String rejectionReason;
@@ -35,6 +41,12 @@ public class AnonymousPost {
 
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
+
+    public long getLikeCount() { return likeCount; }
+    public void setLikeCount(long likeCount) { this.likeCount = likeCount; }
+
+    public long getViewCount() { return viewCount; }
+    public void setViewCount(long viewCount) { this.viewCount = viewCount; }
 
     public boolean isApproved() { return approved; }
     public void setApproved(boolean approved) { this.approved = approved; }

@@ -10,13 +10,17 @@ public class FeedItemDto {
     private String type;
     private String description;
     private LocalDateTime createdAt;
+    private long likeCount;
+    private long viewCount;
 
-    public FeedItemDto(Long id, String mediaUrl, String type, String description, LocalDateTime createdAt) {
+    public FeedItemDto(Long id, String mediaUrl, String type, String description, LocalDateTime createdAt, long likeCount, long viewCount) {
         this.id = id;
         this.mediaUrl = mediaUrl;
         this.type = type;
         this.description = description;
         this.createdAt = createdAt;
+        this.likeCount = likeCount;
+        this.viewCount = viewCount;
     }
 
     public static FeedItemDto fromAnonymous(AnonymousPost post) {
@@ -25,7 +29,9 @@ public class FeedItemDto {
             post.getContentUrl(),
             post.getType(),
             post.getDescription(),
-            post.getCreatedAt()
+            post.getCreatedAt(),
+            post.getLikeCount(),
+            post.getViewCount()
         );
     }
 
@@ -47,5 +53,13 @@ public class FeedItemDto {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public long getLikeCount() {
+        return likeCount;
+    }
+
+    public long getViewCount() {
+        return viewCount;
     }
 }

@@ -32,6 +32,36 @@ public class AnonymousPostController {
         return ResponseEntity.ok(items);
     }
 
+    @PostMapping("/{id}/like")
+    public ResponseEntity<?> like(@PathVariable Long id) {
+        AnonymousPost post = repo.findById(id).orElse(null);
+        if (post == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Anonymous post not found"));
+        }
+        post.setLikeCount(Math.max(0, post.getLikeCount() + 1));
+        AnonymousPost saved = repo.save(post);
+        return ResponseEntity.ok(Map.of(
+            "id", saved.getId(),
+            "likeCount", saved.getLikeCount(),
+            "viewCount", saved.getViewCount()
+        ));
+    }
+
+    @PostMapping("/{id}/view")
+    public ResponseEntity<?> view(@PathVariable Long id) {
+        AnonymousPost post = repo.findById(id).orElse(null);
+        if (post == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Anonymous post not found"));
+        }
+        post.setViewCount(Math.max(0, post.getViewCount() + 1));
+        AnonymousPost saved = repo.save(post);
+        return ResponseEntity.ok(Map.of(
+            "id", saved.getId(),
+            "likeCount", saved.getLikeCount(),
+            "viewCount", saved.getViewCount()
+        ));
+    }
+
     @PostMapping("/upload")
     public ResponseEntity<?> upload(
         @RequestParam("file") MultipartFile file,

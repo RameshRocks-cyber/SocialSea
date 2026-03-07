@@ -13,6 +13,8 @@ public class FeedItemDto {
     private boolean isAnonymous;
     private String type;
     private String username;
+    private long likeCount;
+    private long viewCount;
 
     public static FeedItemDto fromPost(Post post) {
         FeedItemDto dto = new FeedItemDto();
@@ -25,6 +27,8 @@ public class FeedItemDto {
         if (post.getUser() != null) {
             dto.username = post.getUser().getEmail();
         }
+        dto.likeCount = 0;
+        dto.viewCount = 0;
         return dto;
     }
 
@@ -37,6 +41,9 @@ public class FeedItemDto {
         dto.createdAt = post.getCreatedAt();
         dto.isAnonymous = true;
         dto.type = post.getType();
+        dto.username = "Anonymous Post";
+        dto.likeCount = post.getLikeCount();
+        dto.viewCount = post.getViewCount();
         return dto;
     }
 
@@ -52,4 +59,6 @@ public class FeedItemDto {
     public boolean isAnonymous() { return isAnonymous; }
     public String getType() { return type; }
     public String getUsername() { return username; }
+    public long getLikeCount() { return likeCount; }
+    public long getViewCount() { return viewCount; }
 }
