@@ -16,6 +16,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -79,6 +80,60 @@ public class AuthController {
         }
 
         return ResponseEntity.ok(authService.verifyOtp(email, otp, httpRequest));
+    }
+
+    @PostMapping({"/reset-password", "/resetPassword"})
+    public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> body) {
+        String identifier = normalize(body.get("identifier"));
+        if (identifier == null) {
+            identifier = normalize(body.get("email"));
+        }
+        if (identifier == null) {
+            identifier = normalize(body.get("username"));
+        }
+
+        String otp = normalize(body.get("otp"));
+        String password = normalize(body.get("newPassword"));
+        if (password == null) {
+            password = normalize(body.get("new_password"));
+        }
+        if (password == null) {
+            password = normalize(body.get("password"));
+        }
+
+        if (identifier == null || otp == null || password == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Identifier, OTP and new password are required"));
+        }
+        if (password.length() < 6) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Password must be at least 6 characters"));
+        }
+
+        Optional<User> userOpt = userRepository.findByEmail(identifier);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+        }
+
+        try {
+            otpService.verifyOtp(identifier, otp);
+        } catch (Exception ex) {
+            String msg = normalize(ex.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", msg != null ? msg : "Invalid or expired OTP"));
+        }
+
+        User user = userOpt.get();
+        user.setPassword(passwordEncoder.encode(password));
+        userRepository.save(user);
+
+        return ResponseEntity.ok(Map.of("message", "Password reset successful"));
+    }
+
+    private String normalize(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     @PostMapping("/admin/login")
