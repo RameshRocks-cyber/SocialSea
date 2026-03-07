@@ -1,10 +1,12 @@
 package com.socialsea.controller;
 
 import com.socialsea.dto.AuthResponse;
+import com.socialsea.dto.OtpSendResult;
 import com.socialsea.dto.VerifyOtpRequest;
 import com.socialsea.service.AuthService;
 import com.socialsea.service.OtpService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,6 +18,11 @@ public class OtpController {
 
     private final OtpService otpService;
     private final AuthService authService;
+    @Value("${app.otp.expose-debug-otp:false}")
+    private boolean exposeDebugOtp;
+
+    @Value("${app.otp.return-fallback-otp-on-delivery-failure:true}")
+    private boolean returnFallbackOtpOnDeliveryFailure;
 
     public OtpController(OtpService otpService, AuthService authService) {
         this.otpService = otpService;
@@ -33,8 +40,30 @@ public class OtpController {
             return ResponseEntity.badRequest().body(Map.of("message", "Email is required"));
         }
 
-        otpService.sendOtp(email);
-        return ResponseEntity.ok(Map.of("message", "OTP sent"));
+        OtpSendResult result = otpService.sendOtp(email);
+        boolean deliveryFailed = result.isDeliveryFailed();
+
+        if (exposeDebugOtp || (deliveryFailed && returnFallbackOtpOnDeliveryFailure)) {
+            return ResponseEntity.ok(Map.of(
+                    "message", deliveryFailed ? "OTP generated, but email delivery failed" : "OTP sent",
+                    "deliveryFailed", deliveryFailed,
+                    "failureReason", deliveryFailed ? result.getFailureReason() : "",
+                    "debugOtp", result.getOtp()
+            ));
+        }
+
+        if (deliveryFailed) {
+            return ResponseEntity.ok(Map.of(
+                    "message", "OTP generated, but email delivery failed",
+                    "deliveryFailed", true,
+                    "failureReason", result.getFailureReason()
+            ));
+        }
+
+        return ResponseEntity.ok(Map.of(
+                "message", "OTP sent",
+                "deliveryFailed", false
+        ));
     }
 
     @PostMapping("/verify-otp")

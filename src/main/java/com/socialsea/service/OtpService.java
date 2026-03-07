@@ -1,5 +1,6 @@
 package com.socialsea.service;
 
+import com.socialsea.dto.OtpSendResult;
 import com.socialsea.model.EmailOtp;
 import com.socialsea.repository.EmailOtpRepository;
 import org.slf4j.Logger;
@@ -33,7 +34,7 @@ public class OtpService {
     private boolean allowEmailFailure;
 
     @Transactional
-    public String sendOtp(String email) {
+    public OtpSendResult sendOtp(String email) {
 
         log.info("OTP service hit for {}", email);
 
@@ -67,18 +68,18 @@ public class OtpService {
         }
         try {
             emailService.sendOtpEmail(email, code);
+            return new OtpSendResult(code, false, null);
         } catch (RuntimeException ex) {
             log.warn("OTP email send skipped/failure for {}: {}", email, ex.getMessage());
             // Do not block login when email provider is temporarily down.
             // `allowEmailFailure` is kept for compatibility but sendOtp now always continues.
             if (allowEmailFailure || !isProdProfile()) {
                 log.info("Fallback OTP for {} is {}", email, code);
+                return new OtpSendResult(code, true, ex.getMessage());
             } else {
                 throw ex;
             }
         }
-
-        return code;
     }
 
     @Transactional

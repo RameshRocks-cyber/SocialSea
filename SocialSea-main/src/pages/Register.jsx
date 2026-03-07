@@ -22,11 +22,19 @@ export default function Register() {
         body: JSON.stringify({ username })
       })
 
+      const payload = await res.json().catch(() => ({}))
+
       if (res.ok) {
         setOtpSent(true)
-        setMsg("OTP sent successfully")
+        if (payload?.debugOtp) {
+          setMsg(`OTP delivery failed. Use fallback OTP: ${payload.debugOtp}`)
+        } else if (payload?.deliveryFailed) {
+          setMsg(payload?.message || "OTP generated, but delivery failed")
+        } else {
+          setMsg(payload?.message || "OTP sent successfully")
+        }
       } else {
-        const text = await res.text()
+        const text = payload?.message || payload?.error || "Request failed"
         setMsg("Failed to send OTP: " + text)
       }
     } catch (e) {

@@ -2,6 +2,7 @@ package com.socialsea.controller;
 
 import com.socialsea.dto.VerifyOtpRequest;
 import com.socialsea.dto.AuthResponse;
+import com.socialsea.dto.OtpSendResult;
 import com.socialsea.model.LoginRequest;
 import com.socialsea.model.Role;
 import com.socialsea.model.User;
@@ -61,19 +62,17 @@ public class AuthController {
             return ResponseEntity.badRequest().body("Email is required");
         }
 
-        String otp = null;
-        boolean deliveryFailed = false;
-        try {
-            otp = otpService.sendOtp(email);
-        } catch (RuntimeException ex) {
-            deliveryFailed = true;
-        }
+        OtpSendResult result = otpService.sendOtp(email);
+        boolean deliveryFailed = result.isDeliveryFailed();
 
         Map<String, Object> response = new HashMap<>();
         response.put("message", deliveryFailed ? "OTP generated, but email delivery failed" : "OTP sent");
         response.put("deliveryFailed", deliveryFailed);
+        if (deliveryFailed) {
+            response.put("failureReason", result.getFailureReason());
+        }
         if (exposeDebugOtp || (deliveryFailed && returnFallbackOtpOnDeliveryFailure)) {
-            response.put("debugOtp", otp);
+            response.put("debugOtp", result.getOtp());
         }
 
         return ResponseEntity.ok(response);
