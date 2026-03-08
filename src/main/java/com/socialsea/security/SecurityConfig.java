@@ -60,6 +60,8 @@ public class SecurityConfig {
                     "/api/public/**",
                     "/api/emergency/trigger",
                     "/api/emergency/active",
+                    "/emergency/trigger",
+                    "/emergency/active",
 
                     // SWAGGER
                     "/swagger-ui/**",

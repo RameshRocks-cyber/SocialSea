@@ -24,7 +24,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/emergency")
+@RequestMapping({"/api/emergency", "/emergency"})
 @CrossOrigin(origins = {
         "https://socialsea.netlify.app",
         "https://socialsea.co.in",
