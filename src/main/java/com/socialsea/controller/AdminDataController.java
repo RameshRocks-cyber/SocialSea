@@ -1,8 +1,10 @@
 package com.socialsea.controller;
 
+import com.socialsea.model.EmergencyAlert;
 import com.socialsea.model.Post;
 import com.socialsea.model.Report;
 import com.socialsea.model.User;
+import com.socialsea.repository.EmergencyAlertRepository;
 import com.socialsea.repository.PostRepository;
 import com.socialsea.repository.ReportRepository;
 import com.socialsea.repository.UserRepository;
@@ -32,6 +34,7 @@ public class AdminDataController {
     private final UserRepository userRepo;
     private final PostRepository postRepo;
     private final ReportRepository reportRepo;
+    private final EmergencyAlertRepository emergencyRepo;
 
     @GetMapping("/users")
     public List<Map<String, Object>> users() {
@@ -56,6 +59,15 @@ public class AdminDataController {
                 .stream()
                 .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .map(this::reportView)
+                .toList();
+    }
+
+    @GetMapping("/live-recordings")
+    public List<Map<String, Object>> liveRecordings() {
+        return emergencyRepo.findAllByOrderByStartedAtDesc()
+                .stream()
+                .filter(a -> a.getMediaUrl() != null && !a.getMediaUrl().isBlank())
+                .map(this::liveRecordingView)
                 .toList();
     }
 
@@ -101,6 +113,31 @@ public class AdminDataController {
         if (r.getReporter() != null) {
             item.put("reporterEmail", r.getReporter().getEmail());
         }
+        return item;
+    }
+
+    private Map<String, Object> liveRecordingView(EmergencyAlert a) {
+        Map<String, Object> item = new HashMap<>();
+        item.put("id", a.getId());
+        item.put("alertId", a.getId());
+        item.put("email", a.getReporterEmail());
+        item.put("mediaUrl", a.getMediaUrl());
+        item.put("startedAt", a.getStartedAt());
+        item.put("endedAt", a.getEndedAt());
+        item.put("durationMs", a.getDurationMs());
+        item.put("active", a.isActive());
+        item.put("latitude", a.getLatitude());
+        item.put("longitude", a.getLongitude());
+        item.put("currentLatitude", a.getCurrentLatitude());
+        item.put("currentLongitude", a.getCurrentLongitude());
+        item.put("accuracyMeters", a.getAccuracyMeters());
+        item.put("radiusMeters", a.getRadiusMeters());
+
+        String username = userRepo.findByEmail(a.getReporterEmail())
+                .map(User::getName)
+                .filter(name -> name != null && !name.isBlank())
+                .orElse(a.getReporterEmail());
+        item.put("username", username);
         return item;
     }
 }

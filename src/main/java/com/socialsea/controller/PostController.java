@@ -120,6 +120,14 @@ public class PostController {
         return ResponseEntity.ok(Map.of("ok", true, "deletedId", id));
     }
 
+    @PostMapping("/{id}/delete")
+    public ResponseEntity<?> deletePostViaPost(
+        @PathVariable("id") Long id,
+        Authentication auth
+    ) {
+        return deletePost(id, auth);
+    }
+
     private boolean isVideo(MultipartFile file) {
         String contentType = file.getContentType();
         return contentType != null && contentType.startsWith("video");

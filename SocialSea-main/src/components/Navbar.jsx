@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import { clearTokens, getToken, isAdmin, isAuthenticated, parseJwtPayload } from "../services/auth"
 import api from "../services/axios"
 
 export default function Navbar() {
   const navigate = useNavigate()
+  const location = useLocation()
   const authed = isAuthenticated()
   const admin = isAdmin()
   const [sosActive, setSosActive] = useState(false)
@@ -29,6 +30,7 @@ export default function Navbar() {
   const seenActiveAlertIdsRef = useRef(new Set())
 
   if (!authed) return null
+  if (location.pathname.startsWith("/camera")) return null
 
   const handleLogout = () => {
     forceStopSos()
@@ -438,6 +440,9 @@ export default function Navbar() {
         </span>
         SocialSea
       </button>
+      <Link to="/camera" style={{ marginInlineEnd: 15, color: "white" }} title="Open Camera Studio">
+        📷
+      </Link>
       <Link to="/" style={{ marginInlineEnd: 15, color: "white" }}>Feed</Link>
       <Link to="/reels" style={{ marginInlineEnd: 15, color: "white" }}>Reels</Link>
       <Link to="/upload" style={{ marginInlineEnd: 15, color: "white" }}>Upload</Link>

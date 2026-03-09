@@ -8,4 +8,5 @@ import java.util.List;
 public interface EmergencyAlertRepository extends JpaRepository<EmergencyAlert, Long> {
     List<EmergencyAlert> findByReporterEmailOrderByStartedAtDesc(String reporterEmail);
     List<EmergencyAlert> findTop20ByActiveTrueOrderByStartedAtDesc();
+    List<EmergencyAlert> findAllByOrderByStartedAtDesc();
 }
