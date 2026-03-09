@@ -365,6 +365,26 @@ public class EmergencyController {
         return ResponseEntity.ok(items);
     }
 
+    @DeleteMapping("/my-recordings/{alertId}")
+    public ResponseEntity<?> deleteMyRecording(@PathVariable Long alertId, Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+
+        Optional<EmergencyAlert> alertOpt = emergencyRepo.findById(alertId);
+        if (alertOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Recording not found"));
+        }
+
+        EmergencyAlert alert = alertOpt.get();
+        if (!auth.getName().equalsIgnoreCase(alert.getReporterEmail())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Not allowed"));
+        }
+
+        emergencyRepo.delete(alert);
+        return ResponseEntity.ok(Map.of("ok", true, "deletedId", alertId));
+    }
+
     @PostMapping(path = "/{alertId}/stop", consumes = {"multipart/form-data"})
     public ResponseEntity<?> stop(
             @PathVariable Long alertId,
