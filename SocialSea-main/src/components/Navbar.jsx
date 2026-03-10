@@ -414,6 +414,46 @@ export default function Navbar() {
     }
   }
 
+  const trimUrl = (value) => String(value || "").replace(/[),.;]+$/g, "")
+
+  const extractUrlContaining = (text, marker) => {
+    if (!text || !marker) return null
+    const matches = String(text).match(/https?:\/\/\S+/g) || []
+    const hit = matches.find((url) => url.includes(marker))
+    return hit ? trimUrl(hit) : null
+  }
+
+  const inferAlertId = (popup) => {
+    if (!popup) return null
+    if (popup.alertId != null) return String(popup.alertId)
+    const idMatch = String(popup.id || "").match(/active-(\d+)/)
+    if (idMatch?.[1]) return idMatch[1]
+    const text = `${popup.message || ""} ${popup.liveUrl || ""} ${popup.navigateUrl || ""}`
+    const urlMatch = text.match(/\/sos\/(?:live|navigate)\/(\d+)/)
+    return urlMatch?.[1] || null
+  }
+
+  const resolveEmergencyUrls = (popup) => {
+    const alertId = inferAlertId(popup)
+    const origin = window.location.origin
+    const liveUrl =
+      popup?.liveUrl ||
+      extractUrlContaining(popup?.message, "/sos/live/") ||
+      (alertId ? `${origin}/sos/live/${alertId}` : null)
+    const navigateUrl =
+      popup?.navigateUrl ||
+      popup?.mapsUrl ||
+      extractUrlContaining(popup?.message, "/sos/navigate/") ||
+      extractUrlContaining(popup?.message, "google.com/maps") ||
+      (alertId ? `${origin}/sos/navigate/${alertId}` : null)
+    return { liveUrl, navigateUrl }
+  }
+
+  const openEmergencyLink = (url) => {
+    if (!url) return
+    window.open(url, "_blank", "noopener,noreferrer")
+  }
+
   return (
     <>
     <nav style={{ padding: 12, background: "#111" }}>
@@ -505,55 +545,77 @@ export default function Navbar() {
         )}
       </div>
     )}
-    {emergencyPopup && (
-      <div
-        style={{
-          position: "fixed",
-          left: 16,
-          bottom: 16,
-          zIndex: 10000,
-          width: "min(94vw, 440px)",
-          background: "#3a0707",
-          border: "1px solid #d45a5a",
-          borderRadius: 12,
-          padding: 12,
-          color: "#fff",
-          boxShadow: "0 12px 30px rgba(0,0,0,0.45)",
-        }}
-      >
-        <div style={{ fontWeight: 800, marginBottom: 6 }}>
-          [EMERGENCY] {emergencyPopup.title || "Emergency Alert Nearby"}
-        </div>
-        <div style={{ fontSize: 13, lineHeight: 1.4, marginBottom: 10 }}>
-          {emergencyPopup.message || "Someone nearby triggered SOS."}
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {emergencyPopup.liveUrl && (
-            <a
-              href={emergencyPopup.liveUrl}
-              style={{ color: "#fff", textDecoration: "none", border: "1px solid #ff9d9d", borderRadius: 8, padding: "6px 10px" }}
+    {emergencyPopup && (() => {
+      const { liveUrl, navigateUrl } = resolveEmergencyUrls(emergencyPopup)
+      const actionBtnStyle = {
+        border: "1px solid #ff9d9d",
+        borderRadius: 8,
+        padding: "6px 10px",
+        color: "#fff",
+        fontWeight: 600,
+        cursor: "pointer",
+      }
+
+      return (
+        <div
+          style={{
+            position: "fixed",
+            left: 16,
+            bottom: 16,
+            zIndex: 10000,
+            width: "min(94vw, 440px)",
+            background: "#3a0707",
+            border: "1px solid #d45a5a",
+            borderRadius: 12,
+            padding: 12,
+            color: "#fff",
+            boxShadow: "0 12px 30px rgba(0,0,0,0.45)",
+          }}
+        >
+          <div style={{ fontWeight: 800, marginBottom: 6 }}>
+            [EMERGENCY] {emergencyPopup.title || "Emergency Alert Nearby"}
+          </div>
+          <div style={{ fontSize: 13, lineHeight: 1.4, marginBottom: 10 }}>
+            {emergencyPopup.message || "Someone nearby triggered SOS."}
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => openEmergencyLink(liveUrl)}
+              disabled={!liveUrl}
+              style={{
+                ...actionBtnStyle,
+                background: liveUrl ? "#8b1717" : "#5a4b4b",
+                opacity: liveUrl ? 1 : 0.7,
+                cursor: liveUrl ? "pointer" : "not-allowed",
+              }}
             >
-              Open Live
-            </a>
-          )}
-          {(emergencyPopup.navigateUrl || emergencyPopup.mapsUrl) && (
-            <a
-              href={emergencyPopup.navigateUrl || emergencyPopup.mapsUrl}
-              style={{ color: "#fff", textDecoration: "none", border: "1px solid #ff9d9d", borderRadius: 8, padding: "6px 10px" }}
+              Open Live Video
+            </button>
+            <button
+              type="button"
+              onClick={() => openEmergencyLink(navigateUrl)}
+              disabled={!navigateUrl}
+              style={{
+                ...actionBtnStyle,
+                background: navigateUrl ? "#7b1313" : "#5a4b4b",
+                opacity: navigateUrl ? 1 : 0.7,
+                cursor: navigateUrl ? "pointer" : "not-allowed",
+              }}
             >
-              Navigate
-            </a>
-          )}
-          <button
-            type="button"
-            onClick={dismissEmergencyPopup}
-            style={{ border: "1px solid #ff9d9d", background: "#6e0f0f", color: "#fff", borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}
-          >
-            Dismiss
-          </button>
+              Open Location
+            </button>
+            <button
+              type="button"
+              onClick={dismissEmergencyPopup}
+              style={{ ...actionBtnStyle, background: "#6e0f0f" }}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
-      </div>
-    )}
+      )
+    })()}
     </>
   )
 }

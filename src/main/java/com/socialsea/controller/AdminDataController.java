@@ -11,13 +11,18 @@ import com.socialsea.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Comparator;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -45,6 +50,26 @@ public class AdminDataController {
                 .stream()
                 .map(this::userView)
                 .toList();
+    }
+
+    @PostMapping("/users/{id}/ban")
+    public ResponseEntity<?> banUser(@PathVariable Long id) {
+        return setUserBanState(id, true);
+    }
+
+    @PostMapping("/users/{id}/unban")
+    public ResponseEntity<?> unbanUser(@PathVariable Long id) {
+        return setUserBanState(id, false);
+    }
+
+    @PostMapping("/users/{id}/block")
+    public ResponseEntity<?> blockUser(@PathVariable Long id) {
+        return setUserBanState(id, true);
+    }
+
+    @PostMapping("/users/{id}/unblock")
+    public ResponseEntity<?> unblockUser(@PathVariable Long id) {
+        return setUserBanState(id, false);
     }
 
     @GetMapping("/posts")
@@ -94,6 +119,24 @@ public class AdminDataController {
         item.put("profileCompleted", u.isProfileCompleted());
         item.put("createdAt", u.getCreatedAt());
         return item;
+    }
+
+    private ResponseEntity<?> setUserBanState(Long id, boolean banned) {
+        Optional<User> userOpt = userRepo.findById(id);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+        }
+
+        User user = userOpt.get();
+        user.setBanned(banned);
+        User saved = userRepo.save(user);
+
+        return ResponseEntity.ok(Map.of(
+                "id", saved.getId(),
+                "email", saved.getEmail(),
+                "banned", saved.isBanned(),
+                "message", banned ? "User blocked successfully" : "User unblocked successfully"
+        ));
     }
 
     private Map<String, Object> postView(Post p) {
