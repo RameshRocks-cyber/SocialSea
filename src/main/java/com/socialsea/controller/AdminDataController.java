@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Comparator;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -30,6 +31,8 @@ import java.util.Map;
     "http://43.205.213.14:5173"
 })
 public class AdminDataController {
+    private static final int SOS_NEARBY_RADIUS_METERS = 5000;
+    private static final int SOS_NEARBY_ALERT_LIMIT = 100;
 
     private final UserRepository userRepo;
     private final PostRepository postRepo;
@@ -64,10 +67,20 @@ public class AdminDataController {
 
     @GetMapping("/live-recordings")
     public List<Map<String, Object>> liveRecordings() {
+        List<User> allUsers = userRepo.findAll();
         return emergencyRepo.findAllByOrderByStartedAtDesc()
                 .stream()
-                .filter(a -> a.getMediaUrl() != null && !a.getMediaUrl().isBlank())
-                .map(this::liveRecordingView)
+                .map(a -> liveRecordingView(a, allUsers))
+                .toList();
+    }
+
+    @GetMapping("/sos-nearby")
+    public List<Map<String, Object>> sosNearby() {
+        List<User> allUsers = userRepo.findAll();
+        return emergencyRepo.findAllByOrderByStartedAtDesc()
+                .stream()
+                .limit(SOS_NEARBY_ALERT_LIMIT)
+                .map(alert -> sosNearbyView(alert, allUsers))
                 .toList();
     }
 
@@ -116,29 +129,110 @@ public class AdminDataController {
         return item;
     }
 
-    private Map<String, Object> liveRecordingView(EmergencyAlert a) {
+    private Map<String, Object> liveRecordingView(EmergencyAlert a, List<User> allUsers) {
         Map<String, Object> item = new HashMap<>();
+        Map<String, Object> nearbyContext = sosNearbyView(a, allUsers);
+        Double exactLat = a.getCurrentLatitude() != null ? a.getCurrentLatitude() : a.getLatitude();
+        Double exactLon = a.getCurrentLongitude() != null ? a.getCurrentLongitude() : a.getLongitude();
+
         item.put("id", a.getId());
         item.put("alertId", a.getId());
         item.put("email", a.getReporterEmail());
+        item.put("reporterEmail", a.getReporterEmail());
         item.put("mediaUrl", a.getMediaUrl());
         item.put("startedAt", a.getStartedAt());
         item.put("endedAt", a.getEndedAt());
         item.put("durationMs", a.getDurationMs());
         item.put("active", a.isActive());
-        item.put("latitude", a.getLatitude());
-        item.put("longitude", a.getLongitude());
+        item.put("latitude", exactLat);
+        item.put("longitude", exactLon);
         item.put("currentLatitude", a.getCurrentLatitude());
         item.put("currentLongitude", a.getCurrentLongitude());
         item.put("accuracyMeters", a.getAccuracyMeters());
-        item.put("radiusMeters", a.getRadiusMeters());
+        item.put("radiusMeters", SOS_NEARBY_RADIUS_METERS);
+        item.put("triggerType", "SOS_3_TAP");
+        Map<String, Object> exactLocation = new HashMap<>();
+        exactLocation.put("latitude", exactLat);
+        exactLocation.put("longitude", exactLon);
+        exactLocation.put("accuracyMeters", a.getAccuracyMeters());
+        item.put("exactLocation", exactLocation);
+        item.put("nearbyUsers", nearbyContext.get("nearbyUsers"));
+        item.put("nearbyCount", nearbyContext.get("nearbyCount"));
 
         String username = userRepo.findByEmail(a.getReporterEmail())
                 .map(User::getName)
                 .filter(name -> name != null && !name.isBlank())
                 .orElse(a.getReporterEmail());
         item.put("username", username);
+        item.put("reporterName", username);
         return item;
+    }
+
+    private Map<String, Object> sosNearbyView(EmergencyAlert alert, List<User> allUsers) {
+        Map<String, Object> item = new HashMap<>();
+        Double lat = alert.getCurrentLatitude() != null ? alert.getCurrentLatitude() : alert.getLatitude();
+        Double lon = alert.getCurrentLongitude() != null ? alert.getCurrentLongitude() : alert.getLongitude();
+
+        String reporterEmail = alert.getReporterEmail();
+        String reporterName = userRepo.findByEmail(reporterEmail)
+                .map(User::getName)
+                .filter(name -> name != null && !name.isBlank())
+                .orElse(reporterEmail);
+
+        item.put("alertId", alert.getId());
+        item.put("startedAt", alert.getStartedAt());
+        item.put("endedAt", alert.getEndedAt());
+        item.put("active", alert.isActive());
+        item.put("triggerType", "SOS_3_TAP");
+        item.put("reporterName", reporterName);
+        item.put("reporterEmail", reporterEmail);
+        item.put("latitude", lat);
+        item.put("longitude", lon);
+        item.put("radiusMeters", SOS_NEARBY_RADIUS_METERS);
+
+        if (lat == null || lon == null) {
+            item.put("nearbyUsers", List.of());
+            item.put("nearbyCount", 0);
+            return item;
+        }
+
+        List<Map<String, Object>> nearbyUsers = allUsers.stream()
+                .filter(u -> u.getId() != null && u.getEmail() != null)
+                .filter(u -> reporterEmail == null || !u.getEmail().equalsIgnoreCase(reporterEmail))
+                .filter(u -> u.getLastLatitude() != null && u.getLastLongitude() != null)
+                .map(u -> {
+                    double distanceMeters = haversineMeters(lat, lon, u.getLastLatitude(), u.getLastLongitude());
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("id", u.getId());
+                    row.put("name", (u.getName() != null && !u.getName().isBlank()) ? u.getName() : u.getEmail());
+                    row.put("email", u.getEmail());
+                    row.put("distanceMeters", Math.round(distanceMeters));
+                    row.put("latitude", u.getLastLatitude());
+                    row.put("longitude", u.getLastLongitude());
+                    row.put("locationUpdatedAt", u.getLocationUpdatedAt());
+                    return row;
+                })
+                .filter(row -> {
+                    Number distance = (Number) row.get("distanceMeters");
+                    return distance != null && distance.longValue() <= SOS_NEARBY_RADIUS_METERS;
+                })
+                .sorted(Comparator.comparingLong(row -> ((Number) row.get("distanceMeters")).longValue()))
+                .toList();
+
+        item.put("nearbyUsers", nearbyUsers);
+        item.put("nearbyCount", nearbyUsers.size());
+        return item;
+    }
+
+    private double haversineMeters(double lat1, double lon1, double lat2, double lon2) {
+        double r = 6371000.0;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return r * c;
     }
 }
 

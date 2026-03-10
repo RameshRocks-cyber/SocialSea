@@ -10,6 +10,7 @@ import Chat from "./pages/Chat"
 import Navbar from "./components/Navbar"
 import AdminDashboard from "./pages/AdminDashboard"
 import AdminPendingAnonymous from "./pages/AdminPendingAnonymous"
+import AdminSosNearby from "./pages/AdminSosNearby"
 import ProtectedRoute from "./components/ProtectedRoute"
 import PublicOnlyRoute from "./components/PublicOnlyRoute"
 import { isAuthenticated } from "./services/auth"
@@ -124,6 +125,14 @@ function App() {
           element={
             <ProtectedRoute adminOnly>
               <AdminPendingAnonymous />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/sos-nearby"
+          element={
+            <ProtectedRoute adminOnly>
+              <AdminSosNearby />
             </ProtectedRoute>
           }
         />

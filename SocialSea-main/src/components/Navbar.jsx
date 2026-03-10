@@ -453,6 +453,7 @@ export default function Navbar() {
         <>
           <Link to="/admin/dashboard" style={{ marginInlineEnd: 15, color: "white" }}>Admin Dashboard</Link>
           <Link to="/admin/pending" style={{ marginInlineEnd: 15, color: "white" }}>Admin Pending</Link>
+          <Link to="/admin/sos-nearby" style={{ marginInlineEnd: 15, color: "white" }}>Admin SOS Nearby</Link>
         </>
       )}
       <button type="button" onClick={handleLogout}>Logout</button>

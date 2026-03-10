@@ -59,6 +59,12 @@ public class ChatController {
             item.put("profilePic", other.getProfilePic());
             item.put("lastMessage", m.getText());
             item.put("lastAt", m.getCreatedAt());
+            LocalDateTime locationUpdatedAt = other.getLocationUpdatedAt();
+            LocalDateTime lastActiveAt = locationUpdatedAt == null || m.getCreatedAt().isAfter(locationUpdatedAt)
+                    ? m.getCreatedAt()
+                    : locationUpdatedAt;
+            item.put("lastActiveAt", lastActiveAt);
+            item.put("locationUpdatedAt", locationUpdatedAt);
             byOtherUser.put(otherId, item);
         }
 
