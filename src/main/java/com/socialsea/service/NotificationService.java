@@ -12,6 +12,10 @@ import java.util.Objects;
 
 @Service
 public class NotificationService {
+    private static final int MAX_TITLE_LEN = 240;
+    private static final int MAX_TYPE_LEN = 64;
+    private static final int MAX_RECIPIENT_LEN = 240;
+    private static final int MAX_MESSAGE_LEN = 240;
 
     @Autowired
     private NotificationRepository repo;
@@ -24,13 +28,17 @@ public class NotificationService {
 
     public void notify(String title, String message, String type) {
         Notification n = new Notification();
-        n.setTitle(title);
-        n.setMessage(message);
-        n.setType(type);
-        n.setRecipient("ADMIN");
+        n.setTitle(clip(title, MAX_TITLE_LEN));
+        n.setMessage(clip(message, MAX_MESSAGE_LEN));
+        n.setType(clip(type, MAX_TYPE_LEN));
+        n.setRecipient(clip("ADMIN", MAX_RECIPIENT_LEN));
         repo.save(n);
 
-        messagingTemplate.convertAndSend("/topic/admin-notifications", n);
+        try {
+            messagingTemplate.convertAndSend("/topic/admin-notifications", n);
+        } catch (Exception ignored) {
+            // Notification persistence already succeeded.
+        }
     }
 
     public List<Notification> getUnread() {
@@ -49,17 +57,25 @@ public class NotificationService {
 
     public void notifyAdmin(String message) {
         Notification n = new Notification();
-        n.setRecipient("ADMIN");
-        n.setMessage(message);
+        n.setRecipient(clip("ADMIN", MAX_RECIPIENT_LEN));
+        n.setMessage(clip(message, MAX_MESSAGE_LEN));
         repo.save(n);
 
-        messagingTemplate.convertAndSend("/topic/admin-notifications", n);
+        try {
+            messagingTemplate.convertAndSend("/topic/admin-notifications", n);
+        } catch (Exception ignored) {
+            // Notification persistence already succeeded.
+        }
 
-        emailService.send(
-            "admin@socialsea.com",
-            "New Report",
-            message
-        );
+        try {
+            emailService.send(
+                "admin@socialsea.com",
+                "New Report",
+                clip(message, MAX_MESSAGE_LEN)
+            );
+        } catch (Exception ignored) {
+            // Email delivery issues must not break request flow.
+        }
     }
 
     public void notifyUser(String email, String message) {
@@ -68,19 +84,27 @@ public class NotificationService {
 
     public void notifyUser(String email, String title, String message, String type) {
         Notification n = new Notification();
-        n.setRecipient(email);
-        n.setTitle(title);
-        n.setType(type);
-        n.setMessage(message);
+        n.setRecipient(clip(email, MAX_RECIPIENT_LEN));
+        n.setTitle(clip(title, MAX_TITLE_LEN));
+        n.setType(clip(type, MAX_TYPE_LEN));
+        n.setMessage(clip(message, MAX_MESSAGE_LEN));
         repo.save(n);
 
-        messagingTemplate.convertAndSend("/topic/notifications/" + email, n);
+        try {
+            messagingTemplate.convertAndSend("/topic/notifications/" + clip(email, MAX_RECIPIENT_LEN), n);
+        } catch (Exception ignored) {
+            // Notification persistence already succeeded.
+        }
 
-        emailService.send(
-            email,
-            (title != null && !title.isBlank()) ? title : "Report Update",
-            message
-        );
+        try {
+            emailService.send(
+                email,
+                (title != null && !title.isBlank()) ? clip(title, MAX_TITLE_LEN) : "Report Update",
+                clip(message, MAX_MESSAGE_LEN)
+            );
+        } catch (Exception ignored) {
+            // Email delivery issues must not break request flow.
+        }
     }
 
     public long getUnreadCount() {
@@ -90,5 +114,12 @@ public class NotificationService {
     @Transactional
     public void markAllAsRead() {
         repo.markAllAsRead("ADMIN");
+    }
+
+    private String clip(String value, int maxLen) {
+        if (value == null) return null;
+        String v = value.trim();
+        if (v.length() <= maxLen) return v;
+        return v.substring(0, maxLen);
     }
 }

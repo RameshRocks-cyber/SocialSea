@@ -174,11 +174,15 @@ public class EmergencyController {
             }
         }
 
-        notificationService.notify(
-                "Emergency Alert",
-                message + " Notified nearby users: " + notified,
-                "EMERGENCY"
-        );
+        try {
+            notificationService.notify(
+                    "Emergency Alert",
+                    message + " Notified nearby users: " + notified,
+                    "EMERGENCY"
+            );
+        } catch (Exception ignored) {
+            // Admin summary notification failure should not block SOS trigger.
+        }
 
         Map<String, Object> response = new HashMap<>();
         response.put("alertId", saved.getId());
@@ -188,11 +192,11 @@ public class EmergencyController {
         response.put("navigateUrl", navigateUrl);
         response.put("audioActive", saved.isLiveAudioActive());
         response.put("videoActive", saved.isLiveVideoActive());
-        response.put("location", Map.of(
-                "latitude", request.latitude,
-                "longitude", request.longitude,
-                "accuracyMeters", request.accuracyMeters
-        ));
+        Map<String, Object> location = new HashMap<>();
+        location.put("latitude", request.latitude);
+        location.put("longitude", request.longitude);
+        location.put("accuracyMeters", request.accuracyMeters);
+        response.put("location", location);
         return ResponseEntity.ok(response);
     }
 
