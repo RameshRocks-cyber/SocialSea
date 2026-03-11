@@ -120,13 +120,14 @@ public class EmergencyController {
         String mapsUrl = "https://maps.google.com/?q=" + request.latitude + "," + request.longitude;
         String liveUrl = frontendBase + "/sos/live/" + saved.getId();
         String navigateUrl = frontendBase + "/sos/navigate/" + saved.getId();
+        // Keep URLs first so they survive NotificationService message clipping.
         String message = "Emergency alert by " + reporterEmail
+                + ". Live page: " + liveUrl
+                + ". Navigate: " + navigateUrl
+                + ". Map: " + mapsUrl
                 + ". Exact location: " + request.latitude + ", " + request.longitude
                 + " (radius " + radiusMeters + "m). "
-                + "Live AV: " + (alert.isLiveAudioActive() || alert.isLiveVideoActive() ? "ON" : "OFF")
-                + ". " + mapsUrl
-                + ". Live page: " + liveUrl
-                + ". Navigate: " + navigateUrl;
+                + "Live AV: " + (alert.isLiveAudioActive() || alert.isLiveVideoActive() ? "ON" : "OFF");
 
         int notified = 0;
         List<User> users = userRepo.findAll();

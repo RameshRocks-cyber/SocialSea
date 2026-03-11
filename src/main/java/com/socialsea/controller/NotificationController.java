@@ -112,7 +112,11 @@ public class NotificationController {
             if ("emergency".equals(kind)) {
                 row.put("liveUrl", extractUrlContaining(raw, "/sos/live/"));
                 row.put("navigateUrl", extractUrlContaining(raw, "/sos/navigate/"));
-                row.put("mapsUrl", extractUrlContaining(raw, "google.com/maps"));
+                String mapsUrl = extractUrlContaining(raw, "google.com/maps");
+                if (mapsUrl == null) {
+                    mapsUrl = extractUrlContaining(raw, "maps.google.com");
+                }
+                row.put("mapsUrl", mapsUrl);
             }
             out.add(row);
         }
