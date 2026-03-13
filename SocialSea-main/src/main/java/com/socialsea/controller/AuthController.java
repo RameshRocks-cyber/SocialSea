@@ -82,6 +82,43 @@ public class AuthController {
         return ResponseEntity.ok(authService.verifyOtp(email, otp, httpRequest));
     }
 
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
+        String identifier = normalize(body.get("identifier"));
+        if (identifier == null) {
+            identifier = normalize(body.get("username"));
+        }
+        String email = normalize(body.get("email"));
+        if (identifier == null) {
+            identifier = email;
+        }
+        String password = normalize(body.get("password"));
+
+        if (identifier == null || password == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Username/email and password are required"));
+        }
+
+        User user = findUserByIdentifier(identifier).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid credentials"));
+        }
+
+        if (user.getPassword() == null || !passwordEncoder.matches(password, user.getPassword())) {
+            if (!legacyPasswordMatchAndUpgrade(user, password)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid credentials"));
+            }
+        }
+
+        String accessToken = jwtUtil.generateAccessToken(user.getEmail());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getEmail());
+
+        return ResponseEntity.ok(Map.of(
+                "accessToken", accessToken,
+                "refreshToken", refreshToken,
+                "user", user
+        ));
+    }
+
     @PostMapping({"/reset-password", "/resetPassword"})
     public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> body) {
         String identifier = normalize(body.get("identifier"));
@@ -108,20 +145,25 @@ public class AuthController {
             return ResponseEntity.badRequest().body(Map.of("message", "Password must be at least 6 characters"));
         }
 
-        Optional<User> userOpt = userRepository.findByEmail(identifier);
+        Optional<User> userOpt = findUserByIdentifier(identifier);
         if (userOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
         }
 
+        User user = userOpt.get();
+        String otpEmail = normalize(user.getEmail());
+        if (otpEmail == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "User has no email for OTP verification"));
+        }
+
         try {
-            otpService.verifyOtp(identifier, otp);
+            otpService.verifyOtp(otpEmail, otp);
         } catch (Exception ex) {
             String msg = normalize(ex.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(Map.of("message", msg != null ? msg : "Invalid or expired OTP"));
         }
 
-        User user = userOpt.get();
         user.setPassword(passwordEncoder.encode(password));
         userRepository.save(user);
 
@@ -134,6 +176,30 @@ public class AuthController {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private Optional<User> findUserByIdentifier(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            return Optional.empty();
+        }
+        Optional<User> byEmail = userRepository.findByEmailIgnoreCase(identifier);
+        if (byEmail.isPresent()) {
+            return byEmail;
+        }
+        return userRepository.findByNameIgnoreCase(identifier);
+    }
+
+    private boolean legacyPasswordMatchAndUpgrade(User user, String rawPassword) {
+        String stored = user.getPassword();
+        if (stored == null || rawPassword == null) return false;
+        String trimmedStored = stored.trim();
+        boolean looksBcrypt = trimmedStored.startsWith("$2a$") || trimmedStored.startsWith("$2b$") || trimmedStored.startsWith("$2y$");
+        if (!looksBcrypt && rawPassword.equals(stored)) {
+            user.setPassword(passwordEncoder.encode(rawPassword));
+            userRepository.save(user);
+            return true;
+        }
+        return false;
     }
 
     @PostMapping("/admin/login")

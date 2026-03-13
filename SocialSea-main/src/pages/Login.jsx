@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useLocation, useNavigate } from "react-router-dom"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import { API_BASE } from "../services/api"
 import { setTokens } from "../services/auth"
 
@@ -71,6 +71,9 @@ export default function Login() {
         Show password
       </label><br />
       <button onClick={handleLogin}>Login</button>
+      <div style={{ marginTop: 10 }}>
+        <Link to="/forgot-password">Forgot password?</Link>
+      </div>
       <p>{msg}</p>
     </div>
   )

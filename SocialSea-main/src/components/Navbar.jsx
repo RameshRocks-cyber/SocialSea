@@ -33,6 +33,7 @@ export default function Navbar() {
 
   if (!authed) return null
   if (location.pathname.startsWith("/camera")) return null
+  if (location.pathname.startsWith("/sos")) return null
 
   const handleLogout = () => {
     forceStopSos()
@@ -311,6 +312,12 @@ export default function Navbar() {
 
   useEffect(() => {
     let cancelled = false
+    let intervalId = null
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        sendPresence()
+      }
+    }
     const sendPresence = async () => {
       try {
         if (!navigator.geolocation || !navigator.permissions) return
@@ -333,8 +340,12 @@ export default function Navbar() {
       }
     }
     sendPresence()
+    intervalId = setInterval(sendPresence, 120000)
+    document.addEventListener("visibilitychange", onVisibility)
     return () => {
       cancelled = true
+      if (intervalId) clearInterval(intervalId)
+      document.removeEventListener("visibilitychange", onVisibility)
     }
   }, [])
 
@@ -343,6 +354,7 @@ export default function Navbar() {
     let timer = null
 
     const checkEmergencyNotifications = async () => {
+      if (suppressEmergencyPopups) return
       try {
         const res = await api.get("/api/notifications")
         const items = Array.isArray(res?.data) ? res.data : []
@@ -415,6 +427,7 @@ export default function Navbar() {
     let timer = null
 
     const checkActiveSos = async () => {
+      if (suppressEmergencyPopups) return
       try {
         const res = await api.get("/api/emergency/active")
         const alerts = Array.isArray(res?.data) ? res.data : []
@@ -458,7 +471,7 @@ export default function Navbar() {
       mounted = false
       if (timer) clearInterval(timer)
     }
-  }, [])
+  }, [suppressEmergencyPopups])
 
   const dismissEmergencyPopup = async () => {
     const id = emergencyPopup?.id
@@ -602,7 +615,7 @@ export default function Navbar() {
         )}
       </div>
     )}
-    {emergencyPopup && (() => {
+    {!suppressEmergencyPopups && emergencyPopup && (() => {
       const { liveUrl, navigateUrl } = resolveEmergencyUrls(emergencyPopup)
       const actionBtnStyle = {
         border: "1px solid #ff9d9d",

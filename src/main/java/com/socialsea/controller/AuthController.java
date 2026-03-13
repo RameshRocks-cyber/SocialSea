@@ -190,7 +190,9 @@ public class AuthController {
         }
 
         if (user.getPassword() == null || !passwordEncoder.matches(password, user.getPassword())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid credentials"));
+            if (!legacyPasswordMatchAndUpgrade(user, password)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid credentials"));
+            }
         }
 
         String accessToken = jwtUtil.generateAccessToken(user.getEmail());
@@ -260,11 +262,25 @@ public class AuthController {
         if (identifier == null || identifier.isBlank()) {
             return Optional.empty();
         }
-        Optional<User> byEmail = userRepository.findByEmail(identifier);
+        Optional<User> byEmail = userRepository.findByEmailIgnoreCase(identifier);
         if (byEmail.isPresent()) {
             return byEmail;
         }
         return userRepository.findByNameIgnoreCase(identifier);
+    }
+
+    private boolean legacyPasswordMatchAndUpgrade(User user, String rawPassword) {
+        String stored = user.getPassword();
+        if (stored == null || rawPassword == null) return false;
+        String trimmedStored = stored.trim();
+        // If stored password doesn't look like bcrypt, allow legacy match and upgrade.
+        boolean looksBcrypt = trimmedStored.startsWith("$2a$") || trimmedStored.startsWith("$2b$") || trimmedStored.startsWith("$2y$");
+        if (!looksBcrypt && rawPassword.equals(stored)) {
+            user.setPassword(passwordEncoder.encode(rawPassword));
+            userRepository.save(user);
+            return true;
+        }
+        return false;
     }
 
     private String ensureAvailableName(String rawName, Long excludeId) {

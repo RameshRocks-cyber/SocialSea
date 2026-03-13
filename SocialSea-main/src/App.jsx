@@ -6,6 +6,7 @@ import AnonymousFeed from "./pages/AnonymousFeed"
 import Reels from "./pages/Reels"
 import CameraStudio from "./pages/CameraStudio"
 import Login from "./pages/Login"
+import ForgotPassword from "./pages/ForgotPassword"
 import Chat from "./pages/Chat"
 import Navbar from "./components/Navbar"
 import AdminDashboard from "./pages/AdminDashboard"
@@ -29,6 +30,14 @@ function App() {
           element={
             <PublicOnlyRoute>
               <Login />
+            </PublicOnlyRoute>
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={
+            <PublicOnlyRoute>
+              <ForgotPassword />
             </PublicOnlyRoute>
           }
         />
