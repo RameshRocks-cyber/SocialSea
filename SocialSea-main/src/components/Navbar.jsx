@@ -17,6 +17,7 @@ export default function Navbar() {
   const [coordsText, setCoordsText] = useState("")
   const clickTimesRef = useRef([])
   const stopTapMetaRef = useRef({ lastTapAt: 0, count: 0 })
+  const sosStateRef = useRef({ active: false, busy: false })
   const alertIdRef = useRef(null)
   const startedAtRef = useRef(0)
   const mediaRecorderRef = useRef(null)
@@ -28,6 +29,7 @@ export default function Navbar() {
   const gainRef = useRef(null)
   const seenNotificationIdsRef = useRef(new Set())
   const seenActiveAlertIdsRef = useRef(new Set())
+  const notificationsInitializedRef = useRef(false)
 
   if (!authed) return null
   if (location.pathname.startsWith("/camera")) return null
@@ -292,6 +294,10 @@ export default function Navbar() {
   }, [])
 
   useEffect(() => {
+    sosStateRef.current = { active: sosActive, busy: sosBusy }
+  }, [sosActive, sosBusy])
+
+  useEffect(() => {
     let cancelled = false
     const sendPresence = async () => {
       try {
@@ -328,12 +334,38 @@ export default function Navbar() {
       try {
         const res = await api.get("/api/notifications")
         const items = Array.isArray(res?.data) ? res.data : []
+        const initialLoad = !notificationsInitializedRef.current
+        const me = parseJwtPayload(getToken())?.sub || null
+        const suppressPopups = sosStateRef.current.active || sosStateRef.current.busy
+        const isSelfNotification = (n) => {
+          if (!n) return false
+          const title = String(n.title || "").toLowerCase()
+          const message = String(n.message || "")
+          if (title.includes("your sos")) return true
+          if (message.startsWith("Your SOS")) return true
+          if (me && String(n.reporterEmail || "").toLowerCase() === String(me).toLowerCase()) return true
+          return false
+        }
 
-        // Prime seen IDs with existing rows on first fetch to avoid old-popup replay.
-        if (seenNotificationIdsRef.current.size === 0) {
+        if (initialLoad) {
+          notificationsInitializedRef.current = true
+          const firstUnreadEmergency = items.find((n) => {
+            if (n?.id == null || n.read) return false
+            if (!(n.kind === "emergency" || String(n.type || "").toUpperCase() === "EMERGENCY")) return false
+            if (isSelfNotification(n)) return false
+            const incomingAlertId = inferAlertId(n)
+            const activeLocalAlertId =
+              alertIdRef.current != null ? String(alertIdRef.current) : null
+            return !(incomingAlertId && activeLocalAlertId && String(incomingAlertId) === activeLocalAlertId)
+          })
+
           items.forEach((n) => {
             if (n?.id != null) seenNotificationIdsRef.current.add(n.id)
           })
+
+          if (firstUnreadEmergency && mounted) {
+            if (!suppressPopups) setEmergencyPopup(firstUnreadEmergency)
+          }
           return
         }
 
@@ -342,13 +374,14 @@ export default function Navbar() {
           if (seenNotificationIdsRef.current.has(n.id)) continue
           seenNotificationIdsRef.current.add(n.id)
           if ((n.kind === "emergency" || String(n.type || "").toUpperCase() === "EMERGENCY") && !n.read) {
+            if (isSelfNotification(n)) continue
             const incomingAlertId = inferAlertId(n)
             const activeLocalAlertId =
               alertIdRef.current != null ? String(alertIdRef.current) : null
             if (incomingAlertId && activeLocalAlertId && String(incomingAlertId) === activeLocalAlertId) {
               continue
             }
-            if (mounted) setEmergencyPopup(n)
+            if (mounted && !suppressPopups) setEmergencyPopup(n)
             break
           }
         }
@@ -385,7 +418,9 @@ export default function Navbar() {
           const activeLocalAlertId =
             alertIdRef.current != null ? String(alertIdRef.current) : null
           if (activeLocalAlertId && String(id) === activeLocalAlertId) continue
+          if (isSelfAlert) continue
           if (mounted) {
+            if (sosStateRef.current.active || sosStateRef.current.busy) continue
             setEmergencyPopup({
               id: `active-${id}`,
               title: isSelfAlert ? "Emergency Alert" : "Emergency Alert Nearby",

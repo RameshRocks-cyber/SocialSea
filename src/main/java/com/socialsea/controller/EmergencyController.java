@@ -215,10 +215,31 @@ public class EmergencyController {
     }
 
     @GetMapping("/active")
-    public ResponseEntity<?> activeAlerts(HttpServletRequest httpRequest) {
+    public ResponseEntity<?> activeAlerts(Authentication auth, HttpServletRequest httpRequest) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.ok(List.of());
+        }
+
+        User me = userRepo.findByEmail(auth.getName()).orElse(null);
+        if (me == null || me.getLastLatitude() == null || me.getLastLongitude() == null || me.getLocationUpdatedAt() == null
+                || Duration.between(me.getLocationUpdatedAt(), LocalDateTime.now()).toMinutes() > MAX_LOCATION_STALE_MINUTES) {
+            return ResponseEntity.ok(List.of());
+        }
+
         String frontendBase = resolveFrontendBaseUrl(httpRequest);
         List<Map<String, Object>> items = emergencyRepo.findTop20ByActiveTrueOrderByStartedAtDesc()
                 .stream()
+                .filter(a -> !auth.getName().equalsIgnoreCase(a.getReporterEmail()))
+                .filter(a -> {
+                    Double lat = a.getCurrentLatitude() != null ? a.getCurrentLatitude() : a.getLatitude();
+                    Double lon = a.getCurrentLongitude() != null ? a.getCurrentLongitude() : a.getLongitude();
+                    if (lat == null || lon == null) return false;
+                    int radiusMeters = a.getRadiusMeters() != null && a.getRadiusMeters() > 0
+                            ? a.getRadiusMeters()
+                            : DEFAULT_RADIUS_METERS;
+                    double distance = haversineMeters(lat, lon, me.getLastLatitude(), me.getLastLongitude());
+                    return distance <= radiusMeters;
+                })
                 .map(a -> {
                     Map<String, Object> item = new HashMap<>();
                     item.put("alertId", a.getId());
@@ -228,6 +249,7 @@ public class EmergencyController {
                     item.put("longitude", a.getCurrentLongitude() != null ? a.getCurrentLongitude() : a.getLongitude());
                     item.put("audioActive", a.isLiveAudioActive());
                     item.put("videoActive", a.isLiveVideoActive());
+                    item.put("radiusMeters", a.getRadiusMeters());
                     item.put("liveUrl", frontendBase + "/sos/live/" + a.getId());
                     item.put("navigateUrl", frontendBase + "/sos/navigate/" + a.getId());
                     return item;

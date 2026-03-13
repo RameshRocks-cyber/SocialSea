@@ -84,14 +84,14 @@ public class NotificationService {
 
     public void notifyUser(String email, String title, String message, String type) {
         Notification n = new Notification();
-        n.setRecipient(clip(email, MAX_RECIPIENT_LEN));
+        n.setRecipient(clip(normalizeRecipient(email), MAX_RECIPIENT_LEN));
         n.setTitle(clip(title, MAX_TITLE_LEN));
         n.setType(clip(type, MAX_TYPE_LEN));
         n.setMessage(clip(message, MAX_MESSAGE_LEN));
         repo.save(n);
 
         try {
-            messagingTemplate.convertAndSend("/topic/notifications/" + clip(email, MAX_RECIPIENT_LEN), n);
+            messagingTemplate.convertAndSend("/topic/notifications/" + clip(normalizeRecipient(email), MAX_RECIPIENT_LEN), n);
         } catch (Exception ignored) {
             // Notification persistence already succeeded.
         }
@@ -121,5 +121,10 @@ public class NotificationService {
         String v = value.trim();
         if (v.length() <= maxLen) return v;
         return v.substring(0, maxLen);
+    }
+
+    private String normalizeRecipient(String email) {
+        if (email == null) return null;
+        return email.trim().toLowerCase();
     }
 }

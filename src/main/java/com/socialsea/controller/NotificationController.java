@@ -69,7 +69,7 @@ public class NotificationController {
     }
 
     private List<Map<String, Object>> buildNotificationPayload(String recipientEmail) {
-        List<Notification> items = repo.findByRecipientOrderByCreatedAtDesc(recipientEmail);
+        List<Notification> items = repo.findByRecipientIgnoreCaseOrderByCreatedAtDesc(recipientEmail);
         List<Map<String, Object>> out = new ArrayList<>();
         Set<String> seenFollowActors = new LinkedHashSet<>();
 
