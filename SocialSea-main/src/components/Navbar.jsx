@@ -342,6 +342,12 @@ export default function Navbar() {
           if (seenNotificationIdsRef.current.has(n.id)) continue
           seenNotificationIdsRef.current.add(n.id)
           if ((n.kind === "emergency" || String(n.type || "").toUpperCase() === "EMERGENCY") && !n.read) {
+            const incomingAlertId = inferAlertId(n)
+            const activeLocalAlertId =
+              alertIdRef.current != null ? String(alertIdRef.current) : null
+            if (incomingAlertId && activeLocalAlertId && String(incomingAlertId) === activeLocalAlertId) {
+              continue
+            }
             if (mounted) setEmergencyPopup(n)
             break
           }
@@ -374,11 +380,15 @@ export default function Navbar() {
           if (id == null) continue
           if (seenActiveAlertIdsRef.current.has(id)) continue
           seenActiveAlertIdsRef.current.add(id)
-          if (me && String(a?.reporterEmail || "").toLowerCase() === String(me).toLowerCase()) continue
+          const isSelfAlert =
+            me && String(a?.reporterEmail || "").toLowerCase() === String(me).toLowerCase()
+          const activeLocalAlertId =
+            alertIdRef.current != null ? String(alertIdRef.current) : null
+          if (activeLocalAlertId && String(id) === activeLocalAlertId) continue
           if (mounted) {
             setEmergencyPopup({
               id: `active-${id}`,
-              title: "Emergency Alert Nearby",
+              title: isSelfAlert ? "Emergency Alert" : "Emergency Alert Nearby",
               message: `SOS active by ${a?.reporterEmail || "a user"}`,
               liveUrl: a?.liveUrl,
               navigateUrl: a?.navigateUrl,

@@ -130,6 +130,18 @@ public class EmergencyController {
                 + "Live AV: " + (alert.isLiveAudioActive() || alert.isLiveVideoActive() ? "ON" : "OFF");
 
         int notified = 0;
+        boolean selfNotified = false;
+        try {
+            notificationService.notifyUser(
+                    reporterEmail,
+                    "Your SOS Is Active",
+                    "Your SOS was triggered. Live page: " + liveUrl + ". Navigate: " + navigateUrl,
+                    "EMERGENCY"
+            );
+            selfNotified = true;
+        } catch (Exception ignored) {
+            // Self notification should not block SOS trigger.
+        }
         List<User> users = userRepo.findAll();
         for (User user : users) {
             if (user.getId() == null || user.getEmail() == null) continue;
@@ -188,6 +200,7 @@ public class EmergencyController {
         Map<String, Object> response = new HashMap<>();
         response.put("alertId", saved.getId());
         response.put("notifiedUsers", notified);
+        response.put("selfNotified", selfNotified);
         response.put("radiusMeters", radiusMeters);
         response.put("liveUrl", liveUrl);
         response.put("navigateUrl", navigateUrl);
