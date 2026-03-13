@@ -297,6 +297,18 @@ export default function Navbar() {
     sosStateRef.current = { active: sosActive, busy: sosBusy }
   }, [sosActive, sosBusy])
 
+  const suppressEmergencyPopups =
+    sosStateRef.current.active ||
+    sosStateRef.current.busy ||
+    location.pathname.startsWith("/sos")
+
+  useEffect(() => {
+    if (!emergencyPopup) return
+    if (!suppressEmergencyPopups) return
+    dismissEmergencyPopup()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emergencyPopup, suppressEmergencyPopups])
+
   useEffect(() => {
     let cancelled = false
     const sendPresence = async () => {
@@ -336,7 +348,7 @@ export default function Navbar() {
         const items = Array.isArray(res?.data) ? res.data : []
         const initialLoad = !notificationsInitializedRef.current
         const me = parseJwtPayload(getToken())?.sub || null
-        const suppressPopups = sosStateRef.current.active || sosStateRef.current.busy
+        const suppressPopups = suppressEmergencyPopups
         const isSelfNotification = (n) => {
           if (!n) return false
           const title = String(n.title || "").toLowerCase()
@@ -420,7 +432,7 @@ export default function Navbar() {
           if (activeLocalAlertId && String(id) === activeLocalAlertId) continue
           if (isSelfAlert) continue
           if (mounted) {
-            if (sosStateRef.current.active || sosStateRef.current.busy) continue
+            if (suppressEmergencyPopups) continue
             setEmergencyPopup({
               id: `active-${id}`,
               title: isSelfAlert ? "Emergency Alert" : "Emergency Alert Nearby",
