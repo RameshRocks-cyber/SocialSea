@@ -216,28 +216,34 @@ public class EmergencyController {
 
     @GetMapping("/active")
     public ResponseEntity<?> activeAlerts(Authentication auth, HttpServletRequest httpRequest) {
-        if (auth == null || !auth.isAuthenticated()) {
-            return ResponseEntity.ok(List.of());
-        }
-
-        User me = userRepo.findByEmail(auth.getName()).orElse(null);
-        if (me == null || me.getLastLatitude() == null || me.getLastLongitude() == null || me.getLocationUpdatedAt() == null
-                || Duration.between(me.getLocationUpdatedAt(), LocalDateTime.now()).toMinutes() > MAX_LOCATION_STALE_MINUTES) {
-            return ResponseEntity.ok(List.of());
-        }
-
         String frontendBase = resolveFrontendBaseUrl(httpRequest);
+
+        // If unauthenticated or location is missing/stale, return active alerts without distance filtering.
+        User me = null;
+        boolean canFilterByDistance = false;
+        if (auth != null && auth.isAuthenticated()) {
+            me = userRepo.findByEmail(auth.getName()).orElse(null);
+            if (me != null && me.getLastLatitude() != null && me.getLastLongitude() != null && me.getLocationUpdatedAt() != null
+                    && Duration.between(me.getLocationUpdatedAt(), LocalDateTime.now()).toMinutes() <= MAX_LOCATION_STALE_MINUTES) {
+                canFilterByDistance = true;
+            }
+        }
+
+        final User viewer = me;
+        final boolean filterByDistance = canFilterByDistance;
+
         List<Map<String, Object>> items = emergencyRepo.findTop20ByActiveTrueOrderByStartedAtDesc()
                 .stream()
-                .filter(a -> !auth.getName().equalsIgnoreCase(a.getReporterEmail()))
+                .filter(a -> auth == null || !auth.isAuthenticated() || !auth.getName().equalsIgnoreCase(a.getReporterEmail()))
                 .filter(a -> {
+                    if (!filterByDistance || viewer == null) return true;
                     Double lat = a.getCurrentLatitude() != null ? a.getCurrentLatitude() : a.getLatitude();
                     Double lon = a.getCurrentLongitude() != null ? a.getCurrentLongitude() : a.getLongitude();
                     if (lat == null || lon == null) return false;
                     int radiusMeters = a.getRadiusMeters() != null && a.getRadiusMeters() > 0
                             ? a.getRadiusMeters()
                             : DEFAULT_RADIUS_METERS;
-                    double distance = haversineMeters(lat, lon, me.getLastLatitude(), me.getLastLongitude());
+                    double distance = haversineMeters(lat, lon, viewer.getLastLatitude(), viewer.getLastLongitude());
                     return distance <= radiusMeters;
                 })
                 .map(a -> {
