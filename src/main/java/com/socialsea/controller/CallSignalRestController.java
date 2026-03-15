@@ -27,7 +27,8 @@ import java.util.Set;
 public class CallSignalRestController {
 
     private static final Set<String> ALLOWED_TYPES = Set.of(
-            "offer", "answer", "ice", "hangup", "reject", "busy", "ringing"
+            "offer", "answer", "ice", "hangup", "reject", "busy", "ringing",
+            "livekit-invite", "livekit-accept"
     );
 
     private final UserRepository userRepository;
@@ -61,6 +62,9 @@ public class CallSignalRestController {
         outbound.setFromName(displayName(me));
         outbound.setFromEmail(me.getEmail());
         outbound.setMode("video".equals(normalize(payload.getMode())) ? "video" : "audio");
+        outbound.setRoomId(payload.getRoomId());
+        outbound.setGroup(payload.isGroup());
+        outbound.setGroupMembers(payload.getGroupMembers());
         outbound.setSdp(payload.getSdp());
         outbound.setCandidate(payload.getCandidate());
         outbound.setSdpMid(payload.getSdpMid());

@@ -52,6 +52,9 @@ public class CallSignalingController {
         outbound.setFromName(displayName(sender));
         outbound.setFromEmail(sender.getEmail());
         outbound.setMode(normalizeMode(payload.getMode()));
+        outbound.setRoomId(payload.getRoomId());
+        outbound.setGroup(payload.isGroup());
+        outbound.setGroupMembers(payload.getGroupMembers());
         outbound.setSdp(payload.getSdp());
         outbound.setCandidate(payload.getCandidate());
         outbound.setSdpMid(payload.getSdpMid());

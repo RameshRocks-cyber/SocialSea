@@ -31,7 +31,9 @@ public class CallSignalInboxService {
         if (queue == null) return List.of();
         long now = System.currentTimeMillis();
         prune(queue, now);
-        return new ArrayList<>(queue);
+        List<CallSignalDto> items = new ArrayList<>(queue);
+        queue.clear();
+        return items;
     }
 
     private void prune(Queue<CallSignalDto> queue, long now) {

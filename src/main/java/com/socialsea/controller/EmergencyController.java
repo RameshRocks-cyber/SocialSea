@@ -150,18 +150,7 @@ public class EmergencyController {
             if (user.getLastLatitude() == null || user.getLastLongitude() == null
                     || user.getLocationUpdatedAt() == null
                     || Duration.between(user.getLocationUpdatedAt(), LocalDateTime.now()).toMinutes() > MAX_LOCATION_STALE_MINUTES) {
-                // Safety first: if location is unavailable/stale, still notify.
-                try {
-                    notificationService.notifyUser(
-                            user.getEmail(),
-                            "Emergency Alert Nearby",
-                            message,
-                            "EMERGENCY"
-                    );
-                    notified++;
-                } catch (Exception ignored) {
-                    // Keep dispatching to others even if one recipient channel fails.
-                }
+                // Only notify users with fresh location to respect 5km radius.
                 continue;
             }
 
