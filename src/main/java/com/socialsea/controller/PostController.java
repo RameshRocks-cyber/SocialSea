@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/posts")
@@ -102,7 +103,8 @@ public class PostController {
                 .body(Map.of("message", "Session expired. Please login again."));
         }
 
-        Optional<Post> postOpt = postRepo.findById(id);
+        Long safeId = Objects.requireNonNull(id, "id");
+        Optional<Post> postOpt = postRepo.findById(safeId);
         if (postOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Post not found"));
         }
@@ -117,7 +119,7 @@ public class PostController {
         }
 
         postRepo.delete(post);
-        return ResponseEntity.ok(Map.of("ok", true, "deletedId", id));
+        return ResponseEntity.ok(Map.of("ok", true, "deletedId", safeId));
     }
 
     @PostMapping("/{id}/delete")

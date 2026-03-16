@@ -28,7 +28,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     @Override
-    @SuppressWarnings("null")
     protected boolean shouldNotFilter(@NonNull HttpServletRequest request) {
         String path = request.getRequestURI();
 
@@ -39,7 +38,6 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     @Override
-    @SuppressWarnings("null")
     protected void doFilterInternal(
         @NonNull HttpServletRequest request,
         @NonNull HttpServletResponse response,

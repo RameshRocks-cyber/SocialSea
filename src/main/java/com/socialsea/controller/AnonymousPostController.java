@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/anonymous")
@@ -34,7 +35,8 @@ public class AnonymousPostController {
 
     @PostMapping("/{id}/like")
     public ResponseEntity<?> like(@PathVariable Long id) {
-        AnonymousPost post = repo.findById(id).orElse(null);
+        Long safeId = Objects.requireNonNull(id, "id");
+        AnonymousPost post = repo.findById(safeId).orElse(null);
         if (post == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Anonymous post not found"));
         }
@@ -49,7 +51,8 @@ public class AnonymousPostController {
 
     @PostMapping("/{id}/view")
     public ResponseEntity<?> view(@PathVariable Long id) {
-        AnonymousPost post = repo.findById(id).orElse(null);
+        Long safeId = Objects.requireNonNull(id, "id");
+        AnonymousPost post = repo.findById(safeId).orElse(null);
         if (post == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Anonymous post not found"));
         }

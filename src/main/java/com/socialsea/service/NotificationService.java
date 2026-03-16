@@ -2,7 +2,6 @@ package com.socialsea.service;
 
 import com.socialsea.model.Notification;
 import com.socialsea.repository.NotificationRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,26 +11,32 @@ import java.util.Objects;
 
 @Service
 public class NotificationService {
-    private static final int MAX_TITLE_LEN = 240;
-    private static final int MAX_TYPE_LEN = 64;
-    private static final int MAX_RECIPIENT_LEN = 240;
-    private static final int MAX_MESSAGE_LEN = 240;
 
-    @Autowired
-    private NotificationRepository repo;
+    private static final int MAX_RECIPIENT_LEN = 255;
+    private static final int MAX_TITLE_LEN = 255;
+    private static final int MAX_TYPE_LEN = 100;
+    private static final int MAX_MESSAGE_LEN = 2000;
 
-    @Autowired
-    private EmailService emailService;
+    private final NotificationRepository repo;
+    private final SimpMessagingTemplate messagingTemplate;
+    private final EmailService emailService;
 
-    @Autowired
-    private SimpMessagingTemplate messagingTemplate;
+    public NotificationService(
+            NotificationRepository repo,
+            SimpMessagingTemplate messagingTemplate,
+            EmailService emailService
+    ) {
+        this.repo = repo;
+        this.messagingTemplate = messagingTemplate;
+        this.emailService = emailService;
+    }
 
-    public void notify(String title, String message, String type) {
+    public void notifyAdmin(String title, String message, String type) {
         Notification n = new Notification();
-        n.setTitle(clip(title, MAX_TITLE_LEN));
-        n.setMessage(clip(message, MAX_MESSAGE_LEN));
-        n.setType(clip(type, MAX_TYPE_LEN));
         n.setRecipient(clip("ADMIN", MAX_RECIPIENT_LEN));
+        n.setTitle(clip(title, MAX_TITLE_LEN));
+        n.setType(clip(type, MAX_TYPE_LEN));
+        n.setMessage(clip(message, MAX_MESSAGE_LEN));
         repo.save(n);
 
         try {
@@ -39,6 +44,15 @@ public class NotificationService {
         } catch (Exception ignored) {
             // Notification persistence already succeeded.
         }
+
+        // Never email for emergency/admin alerts unless you explicitly want that later.
+    }
+
+    /**
+     * Backwards-compatible admin notification entry point.
+     */
+    public void notify(String title, String message, String type) {
+        notifyAdmin(title, message, type);
     }
 
     public List<Notification> getUnread() {
@@ -55,33 +69,6 @@ public class NotificationService {
         repo.save(n);
     }
 
-    public void notifyAdmin(String message) {
-        Notification n = new Notification();
-        n.setRecipient(clip("ADMIN", MAX_RECIPIENT_LEN));
-        n.setMessage(clip(message, MAX_MESSAGE_LEN));
-        repo.save(n);
-
-        try {
-            messagingTemplate.convertAndSend("/topic/admin-notifications", n);
-        } catch (Exception ignored) {
-            // Notification persistence already succeeded.
-        }
-
-        if (isEmergencyMessage(message)) {
-            return;
-        }
-
-        try {
-            emailService.send(
-                "admin@socialsea.com",
-                "New Report",
-                clip(message, MAX_MESSAGE_LEN)
-            );
-        } catch (Exception ignored) {
-            // Email delivery issues must not break request flow.
-        }
-    }
-
     public void notifyAdminInApp(String message) {
         Notification n = new Notification();
         n.setRecipient(clip("ADMIN", MAX_RECIPIENT_LEN));
@@ -95,54 +82,49 @@ public class NotificationService {
         }
     }
 
+    /**
+     * In-app only notification.
+     */
     public void notifyUser(String email, String message) {
         notifyUser(email, null, message, null);
     }
 
+    /**
+     * In-app only notification.
+     * This method DOES NOT send email.
+     */
     public void notifyUser(String email, String title, String message, String type) {
-        Notification n = new Notification();
-        n.setRecipient(clip(normalizeRecipient(email), MAX_RECIPIENT_LEN));
-        n.setTitle(clip(title, MAX_TITLE_LEN));
-        n.setType(clip(type, MAX_TYPE_LEN));
-        n.setMessage(clip(message, MAX_MESSAGE_LEN));
-        repo.save(n);
+        saveAndSendInApp(email, title, message, type);
+    }
 
-        try {
-            messagingTemplate.convertAndSend("/topic/notifications/" + clip(normalizeRecipient(email), MAX_RECIPIENT_LEN), n);
-        } catch (Exception ignored) {
-            // Notification persistence already succeeded.
-        }
+    /**
+     * Explicit method for in-app + email notifications.
+     * Use this only where email is actually required.
+     */
+    public void notifyUserWithEmail(String email, String title, String message, String type) {
+        saveAndSendInApp(email, title, message, type);
 
-        if ("EMERGENCY".equalsIgnoreCase(type) || isEmergencyMessage(message) || isEmergencyMessage(title)) {
+        // Hard block emergency emails from this generic method.
+        if ("EMERGENCY".equalsIgnoreCase(type) || isEmergencyMessage(title) || isEmergencyMessage(message)) {
             return;
         }
 
-        if (!"EMERGENCY".equalsIgnoreCase(type)) {
-            try {
-                emailService.send(
+        try {
+            emailService.send(
                     email,
                     (title != null && !title.isBlank()) ? clip(title, MAX_TITLE_LEN) : "Report Update",
                     clip(message, MAX_MESSAGE_LEN)
-                );
-            } catch (Exception ignored) {
-                // Email delivery issues must not break request flow.
-            }
+            );
+        } catch (Exception ignored) {
+            // Email delivery issues must not break request flow.
         }
     }
 
+    /**
+     * Explicitly named in-app-only method for clarity in controllers.
+     */
     public void notifyUserInApp(String email, String title, String message, String type) {
-        Notification n = new Notification();
-        n.setRecipient(clip(normalizeRecipient(email), MAX_RECIPIENT_LEN));
-        n.setTitle(clip(title, MAX_TITLE_LEN));
-        n.setType(clip(type, MAX_TYPE_LEN));
-        n.setMessage(clip(message, MAX_MESSAGE_LEN));
-        repo.save(n);
-
-        try {
-            messagingTemplate.convertAndSend("/topic/notifications/" + clip(normalizeRecipient(email), MAX_RECIPIENT_LEN), n);
-        } catch (Exception ignored) {
-            // Notification persistence already succeeded.
-        }
+        saveAndSendInApp(email, title, message, type);
     }
 
     public long getUnreadCount() {
@@ -154,11 +136,22 @@ public class NotificationService {
         repo.markAllAsRead("ADMIN");
     }
 
-    private String clip(String value, int maxLen) {
-        if (value == null) return null;
-        String v = value.trim();
-        if (v.length() <= maxLen) return v;
-        return v.substring(0, maxLen);
+    private void saveAndSendInApp(String email, String title, String message, String type) {
+        Notification n = new Notification();
+        n.setRecipient(clip(normalizeRecipient(email), MAX_RECIPIENT_LEN));
+        n.setTitle(clip(title, MAX_TITLE_LEN));
+        n.setType(clip(type, MAX_TYPE_LEN));
+        n.setMessage(clip(message, MAX_MESSAGE_LEN));
+        repo.save(n);
+
+        try {
+            messagingTemplate.convertAndSend(
+                    "/topic/notifications/" + clip(normalizeRecipient(email), MAX_RECIPIENT_LEN),
+                    n
+            );
+        } catch (Exception ignored) {
+            // Notification persistence already succeeded.
+        }
     }
 
     private String normalizeRecipient(String email) {
@@ -167,8 +160,18 @@ public class NotificationService {
     }
 
     private boolean isEmergencyMessage(String value) {
-        if (value == null) return false;
+        if (value == null || value.isBlank()) return false;
         String v = value.toLowerCase();
-        return v.contains("sos") || v.contains("emergency");
+        return v.contains("emergency")
+                || v.contains("sos")
+                || v.contains("panic")
+                || v.contains("alert nearby");
+    }
+
+    private String clip(String value, int maxLen) {
+        if (value == null) return null;
+        String v = value.trim();
+        if (v.length() <= maxLen) return v;
+        return v.substring(0, maxLen);
     }
 }

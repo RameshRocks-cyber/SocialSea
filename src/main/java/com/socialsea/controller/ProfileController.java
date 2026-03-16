@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @RestController
@@ -145,7 +146,8 @@ public class ProfileController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         }
 
-        Optional<EmergencyAlert> alertOpt = emergencyRepo.findById(alertId);
+        Long safeAlertId = Objects.requireNonNull(alertId, "alertId");
+        Optional<EmergencyAlert> alertOpt = emergencyRepo.findById(safeAlertId);
         if (alertOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Recording not found"));
         }
@@ -156,7 +158,7 @@ public class ProfileController {
         }
 
         emergencyRepo.delete(alert);
-        return ResponseEntity.ok(Map.of("ok", true, "deletedId", alertId));
+        return ResponseEntity.ok(Map.of("ok", true, "deletedId", safeAlertId));
     }
 
     @GetMapping("/name/check")

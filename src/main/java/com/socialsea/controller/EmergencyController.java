@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Objects;
 
 @RestController
 @RequestMapping({"/api/emergency", "/emergency"})
@@ -282,7 +283,8 @@ public class EmergencyController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         }
 
-        Optional<EmergencyAlert> alertOpt = emergencyRepo.findById(alertId);
+        Long safeAlertId = Objects.requireNonNull(alertId, "alertId");
+        Optional<EmergencyAlert> alertOpt = emergencyRepo.findById(safeAlertId);
         if (alertOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Alert not found"));
         }
@@ -324,7 +326,8 @@ public class EmergencyController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         }
 
-        Optional<EmergencyAlert> alertOpt = emergencyRepo.findById(alertId);
+        Long safeAlertId = Objects.requireNonNull(alertId, "alertId");
+        Optional<EmergencyAlert> alertOpt = emergencyRepo.findById(safeAlertId);
         if (alertOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Alert not found"));
         }
@@ -371,7 +374,8 @@ public class EmergencyController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         }
 
-        Optional<EmergencyAlert> alertOpt = emergencyRepo.findById(alertId);
+        Long safeAlertId = Objects.requireNonNull(alertId, "alertId");
+        Optional<EmergencyAlert> alertOpt = emergencyRepo.findById(safeAlertId);
         if (alertOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Alert not found"));
         }
@@ -429,7 +433,8 @@ public class EmergencyController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         }
 
-        Optional<EmergencyAlert> alertOpt = emergencyRepo.findById(alertId);
+        Long safeAlertId = Objects.requireNonNull(alertId, "alertId");
+        Optional<EmergencyAlert> alertOpt = emergencyRepo.findById(safeAlertId);
         if (alertOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Recording not found"));
         }
@@ -440,7 +445,7 @@ public class EmergencyController {
         }
 
         emergencyRepo.delete(alert);
-        return ResponseEntity.ok(Map.of("ok", true, "deletedId", alertId));
+        return ResponseEntity.ok(Map.of("ok", true, "deletedId", safeAlertId));
     }
 
     @PostMapping(path = "/{alertId}/stop", consumes = {"multipart/form-data"})
@@ -454,7 +459,8 @@ public class EmergencyController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         }
 
-        Optional<EmergencyAlert> alertOpt = emergencyRepo.findById(alertId);
+        Long safeAlertId = Objects.requireNonNull(alertId, "alertId");
+        Optional<EmergencyAlert> alertOpt = emergencyRepo.findById(safeAlertId);
         if (alertOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Alert not found"));
         }

@@ -135,17 +135,16 @@ public class ChatController {
         message.setCreatedAt(LocalDateTime.now());
         ChatMessage saved = chatRepo.save(message);
 
-        Map<String, Object> receiverPayload = toChatPayload(saved, me, false);
+        Map<String, Object> receiverPayload = Objects.requireNonNull(toChatPayload(saved, me, false), "payload");
         messagingTemplate.convertAndSend("/topic/chat/" + receiver.getId(), receiverPayload);
         String receiverEmail = receiver.getEmail();
         if (receiverEmail != null && !receiverEmail.isBlank()) {
             String encodedEmail = URLEncoder.encode(receiverEmail, StandardCharsets.UTF_8);
-            Object nonNullPayload = Objects.requireNonNull(receiverPayload);
-            messagingTemplate.convertAndSend("/topic/chat/email/" + encodedEmail, nonNullPayload);
+            messagingTemplate.convertAndSend("/topic/chat/email/" + encodedEmail, receiverPayload);
             messagingTemplate.convertAndSendToUser(
                     Objects.requireNonNull(receiverEmail),
                     "/queue/chat",
-                    nonNullPayload
+                    receiverPayload
             );
         }
 
@@ -182,17 +181,16 @@ public class ChatController {
         message.setCreatedAt(LocalDateTime.now());
         ChatMessage saved = chatRepo.save(message);
 
-        Map<String, Object> receiverPayload = toChatPayload(saved, me, false);
+        Map<String, Object> receiverPayload = Objects.requireNonNull(toChatPayload(saved, me, false), "payload");
         messagingTemplate.convertAndSend("/topic/chat/" + receiver.getId(), receiverPayload);
         String receiverEmail = receiver.getEmail();
         if (receiverEmail != null && !receiverEmail.isBlank()) {
             String encodedEmail = URLEncoder.encode(receiverEmail, StandardCharsets.UTF_8);
-            Object nonNullPayload = Objects.requireNonNull(receiverPayload);
-            messagingTemplate.convertAndSend("/topic/chat/email/" + encodedEmail, nonNullPayload);
+            messagingTemplate.convertAndSend("/topic/chat/email/" + encodedEmail, receiverPayload);
             messagingTemplate.convertAndSendToUser(
                     Objects.requireNonNull(receiverEmail),
                     "/queue/chat",
-                    nonNullPayload
+                    receiverPayload
             );
         }
 
@@ -236,17 +234,16 @@ public class ChatController {
         message.setCreatedAt(LocalDateTime.now());
         ChatMessage saved = chatRepo.save(message);
 
-        Map<String, Object> receiverPayload = toChatPayload(saved, me, false);
+        Map<String, Object> receiverPayload = Objects.requireNonNull(toChatPayload(saved, me, false), "payload");
         messagingTemplate.convertAndSend("/topic/chat/" + receiver.getId(), receiverPayload);
         String receiverEmail = receiver.getEmail();
         if (receiverEmail != null && !receiverEmail.isBlank()) {
             String encodedEmail = URLEncoder.encode(receiverEmail, StandardCharsets.UTF_8);
-            Object nonNullPayload = Objects.requireNonNull(receiverPayload);
-            messagingTemplate.convertAndSend("/topic/chat/email/" + encodedEmail, nonNullPayload);
+            messagingTemplate.convertAndSend("/topic/chat/email/" + encodedEmail, receiverPayload);
             messagingTemplate.convertAndSendToUser(
                     Objects.requireNonNull(receiverEmail),
                     "/queue/chat",
-                    nonNullPayload
+                    receiverPayload
             );
         }
 

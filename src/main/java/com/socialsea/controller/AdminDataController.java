@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Comparator;
 import java.util.Optional;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -122,7 +123,8 @@ public class AdminDataController {
     }
 
     private ResponseEntity<?> setUserBanState(Long id, boolean banned) {
-        Optional<User> userOpt = userRepo.findById(id);
+        Long safeId = Objects.requireNonNull(id, "id");
+        Optional<User> userOpt = userRepo.findById(safeId);
         if (userOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
         }

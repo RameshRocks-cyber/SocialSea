@@ -25,7 +25,6 @@ public class IPBlockFilter extends OncePerRequestFilter {
     }
 
     @Override
-    @SuppressWarnings("null")
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,
                                     @NonNull FilterChain filterChain)
