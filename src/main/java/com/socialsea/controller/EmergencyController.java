@@ -135,6 +135,7 @@ public class EmergencyController {
         boolean selfNotified = false;
         User nearestUser = null;
         double nearestDistance = Double.MAX_VALUE;
+        LocalDateTime now = LocalDateTime.now();
         try {
             notificationService.notifyUserInApp(
                     reporterEmail,
@@ -148,13 +149,15 @@ public class EmergencyController {
         }
         List<User> users = userRepo.findAll();
         for (User user : users) {
-            if (user.getId() == null || user.getEmail() == null) continue;
+            if (user.getId() == null || user.getEmail() == null || user.getEmail().isBlank()) continue;
             if (user.getEmail().equalsIgnoreCase(reporterEmail)) continue;
             if (reporter != null && user.getId().equals(reporter.getId())) continue;
-            if (user.getLastLatitude() == null || user.getLastLongitude() == null
-                    || user.getLocationUpdatedAt() == null
-                    || Duration.between(user.getLocationUpdatedAt(), LocalDateTime.now()).toMinutes() > MAX_LOCATION_STALE_MINUTES) {
-                // Only notify users with fresh location to respect 5km radius.
+            if (user.getLastLatitude() == null || user.getLastLongitude() == null || user.getLocationUpdatedAt() == null) {
+                continue;
+            }
+
+            long minutesOld = Duration.between(user.getLocationUpdatedAt(), now).toMinutes();
+            if (minutesOld < 0 || minutesOld > MAX_LOCATION_STALE_MINUTES) {
                 continue;
             }
 
