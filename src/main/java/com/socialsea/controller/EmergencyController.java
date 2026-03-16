@@ -132,7 +132,7 @@ public class EmergencyController {
         int notified = 0;
         boolean selfNotified = false;
         try {
-            notificationService.notifyUser(
+            notificationService.notifyUserInApp(
                     reporterEmail,
                     "Your SOS Is Active",
                     "Your SOS was triggered. Live page: " + liveUrl + ". Navigate: " + navigateUrl,
@@ -163,7 +163,7 @@ public class EmergencyController {
 
             if (distance <= radiusMeters) {
                 try {
-                    notificationService.notifyUser(
+                    notificationService.notifyUserInApp(
                             user.getEmail(),
                             "Emergency Alert Nearby",
                             message,

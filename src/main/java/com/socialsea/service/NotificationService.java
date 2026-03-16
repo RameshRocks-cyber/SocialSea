@@ -78,6 +78,19 @@ public class NotificationService {
         }
     }
 
+    public void notifyAdminInApp(String message) {
+        Notification n = new Notification();
+        n.setRecipient(clip("ADMIN", MAX_RECIPIENT_LEN));
+        n.setMessage(clip(message, MAX_MESSAGE_LEN));
+        repo.save(n);
+
+        try {
+            messagingTemplate.convertAndSend("/topic/admin-notifications", n);
+        } catch (Exception ignored) {
+            // Notification persistence already succeeded.
+        }
+    }
+
     public void notifyUser(String email, String message) {
         notifyUser(email, null, message, null);
     }
@@ -96,14 +109,31 @@ public class NotificationService {
             // Notification persistence already succeeded.
         }
 
+        if (!"EMERGENCY".equalsIgnoreCase(type)) {
+            try {
+                emailService.send(
+                    email,
+                    (title != null && !title.isBlank()) ? clip(title, MAX_TITLE_LEN) : "Report Update",
+                    clip(message, MAX_MESSAGE_LEN)
+                );
+            } catch (Exception ignored) {
+                // Email delivery issues must not break request flow.
+            }
+        }
+    }
+
+    public void notifyUserInApp(String email, String title, String message, String type) {
+        Notification n = new Notification();
+        n.setRecipient(clip(normalizeRecipient(email), MAX_RECIPIENT_LEN));
+        n.setTitle(clip(title, MAX_TITLE_LEN));
+        n.setType(clip(type, MAX_TYPE_LEN));
+        n.setMessage(clip(message, MAX_MESSAGE_LEN));
+        repo.save(n);
+
         try {
-            emailService.send(
-                email,
-                (title != null && !title.isBlank()) ? clip(title, MAX_TITLE_LEN) : "Report Update",
-                clip(message, MAX_MESSAGE_LEN)
-            );
+            messagingTemplate.convertAndSend("/topic/notifications/" + clip(normalizeRecipient(email), MAX_RECIPIENT_LEN), n);
         } catch (Exception ignored) {
-            // Email delivery issues must not break request flow.
+            // Notification persistence already succeeded.
         }
     }
 
