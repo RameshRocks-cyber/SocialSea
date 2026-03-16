@@ -43,9 +43,9 @@ public class LiveKitController {
             return ResponseEntity.badRequest().body(Map.of("message", "room required"));
         }
         String identity = auth.getName();
-        AccessToken token = new AccessToken(apiKey, apiSecret)
-                .setIdentity(identity)
-                .addGrants(new RoomJoin(true), new RoomName(room));
+        AccessToken token = new AccessToken(apiKey, apiSecret);
+        token.setIdentity(identity);
+        token.addGrants(new RoomJoin(true), new RoomName(room));
         return ResponseEntity.ok(Map.of("token", token.toJwt()));
     }
 }
