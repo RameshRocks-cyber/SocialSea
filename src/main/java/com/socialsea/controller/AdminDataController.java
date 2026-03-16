@@ -36,7 +36,7 @@ import java.util.Optional;
     "http://43.205.213.14:5173"
 })
 public class AdminDataController {
-    private static final int SOS_NEARBY_RADIUS_METERS = 5000;
+    private static final int DEFAULT_SOS_RADIUS_METERS = 5000;
     private static final int SOS_NEARBY_ALERT_LIMIT = 100;
 
     private final UserRepository userRepo;
@@ -192,7 +192,7 @@ public class AdminDataController {
         item.put("currentLatitude", a.getCurrentLatitude());
         item.put("currentLongitude", a.getCurrentLongitude());
         item.put("accuracyMeters", a.getAccuracyMeters());
-        item.put("radiusMeters", SOS_NEARBY_RADIUS_METERS);
+        item.put("radiusMeters", effectiveRadiusMeters(a));
         item.put("triggerType", "SOS_3_TAP");
         Map<String, Object> exactLocation = new HashMap<>();
         exactLocation.put("latitude", exactLat);
@@ -231,7 +231,7 @@ public class AdminDataController {
         item.put("reporterEmail", reporterEmail);
         item.put("latitude", lat);
         item.put("longitude", lon);
-        item.put("radiusMeters", SOS_NEARBY_RADIUS_METERS);
+        item.put("radiusMeters", effectiveRadiusMeters(alert));
 
         if (lat == null || lon == null) {
             item.put("nearbyUsers", List.of());
@@ -257,7 +257,7 @@ public class AdminDataController {
                 })
                 .filter(row -> {
                     Number distance = (Number) row.get("distanceMeters");
-                    return distance != null && distance.longValue() <= SOS_NEARBY_RADIUS_METERS;
+                    return distance != null && distance.longValue() <= effectiveRadiusMeters(alert);
                 })
                 .sorted(Comparator.comparingLong(row -> ((Number) row.get("distanceMeters")).longValue()))
                 .toList();
@@ -265,6 +265,13 @@ public class AdminDataController {
         item.put("nearbyUsers", nearbyUsers);
         item.put("nearbyCount", nearbyUsers.size());
         return item;
+    }
+
+    private int effectiveRadiusMeters(EmergencyAlert alert) {
+        if (alert == null || alert.getRadiusMeters() == null || alert.getRadiusMeters() <= 0) {
+            return DEFAULT_SOS_RADIUS_METERS;
+        }
+        return alert.getRadiusMeters();
     }
 
     private double haversineMeters(double lat1, double lon1, double lat2, double lon2) {

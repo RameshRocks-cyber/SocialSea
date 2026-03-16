@@ -105,6 +105,7 @@ public class EmailService {
         return apiKey != null && !apiKey.isBlank();
     }
 
+
     private void sendViaSmtp(String to, String subject, String body) {
         if (javaMailSender == null) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Email service not configured");

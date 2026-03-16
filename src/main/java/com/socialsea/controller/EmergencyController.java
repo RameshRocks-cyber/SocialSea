@@ -5,6 +5,7 @@ import com.socialsea.model.User;
 import com.socialsea.repository.EmergencyAlertRepository;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.CloudinaryService;
+import com.socialsea.service.EmailService;
 import com.socialsea.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,6 +45,7 @@ public class EmergencyController {
     private final EmergencyAlertRepository emergencyRepo;
     private final NotificationService notificationService;
     private final CloudinaryService cloudinaryService;
+    private final EmailService emailService;
     @Value("${app.frontend.base-url:http://localhost:5173}")
     private String frontendBaseUrl;
 
@@ -131,6 +133,8 @@ public class EmergencyController {
 
         int notified = 0;
         boolean selfNotified = false;
+        User nearestUser = null;
+        double nearestDistance = Double.MAX_VALUE;
         try {
             notificationService.notifyUserInApp(
                     reporterEmail,
@@ -173,6 +177,10 @@ public class EmergencyController {
                 } catch (Exception ignored) {
                     // Keep dispatching to others even if one recipient channel fails.
                 }
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearestUser = user;
+                }
             }
         }
 
@@ -184,6 +192,18 @@ public class EmergencyController {
             );
         } catch (Exception ignored) {
             // Admin summary notification failure should not block SOS trigger.
+        }
+
+        if (nearestUser != null && nearestUser.getEmail() != null && !nearestUser.getEmail().isBlank()) {
+            try {
+                emailService.send(
+                        nearestUser.getEmail(),
+                        "Emergency Alert Nearby",
+                        message
+                );
+            } catch (Exception ignored) {
+                // Email delivery issues must not block SOS trigger.
+            }
         }
 
         Map<String, Object> response = new HashMap<>();

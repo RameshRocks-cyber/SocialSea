@@ -67,6 +67,10 @@ public class NotificationService {
             // Notification persistence already succeeded.
         }
 
+        if (isEmergencyMessage(message)) {
+            return;
+        }
+
         try {
             emailService.send(
                 "admin@socialsea.com",
@@ -107,6 +111,10 @@ public class NotificationService {
             messagingTemplate.convertAndSend("/topic/notifications/" + clip(normalizeRecipient(email), MAX_RECIPIENT_LEN), n);
         } catch (Exception ignored) {
             // Notification persistence already succeeded.
+        }
+
+        if ("EMERGENCY".equalsIgnoreCase(type) || isEmergencyMessage(message) || isEmergencyMessage(title)) {
+            return;
         }
 
         if (!"EMERGENCY".equalsIgnoreCase(type)) {
@@ -156,5 +164,11 @@ public class NotificationService {
     private String normalizeRecipient(String email) {
         if (email == null) return null;
         return email.trim().toLowerCase();
+    }
+
+    private boolean isEmergencyMessage(String value) {
+        if (value == null) return false;
+        String v = value.toLowerCase();
+        return v.contains("sos") || v.contains("emergency");
     }
 }
