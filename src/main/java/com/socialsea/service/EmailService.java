@@ -56,6 +56,9 @@ public class EmailService {
     }
 
     public void send(String to, String subject, String body) {
+        if (isEmergencyMessage(subject, body)) {
+            return;
+        }
         if (hasResend()) {
             String json = """
             {
@@ -73,6 +76,25 @@ public class EmailService {
 
     public void sendEmail(String to, String subject, String body) {
         send(to, subject, body);
+    }
+
+    /**
+     * Explicitly allow emergency/SOS emails from the emergency flow only.
+     */
+    public void sendEmergency(String to, String subject, String body) {
+        if (hasResend()) {
+            String json = """
+            {
+              "from": "%s",
+              "to": ["%s"],
+              "subject": "%s",
+              "html": "<p>%s</p>"
+            }
+            """.formatted(FROM, to, subject, body);
+            sendRequest(json);
+            return;
+        }
+        sendViaSmtp(to, subject, body);
     }
 
     private void sendRequest(String json) {
@@ -103,6 +125,11 @@ public class EmailService {
 
     private boolean hasResend() {
         return apiKey != null && !apiKey.isBlank();
+    }
+
+    private boolean isEmergencyMessage(String subject, String body) {
+        String haystack = (String.valueOf(subject) + " " + String.valueOf(body)).toLowerCase();
+        return haystack.contains("sos") || haystack.contains("emergency");
     }
 
 

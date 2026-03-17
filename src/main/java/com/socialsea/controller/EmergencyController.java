@@ -8,6 +8,8 @@ import com.socialsea.service.CloudinaryService;
 import com.socialsea.service.EmailService;
 import com.socialsea.service.NotificationService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -41,6 +43,7 @@ public class EmergencyController {
     private static final int DEFAULT_RADIUS_METERS = 5000;
     private static final long MAX_LOCATION_STALE_MINUTES = 30;
     private static final String DEFAULT_FRONTEND_BASE = "https://socialsea.co.in";
+    private static final Logger log = LoggerFactory.getLogger(EmergencyController.class);
 
     private final UserRepository userRepo;
     private final EmergencyAlertRepository emergencyRepo;
@@ -52,16 +55,24 @@ public class EmergencyController {
 
     @PostMapping("/presence")
     public ResponseEntity<?> presence(@RequestBody PresenceRequest request, Authentication auth) {
-        if (auth == null || !auth.isAuthenticated()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
-        }
         if (request == null || request.latitude == null || request.longitude == null) {
             return ResponseEntity.badRequest().body(Map.of("message", "latitude and longitude are required"));
         }
 
-        User user = userRepo.findByEmail(auth.getName()).orElse(null);
+        String reporterEmail = null;
+        if (auth != null && auth.isAuthenticated()) {
+            reporterEmail = auth.getName();
+        }
+        if ((reporterEmail == null || reporterEmail.isBlank()) && request.reporterEmail != null) {
+            reporterEmail = request.reporterEmail.trim();
+        }
+        if (reporterEmail == null || reporterEmail.isBlank()) {
+            return ResponseEntity.ok(Map.of("ok", true, "message", "Presence ignored: no reporter identity"));
+        }
+
+        User user = userRepo.findByEmail(reporterEmail).orElse(null);
         if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "User not found"));
+            return ResponseEntity.ok(Map.of("ok", true, "message", "Presence ignored: user not found"));
         }
 
         user.setLastLatitude(request.latitude);
@@ -69,6 +80,9 @@ public class EmergencyController {
         user.setLocationUpdatedAt(LocalDateTime.now());
         userRepo.save(user);
 
+        if (auth == null || !auth.isAuthenticated()) {
+            log.info("SOS presence update from unauth user {} at {},{}", reporterEmail, request.latitude, request.longitude);
+        }
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
@@ -178,6 +192,8 @@ public class EmergencyController {
                             "EMERGENCY"
                     );
                     notified++;
+                    log.info("SOS notify in-app -> {} (distance={}m, radius={}m, alertId={})",
+                            user.getEmail(), Math.round(distance), radiusMeters, saved.getId());
                 } catch (Exception ignored) {
                     // Keep dispatching to others even if one recipient channel fails.
                 }
@@ -187,6 +203,8 @@ public class EmergencyController {
                 }
             }
         }
+        log.info("SOS trigger summary: reporter={}, alertId={}, notifiedUsers={}, radiusMeters={}",
+                reporterEmail, saved.getId(), notified, radiusMeters);
 
         try {
             notificationService.notify(
@@ -200,7 +218,7 @@ public class EmergencyController {
 
         if (nearestUser != null && nearestUser.getEmail() != null && !nearestUser.getEmail().isBlank()) {
             try {
-                emailService.send(
+                emailService.sendEmergency(
                         nearestUser.getEmail(),
                         "Emergency Alert Nearby",
                         message
@@ -228,13 +246,27 @@ public class EmergencyController {
     }
 
     @GetMapping("/active")
-    public ResponseEntity<?> activeAlerts(Authentication auth, HttpServletRequest httpRequest) {
+    public ResponseEntity<?> activeAlerts(
+            Authentication auth,
+            HttpServletRequest httpRequest,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lon,
+            @RequestParam(required = false) Double latitude,
+            @RequestParam(required = false) Double longitude,
+            @RequestParam(required = false) Integer radiusMeters,
+            @RequestParam(required = false) Double radiusKm,
+            @RequestParam(required = false, defaultValue = "false") boolean debug
+    ) {
         String frontendBase = resolveFrontendBaseUrl(httpRequest);
 
         // If unauthenticated or location is missing/stale, return active alerts without distance filtering.
         User me = null;
         boolean canFilterByDistance = false;
-        if (auth != null && auth.isAuthenticated()) {
+        Double queryLat = lat != null ? lat : latitude;
+        Double queryLon = lon != null ? lon : longitude;
+        if (queryLat != null && queryLon != null) {
+            canFilterByDistance = true;
+        } else if (auth != null && auth.isAuthenticated()) {
             me = userRepo.findByEmail(auth.getName()).orElse(null);
             if (me != null && me.getLastLatitude() != null && me.getLastLongitude() != null && me.getLocationUpdatedAt() != null
                     && Duration.between(me.getLocationUpdatedAt(), LocalDateTime.now()).toMinutes() <= MAX_LOCATION_STALE_MINUTES) {
@@ -244,20 +276,66 @@ public class EmergencyController {
 
         final User viewer = me;
         final boolean filterByDistance = canFilterByDistance;
+        final Double filterLat = queryLat != null ? queryLat : (viewer != null ? viewer.getLastLatitude() : null);
+        final Double filterLon = queryLon != null ? queryLon : (viewer != null ? viewer.getLastLongitude() : null);
+        final Integer queryRadiusMeters = radiusMeters != null && radiusMeters > 0
+                ? radiusMeters
+                : (radiusKm != null && radiusKm > 0 ? (int) Math.round(radiusKm * 1000) : null);
 
-        List<Map<String, Object>> items = emergencyRepo.findTop20ByActiveTrueOrderByStartedAtDesc()
+        List<EmergencyAlert> rawAlerts = emergencyRepo.findTop20ByActiveTrueOrderByStartedAtDesc();
+        if (debug) {
+            Map<String, Object> debugMeta = new HashMap<>();
+            debugMeta.put("viewerLat", filterLat);
+            debugMeta.put("viewerLon", filterLon);
+            debugMeta.put("filterByDistance", filterByDistance);
+            debugMeta.put("queryRadiusMeters", queryRadiusMeters);
+            debugMeta.put("authUser", auth != null && auth.isAuthenticated() ? auth.getName() : null);
+
+            List<Map<String, Object>> debugItems = rawAlerts.stream()
+                    .map(a -> {
+                        Map<String, Object> item = new HashMap<>();
+                        item.put("alertId", a.getId());
+                        item.put("reporterEmail", a.getReporterEmail());
+                        item.put("active", a.isActive());
+                        Double aLat = a.getCurrentLatitude() != null ? a.getCurrentLatitude() : a.getLatitude();
+                        Double aLon = a.getCurrentLongitude() != null ? a.getCurrentLongitude() : a.getLongitude();
+                        item.put("latitude", aLat);
+                        item.put("longitude", aLon);
+                        int effectiveRadius = queryRadiusMeters != null && queryRadiusMeters > 0
+                                ? queryRadiusMeters
+                                : (a.getRadiusMeters() != null && a.getRadiusMeters() > 0 ? a.getRadiusMeters() : DEFAULT_RADIUS_METERS);
+                        item.put("radiusMeters", effectiveRadius);
+                        if (aLat == null || aLon == null) {
+                            item.put("reason", "missing-alert-location");
+                            return item;
+                        }
+                        if (!filterByDistance || filterLat == null || filterLon == null) {
+                            item.put("reason", "no-distance-filter");
+                            return item;
+                        }
+                        double distance = haversineMeters(aLat, aLon, filterLat, filterLon);
+                        item.put("distanceMeters", Math.round(distance));
+                        item.put("reason", distance <= effectiveRadius ? "within-radius" : "outside-radius");
+                        return item;
+                    })
+                    .toList();
+            return ResponseEntity.ok(Map.of("debug", debugMeta, "alerts", debugItems));
+        }
+
+        List<Map<String, Object>> items = rawAlerts
                 .stream()
                 .filter(a -> auth == null || !auth.isAuthenticated() || !auth.getName().equalsIgnoreCase(a.getReporterEmail()))
                 .filter(a -> {
-                    if (!filterByDistance || viewer == null) return true;
+                    if (!filterByDistance) return true;
                     Double lat = a.getCurrentLatitude() != null ? a.getCurrentLatitude() : a.getLatitude();
                     Double lon = a.getCurrentLongitude() != null ? a.getCurrentLongitude() : a.getLongitude();
                     if (lat == null || lon == null) return false;
-                    int radiusMeters = a.getRadiusMeters() != null && a.getRadiusMeters() > 0
-                            ? a.getRadiusMeters()
-                            : DEFAULT_RADIUS_METERS;
-                    double distance = haversineMeters(lat, lon, viewer.getLastLatitude(), viewer.getLastLongitude());
-                    return distance <= radiusMeters;
+                    int effectiveRadius = queryRadiusMeters != null && queryRadiusMeters > 0
+                            ? queryRadiusMeters
+                            : (a.getRadiusMeters() != null && a.getRadiusMeters() > 0 ? a.getRadiusMeters() : DEFAULT_RADIUS_METERS);
+                    if (filterLat == null || filterLon == null) return true;
+                    double distance = haversineMeters(lat, lon, filterLat, filterLon);
+                    return distance <= effectiveRadius;
                 })
                 .map(a -> {
                     Map<String, Object> item = new HashMap<>();
@@ -550,6 +628,7 @@ public class EmergencyController {
     public static class PresenceRequest {
         public Double latitude;
         public Double longitude;
+        public String reporterEmail;
     }
 
     public static class HeartbeatRequest {
