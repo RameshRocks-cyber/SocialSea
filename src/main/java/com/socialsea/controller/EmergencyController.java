@@ -29,14 +29,7 @@ import java.util.Objects;
 
 @RestController
 @RequestMapping({"/api/emergency", "/emergency"})
-@CrossOrigin(origins = {
-        "https://socialsea.netlify.app",
-        "https://socialsea.co.in",
-        "https://www.socialsea.co.in",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://43.205.213.14:5173"
-})
+@CrossOrigin(originPatterns = "*")
 @RequiredArgsConstructor
 public class EmergencyController {
 
@@ -255,7 +248,8 @@ public class EmergencyController {
             @RequestParam(required = false) Double longitude,
             @RequestParam(required = false) Integer radiusMeters,
             @RequestParam(required = false) Double radiusKm,
-            @RequestParam(required = false, defaultValue = "false") boolean debug
+            @RequestParam(required = false, defaultValue = "false") boolean debug,
+            @RequestParam(required = false, defaultValue = "false") boolean includeReporter
     ) {
         String frontendBase = resolveFrontendBaseUrl(httpRequest);
 
@@ -289,6 +283,7 @@ public class EmergencyController {
             debugMeta.put("viewerLon", filterLon);
             debugMeta.put("filterByDistance", filterByDistance);
             debugMeta.put("queryRadiusMeters", queryRadiusMeters);
+            debugMeta.put("includeReporter", includeReporter);
             debugMeta.put("authUser", auth != null && auth.isAuthenticated() ? auth.getName() : null);
 
             List<Map<String, Object>> debugItems = rawAlerts.stream()
@@ -324,7 +319,7 @@ public class EmergencyController {
 
         List<Map<String, Object>> items = rawAlerts
                 .stream()
-                .filter(a -> auth == null || !auth.isAuthenticated() || !auth.getName().equalsIgnoreCase(a.getReporterEmail()))
+                .filter(a -> includeReporter || auth == null || !auth.isAuthenticated() || !auth.getName().equalsIgnoreCase(a.getReporterEmail()))
                 .filter(a -> {
                     if (!filterByDistance) return true;
                     Double lat = a.getCurrentLatitude() != null ? a.getCurrentLatitude() : a.getLatitude();
