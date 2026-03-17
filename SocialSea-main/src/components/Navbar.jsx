@@ -361,6 +361,15 @@ export default function Navbar() {
         const initialLoad = !notificationsInitializedRef.current
         const me = parseJwtPayload(getToken())?.sub || null
         const suppressPopups = suppressEmergencyPopups
+        const isEmergencyNotice = (n) => {
+          if (!n) return false
+          if (n.kind === "emergency") return true
+          if (String(n.type || "").toUpperCase() === "EMERGENCY") return true
+          const title = String(n.title || "")
+          const message = String(n.message || "")
+          return /sos|emergency|panic|alert nearby/i.test(`${title} ${message}`)
+        }
+
         const isSelfNotification = (n) => {
           if (!n) return false
           const title = String(n.title || "").toLowerCase()
@@ -375,7 +384,7 @@ export default function Navbar() {
           notificationsInitializedRef.current = true
           const firstUnreadEmergency = items.find((n) => {
             if (n?.id == null || n.read) return false
-            if (!(n.kind === "emergency" || String(n.type || "").toUpperCase() === "EMERGENCY")) return false
+            if (!isEmergencyNotice(n)) return false
             if (isSelfNotification(n)) return false
             const incomingAlertId = inferAlertId(n)
             const activeLocalAlertId =
@@ -397,7 +406,7 @@ export default function Navbar() {
           if (n?.id == null) continue
           if (seenNotificationIdsRef.current.has(n.id)) continue
           seenNotificationIdsRef.current.add(n.id)
-          if ((n.kind === "emergency" || String(n.type || "").toUpperCase() === "EMERGENCY") && !n.read) {
+          if (isEmergencyNotice(n) && !n.read) {
             if (isSelfNotification(n)) continue
             const incomingAlertId = inferAlertId(n)
             const activeLocalAlertId =
