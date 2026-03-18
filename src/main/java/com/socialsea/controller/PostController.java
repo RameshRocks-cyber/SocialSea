@@ -4,6 +4,8 @@ import com.socialsea.model.Post;
 import com.socialsea.model.Role;
 import com.socialsea.model.User;
 import com.socialsea.repository.PostRepository;
+import com.socialsea.repository.StoryRepository;
+import com.socialsea.model.Story;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.CloudinaryService;
 import org.springframework.http.HttpStatus;
@@ -28,20 +30,30 @@ public class PostController {
     private final PostRepository postRepo;
     private final UserRepository userRepo;
     private final CloudinaryService cloudinaryService;
+    private final StoryRepository storyRepo;
 
     public PostController(
         PostRepository postRepo,
         UserRepository userRepo,
-        CloudinaryService cloudinaryService
+        CloudinaryService cloudinaryService,
+        StoryRepository storyRepo
     ) {
         this.postRepo = postRepo;
         this.userRepo = userRepo;
         this.cloudinaryService = cloudinaryService;
+        this.storyRepo = storyRepo;
     }
 
     @PostMapping("/upload")
     public ResponseEntity<?> upload(
         @RequestParam("file") MultipartFile file,
+        @RequestParam(value = "isStory", required = false) String isStory,
+        @RequestParam(value = "storyPrivacy", required = false) String storyPrivacy,
+        @RequestParam(value = "storyExpiresHours", required = false) String storyExpiresHours,
+        @RequestParam(value = "storyText", required = false) String storyText,
+        @RequestParam(value = "caption", required = false) String caption,
+        @RequestParam(value = "storyStyle", required = false) String storyStyle,
+        @RequestParam(value = "storyTextStyle", required = false) String storyTextStyle,
         Authentication auth
     ) {
         if (file == null || file.isEmpty()) {
@@ -74,6 +86,30 @@ public class PostController {
 
         try {
             Post saved = postRepo.save(post);
+
+            boolean wantsStory = isStory != null && isStory.equalsIgnoreCase("true");
+            if (wantsStory) {
+                Story story = new Story();
+                story.setMediaUrl(url);
+                story.setCaption(caption != null ? caption : "");
+                story.setStoryText(storyText != null ? storyText : "");
+                story.setStoryStyle(storyStyle != null ? storyStyle : "");
+                story.setStoryTextStyle(storyTextStyle != null ? storyTextStyle : "");
+                story.setPrivacy(storyPrivacy != null ? storyPrivacy : "public");
+                story.setUser(user);
+                if (storyExpiresHours != null) {
+                    try {
+                        long hours = Long.parseLong(storyExpiresHours);
+                        story.setExpiresAt(java.time.LocalDateTime.now().plusHours(hours));
+                    } catch (Exception ignored) {
+                        story.setExpiresAt(java.time.LocalDateTime.now().plusHours(24));
+                    }
+                } else {
+                    story.setExpiresAt(java.time.LocalDateTime.now().plusHours(24));
+                }
+                storyRepo.save(story);
+            }
+
             return ResponseEntity.ok(Map.of(
                 "id", saved.getId(),
                 "mediaUrl", saved.getMediaUrl(),

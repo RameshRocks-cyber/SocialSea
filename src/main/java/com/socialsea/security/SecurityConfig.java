@@ -61,6 +61,7 @@ public class SecurityConfig {
                     "/api/emergency/trigger",
                     "/api/emergency/active",
                     "/api/emergency/presence",
+                    "/api/live-broadcast/active",
                     "/emergency/trigger",
                     "/emergency/active",
                     "/emergency/presence",
