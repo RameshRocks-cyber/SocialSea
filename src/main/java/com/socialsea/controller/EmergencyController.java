@@ -35,7 +35,7 @@ public class EmergencyController {
 
     private static final int DEFAULT_RADIUS_METERS = 5000;
     private static final long MAX_LOCATION_STALE_MINUTES = 30;
-    private static final int MAX_PREVIEW_FRAME_CHARS = 200000;
+    private static final int MAX_PREVIEW_FRAME_CHARS = 700000;
     private static final String DEFAULT_FRONTEND_BASE = "https://socialsea.co.in";
     private static final Logger log = LoggerFactory.getLogger(EmergencyController.class);
 

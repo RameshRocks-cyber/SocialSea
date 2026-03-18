@@ -35,7 +35,7 @@ public class EmergencyAlert {
     private boolean liveVideoActive;
     private LocalDateTime lastHeartbeatAt;
     @Lob
-    @Column(length = 200000)
+    @Column(length = 700000)
     private String lastPreviewFrame;
     private String lastPreviewFrameAt;
 
