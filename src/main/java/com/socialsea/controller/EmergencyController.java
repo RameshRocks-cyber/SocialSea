@@ -415,6 +415,25 @@ public class EmergencyController {
         return ResponseEntity.ok(payload);
     }
 
+    @GetMapping("/{alertId}/preview-frame")
+    public ResponseEntity<?> previewFrame(@PathVariable Long alertId) {
+        Long safeAlertId = Objects.requireNonNull(alertId, "alertId");
+        Optional<EmergencyAlert> alertOpt = emergencyRepo.findById(safeAlertId);
+        if (alertOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Alert not found"));
+        }
+        EmergencyAlert alert = alertOpt.get();
+        PreviewFrame cachedPreview = PREVIEW_CACHE.get(alert.getId());
+        String frame = alert.getLastPreviewFrame() != null ? alert.getLastPreviewFrame() : (cachedPreview != null ? cachedPreview.frame : null);
+        String at = alert.getLastPreviewFrameAt() != null ? alert.getLastPreviewFrameAt() : (cachedPreview != null ? cachedPreview.at : null);
+        return ResponseEntity.ok(Map.of(
+                "alertId", alert.getId(),
+                "active", alert.isActive(),
+                "frame", frame,
+                "at", at
+        ));
+    }
+
     @PostMapping("/{alertId}/heartbeat")
     public ResponseEntity<?> heartbeat(
             @PathVariable Long alertId,
