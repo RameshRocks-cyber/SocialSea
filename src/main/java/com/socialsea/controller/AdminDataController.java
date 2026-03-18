@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +41,7 @@ import java.util.Objects;
 public class AdminDataController {
     private static final int DEFAULT_SOS_RADIUS_METERS = 5000;
     private static final int SOS_NEARBY_ALERT_LIMIT = 100;
+    private static final long MAX_LOCATION_STALE_MINUTES = 30;
 
     private final UserRepository userRepo;
     private final PostRepository postRepo;
@@ -241,10 +244,15 @@ public class AdminDataController {
             return item;
         }
 
+        LocalDateTime now = LocalDateTime.now();
         List<Map<String, Object>> nearbyUsers = allUsers.stream()
                 .filter(u -> u.getId() != null && u.getEmail() != null)
                 .filter(u -> reporterEmail == null || !u.getEmail().equalsIgnoreCase(reporterEmail))
-                .filter(u -> u.getLastLatitude() != null && u.getLastLongitude() != null)
+                .filter(u -> u.getLastLatitude() != null && u.getLastLongitude() != null && u.getLocationUpdatedAt() != null)
+                .filter(u -> {
+                    long minutesOld = Duration.between(u.getLocationUpdatedAt(), now).toMinutes();
+                    return minutesOld >= 0 && minutesOld <= MAX_LOCATION_STALE_MINUTES;
+                })
                 .map(u -> {
                     double distanceMeters = haversineMeters(lat, lon, u.getLastLatitude(), u.getLastLongitude());
                     Map<String, Object> row = new HashMap<>();

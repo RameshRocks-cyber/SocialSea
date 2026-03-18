@@ -140,6 +140,7 @@ public class EmergencyController {
                 + "Live AV: " + (alert.isLiveAudioActive() || alert.isLiveVideoActive() ? "ON" : "OFF");
 
         int notified = 0;
+        List<Map<String, Object>> nearbyUsers = new java.util.ArrayList<>();
         boolean selfNotified = false;
         User nearestUser = null;
         double nearestDistance = Double.MAX_VALUE;
@@ -177,6 +178,15 @@ public class EmergencyController {
             );
 
             if (distance <= radiusMeters) {
+                Map<String, Object> row = new HashMap<>();
+                row.put("id", user.getId());
+                row.put("name", user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getEmail());
+                row.put("email", user.getEmail());
+                row.put("distanceMeters", Math.round(distance));
+                row.put("latitude", user.getLastLatitude());
+                row.put("longitude", user.getLastLongitude());
+                row.put("locationUpdatedAt", user.getLocationUpdatedAt());
+                nearbyUsers.add(row);
                 try {
                     notificationService.notifyUserInApp(
                             user.getEmail(),
@@ -230,6 +240,8 @@ public class EmergencyController {
         response.put("navigateUrl", navigateUrl);
         response.put("audioActive", saved.isLiveAudioActive());
         response.put("videoActive", saved.isLiveVideoActive());
+        response.put("nearbyUsers", nearbyUsers);
+        response.put("nearbyCount", nearbyUsers.size());
         Map<String, Object> location = new HashMap<>();
         location.put("latitude", request.latitude);
         location.put("longitude", request.longitude);
@@ -249,7 +261,8 @@ public class EmergencyController {
             @RequestParam(required = false) Integer radiusMeters,
             @RequestParam(required = false) Double radiusKm,
             @RequestParam(required = false, defaultValue = "false") boolean debug,
-            @RequestParam(required = false, defaultValue = "false") boolean includeReporter
+            @RequestParam(required = false, defaultValue = "false") boolean includeReporter,
+            @RequestParam(required = false, defaultValue = "false") boolean includeNearby
     ) {
         String frontendBase = resolveFrontendBaseUrl(httpRequest);
 
@@ -277,6 +290,8 @@ public class EmergencyController {
                 : (radiusKm != null && radiusKm > 0 ? (int) Math.round(radiusKm * 1000) : null);
 
         List<EmergencyAlert> rawAlerts = emergencyRepo.findTop20ByActiveTrueOrderByStartedAtDesc();
+        final boolean shouldIncludeNearby = includeNearby || includeReporter;
+        final List<User> allUsers = shouldIncludeNearby ? userRepo.findAll() : List.of();
         if (debug) {
             Map<String, Object> debugMeta = new HashMap<>();
             debugMeta.put("viewerLat", filterLat);
@@ -344,6 +359,11 @@ public class EmergencyController {
                     item.put("radiusMeters", a.getRadiusMeters());
                     item.put("liveUrl", frontendBase + "/sos/live/" + a.getId());
                     item.put("navigateUrl", frontendBase + "/sos/navigate/" + a.getId());
+                    if (shouldIncludeNearby) {
+                        List<Map<String, Object>> nearbyUsers = buildNearbyUsers(a, allUsers);
+                        item.put("nearbyUsers", nearbyUsers);
+                        item.put("nearbyCount", nearbyUsers.size());
+                    }
                     return item;
                 })
                 .toList();
@@ -565,6 +585,44 @@ public class EmergencyController {
                 "audioActive", saved.isLiveAudioActive(),
                 "videoActive", saved.isLiveVideoActive()
         ));
+    }
+
+    private List<Map<String, Object>> buildNearbyUsers(EmergencyAlert alert, List<User> allUsers) {
+        if (alert == null || allUsers == null || allUsers.isEmpty()) return List.of();
+        Double lat = alert.getCurrentLatitude() != null ? alert.getCurrentLatitude() : alert.getLatitude();
+        Double lon = alert.getCurrentLongitude() != null ? alert.getCurrentLongitude() : alert.getLongitude();
+        if (lat == null || lon == null) return List.of();
+        String reporterEmail = alert.getReporterEmail();
+        int effectiveRadius = alert.getRadiusMeters() != null && alert.getRadiusMeters() > 0
+                ? alert.getRadiusMeters()
+                : DEFAULT_RADIUS_METERS;
+        LocalDateTime now = LocalDateTime.now();
+
+        return allUsers.stream()
+                .filter(u -> u.getId() != null && u.getEmail() != null && !u.getEmail().isBlank())
+                .filter(u -> reporterEmail == null || !u.getEmail().equalsIgnoreCase(reporterEmail))
+                .filter(u -> u.getLastLatitude() != null && u.getLastLongitude() != null && u.getLocationUpdatedAt() != null)
+                .filter(u -> {
+                    long minutesOld = Duration.between(u.getLocationUpdatedAt(), now).toMinutes();
+                    return minutesOld >= 0 && minutesOld <= MAX_LOCATION_STALE_MINUTES;
+                })
+                .map(u -> {
+                    double distanceMeters = haversineMeters(lat, lon, u.getLastLatitude(), u.getLastLongitude());
+                    Map<String, Object> row = new HashMap<>();
+                    row.put("id", u.getId());
+                    row.put("name", (u.getName() != null && !u.getName().isBlank()) ? u.getName() : u.getEmail());
+                    row.put("email", u.getEmail());
+                    row.put("distanceMeters", Math.round(distanceMeters));
+                    row.put("latitude", u.getLastLatitude());
+                    row.put("longitude", u.getLastLongitude());
+                    row.put("locationUpdatedAt", u.getLocationUpdatedAt());
+                    return row;
+                })
+                .filter(row -> {
+                    Number distance = (Number) row.get("distanceMeters");
+                    return distance != null && distance.longValue() <= effectiveRadius;
+                })
+                .toList();
     }
 
     private double haversineMeters(double lat1, double lon1, double lat2, double lon2) {
