@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping({"/api/emergency", "/emergency"})
@@ -38,6 +39,7 @@ public class EmergencyController {
     private static final int MAX_PREVIEW_FRAME_CHARS = 700000;
     private static final String DEFAULT_FRONTEND_BASE = "https://socialsea.co.in";
     private static final Logger log = LoggerFactory.getLogger(EmergencyController.class);
+    private static final Map<Long, PreviewFrame> PREVIEW_CACHE = new ConcurrentHashMap<>();
 
     private final UserRepository userRepo;
     private final EmergencyAlertRepository emergencyRepo;
@@ -407,8 +409,9 @@ public class EmergencyController {
         payload.put("liveUrl", liveUrl);
         payload.put("navigateUrl", navigateUrl);
         payload.put("radiusMeters", alert.getRadiusMeters());
-        payload.put("previewFrame", alert.getLastPreviewFrame());
-        payload.put("previewFrameAt", alert.getLastPreviewFrameAt());
+        PreviewFrame cachedPreview = PREVIEW_CACHE.get(alert.getId());
+        payload.put("previewFrame", alert.getLastPreviewFrame() != null ? alert.getLastPreviewFrame() : (cachedPreview != null ? cachedPreview.frame : null));
+        payload.put("previewFrameAt", alert.getLastPreviewFrameAt() != null ? alert.getLastPreviewFrameAt() : (cachedPreview != null ? cachedPreview.at : null));
         return ResponseEntity.ok(payload);
     }
 
@@ -459,6 +462,7 @@ public class EmergencyController {
                             ? request.previewFrameAt
                             : LocalDateTime.now().toString();
                     alert.setLastPreviewFrameAt(frameAt);
+                    PREVIEW_CACHE.put(alert.getId(), new PreviewFrame(frame, frameAt));
                 }
             }
         }
@@ -505,8 +509,9 @@ public class EmergencyController {
         payload.put("lastHeartbeatAt", alert.getLastHeartbeatAt());
         payload.put("mediaUrl", alert.getMediaUrl());
         payload.put("durationMs", alert.getDurationMs());
-        payload.put("previewFrame", alert.getLastPreviewFrame());
-        payload.put("previewFrameAt", alert.getLastPreviewFrameAt());
+        PreviewFrame cachedPreview = PREVIEW_CACHE.get(alert.getId());
+        payload.put("previewFrame", alert.getLastPreviewFrame() != null ? alert.getLastPreviewFrame() : (cachedPreview != null ? cachedPreview.frame : null));
+        payload.put("previewFrameAt", alert.getLastPreviewFrameAt() != null ? alert.getLastPreviewFrameAt() : (cachedPreview != null ? cachedPreview.at : null));
         return ResponseEntity.ok(payload);
     }
 
@@ -586,6 +591,7 @@ public class EmergencyController {
         alert.setLastHeartbeatAt(LocalDateTime.now());
         alert.setLastPreviewFrame(null);
         alert.setLastPreviewFrameAt(null);
+        PREVIEW_CACHE.remove(alert.getId());
 
         if (media != null && !media.isEmpty()) {
             String url = cloudinaryService.upload(media);
@@ -708,5 +714,15 @@ public class EmergencyController {
         public Boolean videoActive;
         public String previewFrame;
         public String previewFrameAt;
+    }
+
+    private static class PreviewFrame {
+        private final String frame;
+        private final String at;
+
+        private PreviewFrame(String frame, String at) {
+            this.frame = frame;
+            this.at = at;
+        }
     }
 }
