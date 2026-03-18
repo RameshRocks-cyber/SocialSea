@@ -25,6 +25,8 @@ public class NotificationController {
     private static final Pattern EMAIL_PATTERN =
         Pattern.compile("\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b");
     private static final Pattern URL_PATTERN = Pattern.compile("https?://\\S+");
+    private static final Pattern SOS_ALERT_ID_PATTERN =
+        Pattern.compile("/sos/(?:live|navigate)/([0-9]+)", Pattern.CASE_INSENSITIVE);
 
     public NotificationController(NotificationRepository repo, UserRepository userRepo) {
         this.repo = repo;
@@ -110,6 +112,10 @@ public class NotificationController {
             row.put("actorProfilePic", actorOpt.map(User::getProfilePic).orElse(null));
             row.put("actorIdentifier", (actorEmail != null && !actorEmail.isBlank()) ? actorEmail : actorName);
             if ("emergency".equals(kind)) {
+                String alertId = extractAlertId(raw);
+                if (alertId != null) {
+                    row.put("alertId", alertId);
+                }
                 row.put("liveUrl", extractUrlContaining(raw, "/sos/live/"));
                 row.put("navigateUrl", extractUrlContaining(raw, "/sos/navigate/"));
                 String mapsUrl = extractUrlContaining(raw, "google.com/maps");
@@ -145,6 +151,16 @@ public class NotificationController {
         while (matcher.find()) {
             String url = matcher.group();
             if (url.contains(marker)) return trimUrl(url);
+        }
+        return null;
+    }
+
+    private String extractAlertId(String message) {
+        if (message == null || message.isBlank()) return null;
+        Matcher matcher = SOS_ALERT_ID_PATTERN.matcher(message);
+        if (matcher.find()) {
+            String id = matcher.group(1);
+            return (id != null && !id.isBlank()) ? id.trim() : null;
         }
         return null;
     }

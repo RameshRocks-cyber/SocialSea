@@ -34,6 +34,10 @@ public class EmergencyAlert {
     private boolean liveAudioActive;
     private boolean liveVideoActive;
     private LocalDateTime lastHeartbeatAt;
+    @Lob
+    @Column(length = 200000)
+    private String lastPreviewFrame;
+    private String lastPreviewFrameAt;
 
     public Long getId() {
         return id;
@@ -177,5 +181,21 @@ public class EmergencyAlert {
 
     public void setLastHeartbeatAt(LocalDateTime lastHeartbeatAt) {
         this.lastHeartbeatAt = lastHeartbeatAt;
+    }
+
+    public String getLastPreviewFrame() {
+        return lastPreviewFrame;
+    }
+
+    public void setLastPreviewFrame(String lastPreviewFrame) {
+        this.lastPreviewFrame = lastPreviewFrame;
+    }
+
+    public String getLastPreviewFrameAt() {
+        return lastPreviewFrameAt;
+    }
+
+    public void setLastPreviewFrameAt(String lastPreviewFrameAt) {
+        this.lastPreviewFrameAt = lastPreviewFrameAt;
     }
 }

@@ -35,6 +35,7 @@ public class EmergencyController {
 
     private static final int DEFAULT_RADIUS_METERS = 5000;
     private static final long MAX_LOCATION_STALE_MINUTES = 30;
+    private static final int MAX_PREVIEW_FRAME_CHARS = 200000;
     private static final String DEFAULT_FRONTEND_BASE = "https://socialsea.co.in";
     private static final Logger log = LoggerFactory.getLogger(EmergencyController.class);
 
@@ -406,6 +407,8 @@ public class EmergencyController {
         payload.put("liveUrl", liveUrl);
         payload.put("navigateUrl", navigateUrl);
         payload.put("radiusMeters", alert.getRadiusMeters());
+        payload.put("previewFrame", alert.getLastPreviewFrame());
+        payload.put("previewFrameAt", alert.getLastPreviewFrameAt());
         return ResponseEntity.ok(payload);
     }
 
@@ -448,6 +451,16 @@ public class EmergencyController {
         if (request != null) {
             alert.setLiveAudioActive(Boolean.TRUE.equals(request.audioActive));
             alert.setLiveVideoActive(Boolean.TRUE.equals(request.videoActive));
+            if (request.previewFrame != null && !request.previewFrame.isBlank()) {
+                String frame = request.previewFrame;
+                if (frame.length() <= MAX_PREVIEW_FRAME_CHARS) {
+                    alert.setLastPreviewFrame(frame);
+                    String frameAt = request.previewFrameAt != null && !request.previewFrameAt.isBlank()
+                            ? request.previewFrameAt
+                            : LocalDateTime.now().toString();
+                    alert.setLastPreviewFrameAt(frameAt);
+                }
+            }
         }
         alert.setLastHeartbeatAt(LocalDateTime.now());
         emergencyRepo.save(alert);
@@ -492,6 +505,8 @@ public class EmergencyController {
         payload.put("lastHeartbeatAt", alert.getLastHeartbeatAt());
         payload.put("mediaUrl", alert.getMediaUrl());
         payload.put("durationMs", alert.getDurationMs());
+        payload.put("previewFrame", alert.getLastPreviewFrame());
+        payload.put("previewFrameAt", alert.getLastPreviewFrameAt());
         return ResponseEntity.ok(payload);
     }
 
@@ -569,6 +584,8 @@ public class EmergencyController {
         alert.setLiveAudioActive(false);
         alert.setLiveVideoActive(false);
         alert.setLastHeartbeatAt(LocalDateTime.now());
+        alert.setLastPreviewFrame(null);
+        alert.setLastPreviewFrameAt(null);
 
         if (media != null && !media.isEmpty()) {
             String url = cloudinaryService.upload(media);
@@ -689,5 +706,7 @@ public class EmergencyController {
         public Double longitude;
         public Boolean audioActive;
         public Boolean videoActive;
+        public String previewFrame;
+        public String previewFrameAt;
     }
 }
