@@ -42,7 +42,10 @@ public class SecurityConfig {
                     "/api/v1/auth/**",
                     "/api/public/**",
                     "/oauth2/**",
-                    "/uploads/**"
+                    "/uploads/**",
+                    "/api/live-broadcast/active",
+                    "/api/stories/feed",
+                    "/api/stories/media/**"
                 ).permitAll()
                 .requestMatchers("/api/admin/**", "/admin/**").authenticated()
                 .anyRequest().authenticated()

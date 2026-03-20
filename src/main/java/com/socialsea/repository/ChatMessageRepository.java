@@ -14,4 +14,11 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
             Long senderIdReverse,
             Long receiverIdReverse
     );
+
+    long deleteBySenderIdAndReceiverIdOrSenderIdAndReceiverId(
+            Long senderId,
+            Long receiverId,
+            Long senderIdReverse,
+            Long receiverIdReverse
+    );
 }

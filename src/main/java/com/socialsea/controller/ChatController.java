@@ -10,6 +10,7 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -100,6 +101,26 @@ public class ChatController {
         }).toList();
 
         return ResponseEntity.ok(payload);
+    }
+
+    @DeleteMapping("/{otherUserId}")
+    @Transactional
+    public ResponseEntity<?> deleteConversation(@PathVariable Long otherUserId, Authentication auth) {
+        User me = currentUser(auth);
+        if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+
+        Long safeOtherUserId = Objects.requireNonNull(otherUserId, "otherUserId");
+        Optional<User> otherOpt = userRepo.findById(safeOtherUserId);
+        if (otherOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+
+        long deleted = chatRepo.deleteBySenderIdAndReceiverIdOrSenderIdAndReceiverId(
+            me.getId(),
+            safeOtherUserId,
+            safeOtherUserId,
+            me.getId()
+        );
+
+        return ResponseEntity.ok(Map.of("deleted", deleted));
     }
 
     @PostMapping("/{otherUserId}/send")

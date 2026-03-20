@@ -14,7 +14,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/profile")
-@CrossOrigin("https://socialsea.netlify.app")
+@CrossOrigin(origins = {"https://socialsea.netlify.app","https://socialsea.co.in","https://www.socialsea.co.in","http://localhost:5173","http://127.0.0.1:5173"})
 public class ProfileController {
 
     private final UserRepository userRepo;
@@ -141,3 +141,4 @@ public class ProfileController {
         return item;
     }
 }
+
