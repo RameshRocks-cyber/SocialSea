@@ -5,10 +5,11 @@
 - Build command: `npm run build`
 - Publish directory: `dist`
 - SPA routing: configured in `netlify.toml`
-- Production API URL: `.env.production` -> `VITE_API_URL=https://socialsea.co.in`
+- Production API URL: `.env.production` -> `VITE_API_URL=https://api.socialsea.co.in`
+  - If you proxy `/api` from `https://socialsea.co.in` to the backend, set this to `https://socialsea.co.in` instead.
 
 ### Netlify env vars
-- `VITE_API_URL=https://socialsea.co.in`
+- `VITE_API_URL=https://api.socialsea.co.in`
 
 ## Backend (Spring Boot)
 - Project path: `SocialSea-main`
