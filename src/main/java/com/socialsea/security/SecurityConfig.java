@@ -65,6 +65,7 @@ public class SecurityConfig {
                     "/emergency/trigger",
                     "/emergency/active",
                     "/emergency/presence",
+                    "/uploads/**",
 
                     // SWAGGER
                     "/swagger-ui/**",
