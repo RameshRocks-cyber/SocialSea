@@ -38,6 +38,9 @@ public class User implements UserDetails {
     @Column(columnDefinition = "boolean default false")
     private boolean profileCompleted = false;
 
+    @Column(columnDefinition = "boolean default false")
+    private boolean privateAccount = false;
+
     private Double lastLatitude;
     private Double lastLongitude;
     private LocalDateTime locationUpdatedAt;
@@ -120,6 +123,14 @@ public class User implements UserDetails {
 
     public void setProfileCompleted(boolean profileCompleted) {
         this.profileCompleted = profileCompleted;
+    }
+
+    public boolean isPrivateAccount() {
+        return privateAccount;
+    }
+
+    public void setPrivateAccount(boolean privateAccount) {
+        this.privateAccount = privateAccount;
     }
 
     public Double getLastLatitude() {

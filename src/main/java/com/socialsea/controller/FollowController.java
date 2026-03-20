@@ -1,8 +1,10 @@
 package com.socialsea.controller;
 
 import com.socialsea.model.Follow;
+import com.socialsea.model.FollowRequest;
 import com.socialsea.model.User;
 import com.socialsea.repository.FollowRepository;
+import com.socialsea.repository.FollowRequestRepository;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.NotificationService;
 import org.springframework.security.core.Authentication;
@@ -26,30 +28,46 @@ import java.util.Objects;
 public class FollowController {
 
     private final FollowRepository followRepo;
+    private final FollowRequestRepository followRequestRepo;
     private final UserRepository userRepo;
     private final NotificationService notificationService;
 
     public FollowController(
             FollowRepository followRepo,
+            FollowRequestRepository followRequestRepo,
             UserRepository userRepo,
             NotificationService notificationService
     ) {
         this.followRepo = followRepo;
+        this.followRequestRepo = followRequestRepo;
         this.userRepo = userRepo;
         this.notificationService = notificationService;
     }
 
     @PostMapping("/{identifier}")
-    public String follow(@PathVariable String identifier, Authentication auth) {
+    public Map<String, Object> follow(@PathVariable String identifier, Authentication auth) {
         User follower = userRepo.findByEmail(auth.getName()).orElseThrow();
         User following = resolveUser(identifier);
 
         if (follower.getId().equals(following.getId())) {
-            return "Cannot follow yourself";
+            return Map.of("status", "ERROR", "message", "Cannot follow yourself");
         }
 
         if (followRepo.existsByFollowerAndFollowing(follower, following)) {
-            return "Already following";
+            return Map.of("status", "FOLLOWING", "message", "Already following");
+        }
+
+        if (following.isPrivateAccount()) {
+            if (followRequestRepo.existsBySenderAndReceiverAndStatus(follower, following, "PENDING")) {
+                return Map.of("status", "REQUESTED", "message", "Request already sent");
+            }
+            FollowRequest request = new FollowRequest(null, follower, following, "PENDING");
+            followRequestRepo.save(request);
+            notificationService.notifyUser(
+                    following.getEmail(),
+                    follower.getEmail() + " requested to follow you"
+            );
+            return Map.of("status", "REQUESTED", "message", "Follow request sent", "requestId", request.getId());
         }
 
         followRepo.save(new Follow(null, follower, following));
@@ -58,7 +76,7 @@ public class FollowController {
                 follower.getEmail() + " started following you"
         );
 
-        return "Followed";
+        return Map.of("status", "FOLLOWING", "message", "Followed");
     }
 
     @DeleteMapping("/{identifier}")
@@ -73,6 +91,53 @@ public class FollowController {
                 .ifPresent(followRepo::delete);
 
         return "Unfollowed";
+    }
+
+    @GetMapping("/requests")
+    public List<Map<String, Object>> incomingRequests(Authentication auth) {
+        User receiver = userRepo.findByEmail(auth.getName()).orElseThrow();
+        return followRequestRepo.findByReceiverAndStatus(receiver, "PENDING").stream()
+                .map(this::toFollowRequestItem)
+                .toList();
+    }
+
+    @GetMapping("/pending-requests")
+    public List<Map<String, Object>> pendingRequests(Authentication auth) {
+        User sender = userRepo.findByEmail(auth.getName()).orElseThrow();
+        return followRequestRepo.findBySenderAndStatus(sender, "PENDING").stream()
+                .map(this::toFollowRequestItem)
+                .toList();
+    }
+
+    @PostMapping("/requests/{id}/accept")
+    public Map<String, Object> acceptRequest(@PathVariable Long id, Authentication auth) {
+        User receiver = userRepo.findByEmail(auth.getName()).orElseThrow();
+        FollowRequest request = followRequestRepo.findById(id).orElseThrow();
+        if (!request.getReceiver().getId().equals(receiver.getId())) {
+            return Map.of("status", "ERROR", "message", "Not allowed");
+        }
+        request.setStatus("ACCEPTED");
+        followRequestRepo.save(request);
+        if (!followRepo.existsByFollowerAndFollowing(request.getSender(), request.getReceiver())) {
+            followRepo.save(new Follow(null, request.getSender(), request.getReceiver()));
+        }
+        notificationService.notifyUser(
+                request.getSender().getEmail(),
+                receiver.getEmail() + " accepted your follow request"
+        );
+        return Map.of("status", "ACCEPTED");
+    }
+
+    @PostMapping("/requests/{id}/reject")
+    public Map<String, Object> rejectRequest(@PathVariable Long id, Authentication auth) {
+        User receiver = userRepo.findByEmail(auth.getName()).orElseThrow();
+        FollowRequest request = followRequestRepo.findById(id).orElseThrow();
+        if (!request.getReceiver().getId().equals(receiver.getId())) {
+            return Map.of("status", "ERROR", "message", "Not allowed");
+        }
+        request.setStatus("REJECTED");
+        followRequestRepo.save(request);
+        return Map.of("status", "REJECTED");
     }
 
     @GetMapping("/{identifier}/followers")
@@ -124,6 +189,15 @@ public class FollowController {
         item.put("email", user.getEmail());
         item.put("name", (user.getName() != null && !user.getName().isBlank()) ? user.getName() : user.getEmail());
         item.put("profilePic", user.getProfilePic());
+        return item;
+    }
+
+    private Map<String, Object> toFollowRequestItem(FollowRequest request) {
+        Map<String, Object> item = new HashMap<>();
+        item.put("id", request.getId());
+        item.put("status", request.getStatus());
+        item.put("sender", toUserItem(request.getSender()));
+        item.put("receiver", toUserItem(request.getReceiver()));
         return item;
     }
 }

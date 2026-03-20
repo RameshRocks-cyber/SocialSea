@@ -29,12 +29,13 @@ public class ProfileController {
     private final UserRepository userRepo;
     private final PostRepository postRepo;
     private final FollowRepository followRepo;
+    private final FollowRequestRepository followRequestRepo;
     private final EmergencyAlertRepository emergencyRepo;
     private final ProfileService profileService;
 
     // User profile info
     @GetMapping("/{identifier}")
-    public ResponseEntity<?> profile(@PathVariable String identifier) {
+    public ResponseEntity<?> profile(@PathVariable String identifier, Authentication auth) {
         Optional<User> userOpt;
 
         if (identifier.matches("\\d+")) {
@@ -48,23 +49,32 @@ public class ProfileController {
                     .body(Map.of("message", "User not found"));
         }
         User user = userOpt.get();
+        User viewer = (auth != null && auth.isAuthenticated())
+                ? userRepo.findByEmail(auth.getName()).orElse(null)
+                : null;
+        boolean canViewContent = canViewProfileContent(viewer, user);
+        String followStatus = resolveFollowStatus(viewer, user);
 
         long followers = followRepo.countByFollowing(user);
         long following = followRepo.countByFollower(user);
-        long postsCount = postRepo.countByUser(user);
+        long postsCount = canViewContent ? postRepo.countByUser(user) : 0;
 
         Map<String, Object> profile = new HashMap<>();
         profile.put("id", user.getId());
         profile.put("username", user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getEmail());
-        profile.put("email", user.getEmail());
+        profile.put("email", canViewContent ? user.getEmail() : null);
         profile.put("name", user.getName());
-        profile.put("bio", user.getBio());
+        profile.put("bio", canViewContent ? user.getBio() : "");
         profile.put("profilePic", user.getProfilePic());
         profile.put("profilePicUrl", user.getProfilePic());
         profile.put("profileCompleted", user.isProfileCompleted());
         profile.put("followers", followers);
         profile.put("following", following);
         profile.put("postsCount", postsCount);
+        profile.put("privateAccount", user.isPrivateAccount());
+        profile.put("canViewContent", canViewContent);
+        profile.put("followStatus", followStatus);
+        profile.put("isFollowing", "FOLLOWING".equalsIgnoreCase(followStatus));
 
         return ResponseEntity.ok(profile);
     }
@@ -110,8 +120,28 @@ public class ProfileController {
         profile.put("followers", followers);
         profile.put("following", following);
         profile.put("postsCount", postsCount);
+        profile.put("privateAccount", user.isPrivateAccount());
+        profile.put("canViewContent", true);
+        profile.put("followStatus", "FOLLOWING");
+        profile.put("isFollowing", true);
 
         return ResponseEntity.ok(profile);
+    }
+
+    @PostMapping("/me/privacy")
+    public ResponseEntity<?> updatePrivacy(@RequestBody Map<String, Object> body, Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+        User user = userRepo.findByEmail(auth.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        Object raw = body.get("privateAccount");
+        boolean next = raw instanceof Boolean
+                ? (Boolean) raw
+                : Boolean.parseBoolean(String(raw));
+        user.setPrivateAccount(next);
+        userRepo.save(user);
+        return ResponseEntity.ok(Map.of("privateAccount", user.isPrivateAccount()));
     }
 
     @GetMapping({"/live-recordings", "/me/live-recordings"})
@@ -233,7 +263,16 @@ public class ProfileController {
                     .body(Map.of("message", "User not found"));
         }
 
-        long userId = userOpt.get().getId();
+        User target = userOpt.get();
+        User viewer = (auth != null && auth.isAuthenticated())
+                ? userRepo.findByEmail(auth.getName()).orElse(null)
+                : null;
+        if (!canViewProfileContent(viewer, target)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "This account is private"));
+        }
+
+        long userId = target.getId();
         List<FeedItemDto> posts = postRepo.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
@@ -251,7 +290,16 @@ public class ProfileController {
                     .body(Map.of("message", "User not found"));
         }
 
-        List<Map<String, Object>> users = followRepo.findByFollowing(userOpt.get()).stream()
+        User target = userOpt.get();
+        User viewer = (auth != null && auth.isAuthenticated())
+                ? userRepo.findByEmail(auth.getName()).orElse(null)
+                : null;
+        if (!canViewProfileContent(viewer, target)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "This account is private"));
+        }
+
+        List<Map<String, Object>> users = followRepo.findByFollowing(target).stream()
                 .map(Follow::getFollower)
                 .filter(u -> u != null && u.getId() != null)
                 .map(u -> {
@@ -279,7 +327,16 @@ public class ProfileController {
                     .body(Map.of("message", "User not found"));
         }
 
-        List<Map<String, Object>> users = followRepo.findByFollower(userOpt.get()).stream()
+        User target = userOpt.get();
+        User viewer = (auth != null && auth.isAuthenticated())
+                ? userRepo.findByEmail(auth.getName()).orElse(null)
+                : null;
+        if (!canViewProfileContent(viewer, target)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(Map.of("message", "This account is private"));
+        }
+
+        List<Map<String, Object>> users = followRepo.findByFollower(target).stream()
                 .map(Follow::getFollowing)
                 .filter(u -> u != null && u.getId() != null)
                 .map(u -> {
@@ -296,6 +353,21 @@ public class ProfileController {
                 .toList();
 
         return ResponseEntity.ok(users);
+    }
+
+    private boolean canViewProfileContent(User viewer, User owner) {
+        if (owner == null) return false;
+        if (!owner.isPrivateAccount()) return true;
+        if (viewer != null && owner.getId().equals(viewer.getId())) return true;
+        return viewer != null && followRepo.existsByFollowerAndFollowing(viewer, owner);
+    }
+
+    private String resolveFollowStatus(User viewer, User owner) {
+        if (viewer == null || owner == null) return "NONE";
+        if (viewer.getId().equals(owner.getId())) return "FOLLOWING";
+        if (followRepo.existsByFollowerAndFollowing(viewer, owner)) return "FOLLOWING";
+        if (followRequestRepo.existsBySenderAndReceiverAndStatus(viewer, owner, "PENDING")) return "REQUESTED";
+        return "NONE";
     }
 
     private Optional<User> resolveUser(String identifier, Authentication auth) {

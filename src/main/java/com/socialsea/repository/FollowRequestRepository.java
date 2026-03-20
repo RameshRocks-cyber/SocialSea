@@ -9,5 +9,9 @@ public interface FollowRequestRepository extends JpaRepository<FollowRequest, Lo
 
     boolean existsBySenderAndReceiver(User sender, User receiver);
 
+    boolean existsBySenderAndReceiverAndStatus(User sender, User receiver, String status);
+
     List<FollowRequest> findByReceiverAndStatus(User receiver, String status);
+
+    List<FollowRequest> findBySenderAndStatus(User sender, String status);
 }
