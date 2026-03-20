@@ -35,7 +35,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class EmergencyController {
 
     private static final int DEFAULT_RADIUS_METERS = 5000;
-    private static final long MAX_LOCATION_STALE_MINUTES = 30;
+    @Value("${app.emergency.location-stale-minutes:180}")
+    private long locationStaleMinutes;
     private static final int MAX_PREVIEW_FRAME_CHARS = 700000;
     private static final String DEFAULT_FRONTEND_BASE = "https://socialsea.co.in";
     private static final Logger log = LoggerFactory.getLogger(EmergencyController.class);
@@ -169,7 +170,7 @@ public class EmergencyController {
             }
 
             long minutesOld = Duration.between(user.getLocationUpdatedAt(), now).toMinutes();
-            if (minutesOld < 0 || minutesOld > MAX_LOCATION_STALE_MINUTES) {
+            if (minutesOld < 0 || minutesOld > locationStaleMinutes) {
                 continue;
             }
 
@@ -279,7 +280,7 @@ public class EmergencyController {
         } else if (auth != null && auth.isAuthenticated()) {
             me = userRepo.findByEmail(auth.getName()).orElse(null);
             if (me != null && me.getLastLatitude() != null && me.getLastLongitude() != null && me.getLocationUpdatedAt() != null
-                    && Duration.between(me.getLocationUpdatedAt(), LocalDateTime.now()).toMinutes() <= MAX_LOCATION_STALE_MINUTES) {
+                    && Duration.between(me.getLocationUpdatedAt(), LocalDateTime.now()).toMinutes() <= locationStaleMinutes) {
                 canFilterByDistance = true;
             }
         }
@@ -646,7 +647,7 @@ public class EmergencyController {
                 .filter(u -> u.getLastLatitude() != null && u.getLastLongitude() != null && u.getLocationUpdatedAt() != null)
                 .filter(u -> {
                     long minutesOld = Duration.between(u.getLocationUpdatedAt(), now).toMinutes();
-                    return minutesOld >= 0 && minutesOld <= MAX_LOCATION_STALE_MINUTES;
+                    return minutesOld >= 0 && minutesOld <= locationStaleMinutes;
                 })
                 .map(u -> {
                     double distanceMeters = haversineMeters(lat, lon, u.getLastLatitude(), u.getLastLongitude());

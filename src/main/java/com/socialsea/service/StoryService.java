@@ -28,14 +28,7 @@ public class StoryService {
     public List<StoryDto> fetchFeed(User viewer) {
         LocalDateTime now = LocalDateTime.now();
         List<Story> active = storyRepo.findActive(now);
-        Set<Long> followingIds = new HashSet<>();
-        if (viewer != null) {
-            for (Follow f : followRepo.findByFollower(viewer)) {
-                if (f.getFollowing() != null && f.getFollowing().getId() != null) {
-                    followingIds.add(f.getFollowing().getId());
-                }
-            }
-        }
+        Set<Long> followingIds = collectFollowingIds(viewer);
 
         List<StoryDto> result = new ArrayList<>();
         for (Story story : active) {
@@ -56,6 +49,39 @@ public class StoryService {
             result.add(dto);
         }
         return result;
+    }
+
+    public Story findById(Long id) {
+        if (id == null) return null;
+        return storyRepo.findById(id).orElse(null);
+    }
+
+    public boolean canViewStory(Story story, User viewer) {
+        if (story == null) return false;
+        if (story.getExpiresAt() != null && story.getExpiresAt().isBefore(LocalDateTime.now())) {
+            return false;
+        }
+        String privacy = story.getPrivacy() != null ? story.getPrivacy().toLowerCase() : "public";
+        if ("public".equals(privacy)) return true;
+        if (viewer == null) return false;
+        User owner = story.getUser();
+        Long ownerId = owner != null ? owner.getId() : null;
+        if (ownerId != null && ownerId.equals(viewer.getId())) return true;
+        if ("followers".equals(privacy) && owner != null) {
+            return followRepo.existsByFollowerAndFollowing(viewer, owner);
+        }
+        return false;
+    }
+
+    private Set<Long> collectFollowingIds(User viewer) {
+        Set<Long> followingIds = new HashSet<>();
+        if (viewer == null) return followingIds;
+        for (Follow f : followRepo.findByFollower(viewer)) {
+            if (f.getFollowing() != null && f.getFollowing().getId() != null) {
+                followingIds.add(f.getFollowing().getId());
+            }
+        }
+        return followingIds;
     }
 
     public StoryDto toDto(Story story) {
