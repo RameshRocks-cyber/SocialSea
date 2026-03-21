@@ -5,6 +5,7 @@ import AnonymousUpload from "./pages/AnonymousUpload"
 import AnonymousFeed from "./pages/AnonymousFeed"
 import Reels from "./pages/Reels"
 import CameraStudio from "./pages/CameraStudio"
+import ProfileHub from "./pages/ProfileHub"
 import Login from "./pages/Login"
 import ForgotPassword from "./pages/ForgotPassword"
 import Chat from "./pages/Chat"
@@ -62,6 +63,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Reels />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <ProfileHub />
             </ProtectedRoute>
           }
         />
