@@ -182,11 +182,7 @@ public class AuthController {
         if (identifier == null || identifier.isBlank()) {
             return Optional.empty();
         }
-        Optional<User> byEmail = userRepository.findByEmailIgnoreCase(identifier);
-        if (byEmail.isPresent()) {
-            return byEmail;
-        }
-        return userRepository.findByNameIgnoreCase(identifier);
+        return userRepository.findByEmailIgnoreCase(identifier);
     }
 
     private boolean legacyPasswordMatchAndUpgrade(User user, String rawPassword) {

@@ -138,7 +138,7 @@ public class ProfileController {
         Object raw = body.get("privateAccount");
         boolean next = raw instanceof Boolean
                 ? (Boolean) raw
-                : Boolean.parseBoolean(String(raw));
+                : Boolean.parseBoolean(String.valueOf(raw));
         user.setPrivateAccount(next);
         userRepo.save(user);
         return ResponseEntity.ok(Map.of("privateAccount", user.isPrivateAccount()));

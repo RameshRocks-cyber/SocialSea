@@ -341,14 +341,14 @@ public class EmergencyController {
                 .filter(a -> includeReporter || auth == null || !auth.isAuthenticated() || !auth.getName().equalsIgnoreCase(a.getReporterEmail()))
                 .filter(a -> {
                     if (!filterByDistance) return true;
-                    Double lat = a.getCurrentLatitude() != null ? a.getCurrentLatitude() : a.getLatitude();
-                    Double lon = a.getCurrentLongitude() != null ? a.getCurrentLongitude() : a.getLongitude();
-                    if (lat == null || lon == null) return false;
+                    Double alertLat = a.getCurrentLatitude() != null ? a.getCurrentLatitude() : a.getLatitude();
+                    Double alertLon = a.getCurrentLongitude() != null ? a.getCurrentLongitude() : a.getLongitude();
+                    if (alertLat == null || alertLon == null) return false;
                     int effectiveRadius = queryRadiusMeters != null && queryRadiusMeters > 0
                             ? queryRadiusMeters
                             : (a.getRadiusMeters() != null && a.getRadiusMeters() > 0 ? a.getRadiusMeters() : DEFAULT_RADIUS_METERS);
                     if (filterLat == null || filterLon == null) return true;
-                    double distance = haversineMeters(lat, lon, filterLat, filterLon);
+                    double distance = haversineMeters(alertLat, alertLon, filterLat, filterLon);
                     return distance <= effectiveRadius;
                 })
                 .map(a -> {
