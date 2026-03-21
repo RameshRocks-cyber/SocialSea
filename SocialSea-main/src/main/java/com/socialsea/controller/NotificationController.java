@@ -20,12 +20,18 @@ public class NotificationController {
 
     @GetMapping
     public List<Notification> list(Authentication auth) {
-        return repo.findByRecipientOrderByCreatedAtDesc(auth.getName());
+        if (auth == null || auth.getName() == null || auth.getName().isBlank()) {
+            return List.of();
+        }
+        return repo.findByRecipientIgnoreCaseOrderByCreatedAtDesc(auth.getName().trim());
     }
 
     @GetMapping("/unread-count")
     public long unread(Authentication auth) {
-        return repo.countByRecipientAndReadFalse(auth.getName());
+        if (auth == null || auth.getName() == null || auth.getName().isBlank()) {
+            return 0;
+        }
+        return repo.countByRecipientIgnoreCaseAndReadFalse(auth.getName().trim());
     }
 
     @PostMapping("/{id}/read")

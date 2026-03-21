@@ -79,6 +79,32 @@ public class FollowController {
         return Map.of("status", "FOLLOWING", "message", "Followed");
     }
 
+    @PostMapping("/requests/{identifier}")
+    public Map<String, Object> requestFollow(@PathVariable String identifier, Authentication auth) {
+        User follower = userRepo.findByEmail(auth.getName()).orElseThrow();
+        User following = resolveUser(identifier);
+
+        if (follower.getId().equals(following.getId())) {
+            return Map.of("status", "ERROR", "message", "Cannot follow yourself");
+        }
+
+        if (followRepo.existsByFollowerAndFollowing(follower, following)) {
+            return Map.of("status", "FOLLOWING", "message", "Already following");
+        }
+
+        if (followRequestRepo.existsBySenderAndReceiverAndStatus(follower, following, "PENDING")) {
+            return Map.of("status", "REQUESTED", "message", "Request already sent");
+        }
+
+        FollowRequest request = new FollowRequest(null, follower, following, "PENDING");
+        followRequestRepo.save(request);
+        notificationService.notifyUser(
+                following.getEmail(),
+                follower.getEmail() + " requested to follow you"
+        );
+        return Map.of("status", "REQUESTED", "message", "Follow request sent", "requestId", request.getId());
+    }
+
     @DeleteMapping("/{identifier}")
     public String unfollow(@PathVariable String identifier, Authentication auth) {
         User follower = userRepo.findByEmail(auth.getName()).orElseThrow();
@@ -178,7 +204,7 @@ public class FollowController {
         if (identifier != null && identifier.matches("\\d+")) {
             return userRepo.findById(Long.parseLong(identifier)).orElseThrow();
         }
-        return userRepo.findByEmail(identifier)
+        return userRepo.findByEmailIgnoreCase(identifier)
                 .or(() -> userRepo.findByNameIgnoreCase(identifier))
                 .orElseThrow();
     }

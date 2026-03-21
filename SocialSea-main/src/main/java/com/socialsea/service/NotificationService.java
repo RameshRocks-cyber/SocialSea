@@ -63,11 +63,17 @@ public class NotificationService {
 
     public void notifyUser(String email, String message) {
         Notification n = new Notification();
-        n.setRecipient(email);
+        String recipient = normalizeRecipient(email);
+        n.setRecipient(recipient);
         n.setMessage(message);
         repo.save(n);
 
-        messagingTemplate.convertAndSend("/topic/notifications/" + email, n);
+        if (recipient != null && !recipient.isBlank()) {
+            messagingTemplate.convertAndSend("/topic/notifications/" + recipient, n);
+        }
+        if (email != null && !email.trim().equalsIgnoreCase(recipient)) {
+            messagingTemplate.convertAndSend("/topic/notifications/" + email.trim(), n);
+        }
 
         emailService.send(
             email,
@@ -84,4 +90,10 @@ public class NotificationService {
     public void markAllAsRead() {
         repo.markAllAsRead("ADMIN");
     }
+
+    private String normalizeRecipient(String email) {
+        if (email == null) return null;
+        return email.trim().toLowerCase();
+    }
 }
+
