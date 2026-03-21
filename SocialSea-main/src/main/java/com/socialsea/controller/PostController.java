@@ -8,9 +8,12 @@ import com.socialsea.repository.StoryRepository;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.model.Story;
 import com.socialsea.service.CloudinaryService;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,6 +44,53 @@ public class PostController {
         this.userRepo = userRepo;
         this.storyRepo = storyRepo;
         this.cloudinaryService = cloudinaryService;
+    }
+
+    @GetMapping
+    public ResponseEntity<?> listPosts(
+        @RequestParam(value = "page", required = false) Integer page,
+        @RequestParam(value = "size", required = false) Integer size
+    ) {
+        int pageNumber = page != null && page >= 0 ? page : 0;
+        int pageSize = size != null && size > 0 ? Math.min(size, 200) : 120;
+
+        var pageRequest = PageRequest.of(pageNumber, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
+        var posts = postRepo.findAll(pageRequest).getContent()
+            .stream()
+            .filter(Post::isApproved)
+            .toList();
+
+        return ResponseEntity.ok(posts);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getPost(@PathVariable("id") Long id, Authentication auth) {
+        Optional<Post> postOpt = postRepo.findById(id);
+        if (postOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Post not found"));
+        }
+
+        Post post = postOpt.get();
+        if (post.isApproved()) {
+            return ResponseEntity.ok(post);
+        }
+
+        User currentUser = null;
+        if (auth != null && auth.getName() != null && !auth.getName().isBlank()) {
+            currentUser = userRepo.findByEmail(auth.getName()).orElse(null);
+        }
+        if (currentUser == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Post not found"));
+        }
+
+        Long ownerId = post.getUser() != null ? post.getUser().getId() : null;
+        boolean isOwner = ownerId != null && ownerId.equals(currentUser.getId());
+        boolean isAdmin = currentUser.getRole() == Role.ADMIN || currentUser.getRole() == Role.SUPER_ADMIN;
+        if (isOwner || isAdmin) {
+            return ResponseEntity.ok(post);
+        }
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Post not found"));
     }
 
     @PostMapping("/upload")

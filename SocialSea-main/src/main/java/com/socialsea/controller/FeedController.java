@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -58,6 +59,19 @@ public class FeedController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(posts);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> feedItem(@PathVariable("id") Long id) {
+        Optional<Post> postOpt = postRepo.findById(id);
+        if (postOpt.isEmpty()) {
+            return ResponseEntity.status(404).body("Post not found");
+        }
+        Post post = postOpt.get();
+        if (!post.isApproved()) {
+            return ResponseEntity.status(404).body("Post not found");
+        }
+        return ResponseEntity.ok(post);
     }
 }
 
