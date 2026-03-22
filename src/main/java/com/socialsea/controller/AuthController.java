@@ -162,7 +162,7 @@ public class AuthController {
         user.setPassword(passwordEncoder.encode(password));
         userRepository.save(user);
 
-        String tokenSubject = resolveTokenSubject(user, identifier);
+        String tokenSubject = resolveTokenSubject(user, email != null ? email : username);
         String accessToken = jwtUtil.generateAccessToken(tokenSubject);
         String refreshToken = jwtUtil.generateRefreshToken(tokenSubject);
 
@@ -196,7 +196,7 @@ public class AuthController {
             }
         }
 
-        String tokenSubject = resolveTokenSubject(user, email);
+        String tokenSubject = resolveTokenSubject(user, identifier);
         String accessToken = jwtUtil.generateAccessToken(tokenSubject);
         String refreshToken = jwtUtil.generateRefreshToken(tokenSubject);
 
