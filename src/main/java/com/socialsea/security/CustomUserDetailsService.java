@@ -23,6 +23,7 @@ public class CustomUserDetailsService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         User user = userRepository.findByEmail(email)
+                .or(() -> userRepository.findByNameIgnoreCase(email))
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
 
         Set<SimpleGrantedAuthority> authorities = new HashSet<>();

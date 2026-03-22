@@ -162,8 +162,9 @@ public class AuthController {
         user.setPassword(passwordEncoder.encode(password));
         userRepository.save(user);
 
-        String accessToken = jwtUtil.generateAccessToken(user.getEmail());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getEmail());
+        String tokenSubject = resolveTokenSubject(user, identifier);
+        String accessToken = jwtUtil.generateAccessToken(tokenSubject);
+        String refreshToken = jwtUtil.generateRefreshToken(tokenSubject);
 
         return ResponseEntity.ok(new AuthResponse(accessToken, refreshToken, user));
     }
@@ -195,8 +196,9 @@ public class AuthController {
             }
         }
 
-        String accessToken = jwtUtil.generateAccessToken(user.getEmail());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getEmail());
+        String tokenSubject = resolveTokenSubject(user, email);
+        String accessToken = jwtUtil.generateAccessToken(tokenSubject);
+        String refreshToken = jwtUtil.generateRefreshToken(tokenSubject);
 
         return ResponseEntity.ok(new AuthResponse(accessToken, refreshToken, user));
     }
@@ -317,6 +319,22 @@ public class AuthController {
         return candidate;
     }
 
+    private String resolveTokenSubject(User user, String fallback) {
+        String email = normalize(user != null ? user.getEmail() : null);
+        if (email != null) {
+            return email;
+        }
+        String name = normalize(user != null ? user.getName() : null);
+        if (name != null) {
+            return name;
+        }
+        String fallbackValue = normalize(fallback);
+        if (fallbackValue != null) {
+            return fallbackValue;
+        }
+        throw new IllegalArgumentException("User has no valid identifier for JWT subject");
+    }
+
     @PostMapping("/admin/login")
     public ResponseEntity<?> adminLogin(@RequestBody LoginRequest request) {
 
@@ -331,8 +349,9 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Not an admin");
         }
 
-        String accessToken = jwtUtil.generateAccessToken(admin.getEmail());
-        String refreshToken = jwtUtil.generateRefreshToken(admin.getEmail());
+        String tokenSubject = resolveTokenSubject(admin, request.getEmail());
+        String accessToken = jwtUtil.generateAccessToken(tokenSubject);
+        String refreshToken = jwtUtil.generateRefreshToken(tokenSubject);
 
         return ResponseEntity.ok(Map.of(
                 "role", "ADMIN",
