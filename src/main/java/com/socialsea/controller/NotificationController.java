@@ -2,6 +2,8 @@ package com.socialsea.controller;
 
 import com.socialsea.model.*;
 import com.socialsea.repository.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,6 +24,7 @@ public class NotificationController {
 
     private final NotificationRepository repo;
     private final UserRepository userRepo;
+    private static final Logger log = LoggerFactory.getLogger(NotificationController.class);
     private static final Pattern EMAIL_PATTERN =
         Pattern.compile("\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b");
     private static final Pattern URL_PATTERN = Pattern.compile("https?://\\S+");
@@ -36,15 +39,25 @@ public class NotificationController {
     @GetMapping
     public List<Map<String, Object>> list(Authentication auth) {
         if (auth == null || !auth.isAuthenticated()) return List.of();
-        return buildNotificationPayload(auth.getName());
+        try {
+            return buildNotificationPayload(auth.getName());
+        } catch (Exception ex) {
+            log.error("Failed to load notifications for {}", auth.getName(), ex);
+            return List.of();
+        }
     }
 
     @GetMapping("/unread-count")
     public long unread(Authentication auth) {
         if (auth == null || !auth.isAuthenticated()) return 0;
-        return buildNotificationPayload(auth.getName()).stream()
-                .filter(item -> !Boolean.TRUE.equals(item.get("read")))
-                .count();
+        try {
+            return buildNotificationPayload(auth.getName()).stream()
+                    .filter(item -> !Boolean.TRUE.equals(item.get("read")))
+                    .count();
+        } catch (Exception ex) {
+            log.error("Failed to load unread notifications for {}", auth.getName(), ex);
+            return 0;
+        }
     }
 
     @PostMapping("/{id}/read")

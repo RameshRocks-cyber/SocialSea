@@ -41,6 +41,7 @@ public class SecurityConfig {
                     "/api/auth/**",
                     "/api/v1/auth/**",
                     "/api/public/**",
+                    "/api/study/assistant/**",
                     "/oauth2/**",
                     "/uploads/**",
                     "/api/live-broadcast/active",

@@ -58,6 +58,7 @@ public class SecurityConfig {
                     "/anonymous/**",
                     "/api/anonymous/**",
                     "/api/public/**",
+                    "/api/study/assistant/**",
                     "/api/emergency/trigger",
                     "/api/emergency/active",
                     "/api/emergency/presence",

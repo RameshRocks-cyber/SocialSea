@@ -293,9 +293,48 @@ public class EmergencyController {
                 ? radiusMeters
                 : (radiusKm != null && radiusKm > 0 ? (int) Math.round(radiusKm * 1000) : null);
 
-        List<EmergencyAlert> rawAlerts = emergencyRepo.findTop20ByActiveTrueOrderByStartedAtDesc();
+        List<EmergencyAlert> rawAlerts = List.of();
+        try {
+            rawAlerts = emergencyRepo.findTop20ByActiveTrueOrderByStartedAtDesc();
+        } catch (Exception ex) {
+            log.error("Failed to load active SOS alerts (top20 active).", ex);
+            try {
+                rawAlerts = emergencyRepo.findAllByOrderByStartedAtDesc()
+                        .stream()
+                        .filter(EmergencyAlert::isActive)
+                        .limit(20)
+                        .toList();
+            } catch (Exception fallbackEx) {
+                log.error("Failed to load SOS alerts with fallback query.", fallbackEx);
+                if (debug) {
+                    return ResponseEntity.ok(Map.of(
+                            "error", "sos-load-failed",
+                            "message", String.valueOf(fallbackEx.getMessage()),
+                            "alerts", List.of()
+                    ));
+                }
+                return ResponseEntity.ok(List.of());
+            }
+        }
         final boolean shouldIncludeNearby = includeNearby || includeReporter;
-        final List<User> allUsers = shouldIncludeNearby ? userRepo.findAll() : List.of();
+        final List<User> allUsers;
+        if (shouldIncludeNearby) {
+            try {
+                allUsers = userRepo.findAll();
+            } catch (Exception ex) {
+                log.error("Failed to load users for SOS nearby list.", ex);
+                if (debug) {
+                    return ResponseEntity.ok(Map.of(
+                            "error", "sos-nearby-users-failed",
+                            "message", String.valueOf(ex.getMessage()),
+                            "alerts", List.of()
+                    ));
+                }
+                return ResponseEntity.ok(List.of());
+            }
+        } else {
+            allUsers = List.of();
+        }
         if (debug) {
             Map<String, Object> debugMeta = new HashMap<>();
             debugMeta.put("viewerLat", filterLat);

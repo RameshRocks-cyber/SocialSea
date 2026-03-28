@@ -35,6 +35,11 @@ public class User implements UserDetails {
     private String bio;
     private String profilePic;
 
+    @Column(columnDefinition = "TEXT")
+    private String resumeJson;
+
+    private LocalDateTime resumeUpdatedAt;
+
     @Column(columnDefinition = "boolean default false")
     private boolean profileCompleted = false;
 
@@ -115,6 +120,22 @@ public class User implements UserDetails {
 
     public void setProfilePic(String profilePic) {
         this.profilePic = profilePic;
+    }
+
+    public String getResumeJson() {
+        return resumeJson;
+    }
+
+    public void setResumeJson(String resumeJson) {
+        this.resumeJson = resumeJson;
+    }
+
+    public LocalDateTime getResumeUpdatedAt() {
+        return resumeUpdatedAt;
+    }
+
+    public void setResumeUpdatedAt(LocalDateTime resumeUpdatedAt) {
+        this.resumeUpdatedAt = resumeUpdatedAt;
     }
 
     public boolean isProfileCompleted() {

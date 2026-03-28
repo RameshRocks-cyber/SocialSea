@@ -5,6 +5,8 @@ import com.socialsea.model.User;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.CallSignalInboxService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -30,6 +32,7 @@ public class CallSignalRestController {
             "offer", "answer", "ice", "hangup", "reject", "busy", "ringing",
             "livekit-invite", "livekit-accept"
     );
+    private static final Logger log = LoggerFactory.getLogger(CallSignalRestController.class);
 
     private final UserRepository userRepository;
     private final CallSignalInboxService inboxService;
@@ -77,10 +80,15 @@ public class CallSignalRestController {
 
     @GetMapping("/inbox")
     public ResponseEntity<?> inbox(Authentication auth) {
-        User me = currentUser(auth);
-        if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
-        List<CallSignalDto> list = inboxService.drain(me.getId());
-        return ResponseEntity.ok(list);
+        try {
+            User me = currentUser(auth);
+            if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+            List<CallSignalDto> list = inboxService.drain(me.getId());
+            return ResponseEntity.ok(list);
+        } catch (Exception ex) {
+            log.error("Failed to load call inbox.", ex);
+            return ResponseEntity.ok(List.of());
+        }
     }
 
     private User currentUser(Authentication auth) {
