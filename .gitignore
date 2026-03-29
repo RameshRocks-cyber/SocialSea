@@ -45,3 +45,10 @@ data/*.mv.db
 
 _m2/
 .m2/
+
+# Local env files
+.env
+.env.*
+!.env.example
+!.env.local.example
+
