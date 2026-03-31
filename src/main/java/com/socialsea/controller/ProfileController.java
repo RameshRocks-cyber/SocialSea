@@ -4,6 +4,8 @@ import com.socialsea.dto.FeedItemDto;
 import com.socialsea.model.*;
 import com.socialsea.repository.*;
 import com.socialsea.service.ProfileService;
+import com.socialsea.util.UrlUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +19,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.Set;
+import java.util.HashSet;
 
 @RestController
 @RequestMapping("/api/profile")
@@ -32,10 +36,15 @@ public class ProfileController {
     private final FollowRequestRepository followRequestRepo;
     private final EmergencyAlertRepository emergencyRepo;
     private final ProfileService profileService;
+    private final StoryRepository storyRepo;
 
     // User profile info
     @GetMapping("/{identifier}")
-    public ResponseEntity<?> profile(@PathVariable String identifier, Authentication auth) {
+    public ResponseEntity<?> profile(
+            @PathVariable String identifier,
+            Authentication auth,
+            HttpServletRequest request
+    ) {
         Optional<User> userOpt;
 
         if (identifier.matches("\\d+")) {
@@ -57,7 +66,14 @@ public class ProfileController {
 
         long followers = followRepo.countByFollowing(user);
         long following = followRepo.countByFollower(user);
-        long postsCount = canViewContent ? postRepo.countByUser(user) : 0;
+        long postsCount = 0;
+        if (canViewContent) {
+            postsCount = postRepo.findByUser(user)
+                    .stream()
+                    .filter(Post::isApproved)
+                    .filter(p -> !isStoryPost(p.getMediaUrl()))
+                    .count();
+        }
 
         Map<String, Object> profile = new HashMap<>();
         profile.put("id", user.getId());
@@ -65,8 +81,9 @@ public class ProfileController {
         profile.put("email", canViewContent ? user.getEmail() : null);
         profile.put("name", user.getName());
         profile.put("bio", canViewContent ? user.getBio() : "");
-        profile.put("profilePic", user.getProfilePic());
-        profile.put("profilePicUrl", user.getProfilePic());
+        String profilePicUrl = UrlUtils.toAbsoluteUrl(request, user.getProfilePic());
+        profile.put("profilePic", profilePicUrl);
+        profile.put("profilePicUrl", profilePicUrl);
         profile.put("profileCompleted", user.isProfileCompleted());
         profile.put("followers", followers);
         profile.put("following", following);
@@ -91,12 +108,13 @@ public class ProfileController {
         List<Post> posts = postRepo.findByUser(user)
                 .stream()
                 .filter(Post::isApproved)
+                .filter(p -> !isStoryPost(p.getMediaUrl()))
                 .toList();
         return ResponseEntity.ok(posts);
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> myProfile(Authentication auth) {
+    public ResponseEntity<?> myProfile(Authentication auth, HttpServletRequest request) {
         if (auth == null || !auth.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Login required");
         }
@@ -106,7 +124,11 @@ public class ProfileController {
 
         long followers = followRepo.countByFollowing(user);
         long following = followRepo.countByFollower(user);
-        long postsCount = postRepo.countByUser(user);
+        long postsCount = postRepo.findByUser(user)
+                .stream()
+                .filter(Post::isApproved)
+                .filter(p -> !isStoryPost(p.getMediaUrl()))
+                .count();
 
         Map<String, Object> profile = new HashMap<>();
         profile.put("id", user.getId());
@@ -114,8 +136,9 @@ public class ProfileController {
         profile.put("email", user.getEmail());
         profile.put("name", user.getName());
         profile.put("bio", user.getBio());
-        profile.put("profilePic", user.getProfilePic());
-        profile.put("profilePicUrl", user.getProfilePic());
+        String profilePicUrl = UrlUtils.toAbsoluteUrl(request, user.getProfilePic());
+        profile.put("profilePic", profilePicUrl);
+        profile.put("profilePicUrl", profilePicUrl);
         profile.put("profileCompleted", user.isProfileCompleted());
         profile.put("followers", followers);
         profile.put("following", following);
@@ -142,6 +165,56 @@ public class ProfileController {
         user.setPrivateAccount(next);
         userRepo.save(user);
         return ResponseEntity.ok(Map.of("privateAccount", user.isPrivateAccount()));
+    }
+
+    @PostMapping("/me/posts/cleanup-stories")
+    public ResponseEntity<?> cleanupStoryPosts(
+            @RequestBody Map<String, Object> body,
+            Authentication auth
+    ) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+        User user = userRepo.findByEmail(auth.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Object raw = body != null ? body.get("mediaUrls") : null;
+        if (!(raw instanceof List<?> list) || list.isEmpty()) {
+            return ResponseEntity.ok(Map.of("deleted", 0));
+        }
+        Set<String> targets = new HashSet<>();
+        for (Object entry : list) {
+            if (entry == null) continue;
+            String url = String.valueOf(entry).trim();
+            if (url.isEmpty()) continue;
+            targets.add(url);
+            int q = url.indexOf('?');
+            if (q > 0) targets.add(url.substring(0, q));
+            int h = url.indexOf('#');
+            if (h > 0) targets.add(url.substring(0, h));
+        }
+        if (targets.isEmpty()) {
+            return ResponseEntity.ok(Map.of("deleted", 0));
+        }
+
+        List<Post> posts = postRepo.findByUser(user);
+        int deleted = 0;
+        for (Post post : posts) {
+            String url = post.getMediaUrl();
+            if (url == null || url.isBlank()) continue;
+            String trimmed = url.trim();
+            String bare = trimmed;
+            int q = bare.indexOf('?');
+            if (q > 0) bare = bare.substring(0, q);
+            int h = bare.indexOf('#');
+            if (h > 0) bare = bare.substring(0, h);
+            if (targets.contains(trimmed) || targets.contains(bare)) {
+                postRepo.delete(post);
+                deleted++;
+            }
+        }
+
+        return ResponseEntity.ok(Map.of("deleted", deleted));
     }
 
     @GetMapping({"/live-recordings", "/me/live-recordings"})
@@ -215,6 +288,7 @@ public class ProfileController {
         List<FeedItemDto> posts = postRepo.findByUserIdOrderByCreatedAtDesc(user.getId())
                 .stream()
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
+                .filter(p -> !isStoryPost(p.getMediaUrl()))
                 .map(FeedItemDto::fromEntity)
                 .toList();
 
@@ -224,7 +298,8 @@ public class ProfileController {
     @GetMapping("/search")
     public ResponseEntity<?> searchUsers(
             @RequestParam(name = "q", defaultValue = "") String q,
-            Authentication auth
+            Authentication auth,
+            HttpServletRequest request
     ) {
         String query = q == null ? "" : q.trim();
         if (query.isEmpty()) {
@@ -246,7 +321,9 @@ public class ProfileController {
                     item.put("id", u.getId());
                     item.put("email", u.getEmail());
                     item.put("name", u.getName() != null && !u.getName().isBlank() ? u.getName() : u.getEmail());
-                    item.put("profilePic", u.getProfilePic());
+                    String profilePicUrl = UrlUtils.toAbsoluteUrl(request, u.getProfilePic());
+                    item.put("profilePic", profilePicUrl);
+                    item.put("profilePicUrl", profilePicUrl);
                     return item;
                 })
                 .collect(Collectors.toList());
@@ -276,13 +353,30 @@ public class ProfileController {
         List<FeedItemDto> posts = postRepo.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
+                .filter(p -> !isStoryPost(p.getMediaUrl()))
                 .map(FeedItemDto::fromEntity)
                 .toList();
         return ResponseEntity.ok(posts);
     }
 
+    private boolean isStoryPost(String mediaUrl) {
+        if (mediaUrl == null || mediaUrl.isBlank()) return false;
+        List<Story> stories = storyRepo.findAll();
+        for (Story story : stories) {
+            String storyUrl = story.getMediaUrl();
+            if (storyUrl != null && !storyUrl.isBlank() && storyUrl.equals(mediaUrl)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @GetMapping("/{identifier}/followers")
-    public ResponseEntity<?> followersList(@PathVariable String identifier, Authentication auth) {
+    public ResponseEntity<?> followersList(
+            @PathVariable String identifier,
+            Authentication auth,
+            HttpServletRequest request
+    ) {
         Optional<User> userOpt = resolveUser(identifier, auth);
 
         if (userOpt.isEmpty()) {
@@ -308,8 +402,9 @@ public class ProfileController {
                     item.put("email", u.getEmail());
                     item.put("name", (u.getName() != null && !u.getName().isBlank()) ? u.getName() : u.getEmail());
                     item.put("username", (u.getName() != null && !u.getName().isBlank()) ? u.getName() : u.getEmail());
-                    item.put("profilePic", u.getProfilePic());
-                    item.put("profilePicUrl", u.getProfilePic());
+                    String profilePicUrl = UrlUtils.toAbsoluteUrl(request, u.getProfilePic());
+                    item.put("profilePic", profilePicUrl);
+                    item.put("profilePicUrl", profilePicUrl);
                     return item;
                 })
                 .distinct()
@@ -319,7 +414,11 @@ public class ProfileController {
     }
 
     @GetMapping("/{identifier}/following")
-    public ResponseEntity<?> followingList(@PathVariable String identifier, Authentication auth) {
+    public ResponseEntity<?> followingList(
+            @PathVariable String identifier,
+            Authentication auth,
+            HttpServletRequest request
+    ) {
         Optional<User> userOpt = resolveUser(identifier, auth);
 
         if (userOpt.isEmpty()) {
@@ -345,8 +444,9 @@ public class ProfileController {
                     item.put("email", u.getEmail());
                     item.put("name", (u.getName() != null && !u.getName().isBlank()) ? u.getName() : u.getEmail());
                     item.put("username", (u.getName() != null && !u.getName().isBlank()) ? u.getName() : u.getEmail());
-                    item.put("profilePic", u.getProfilePic());
-                    item.put("profilePicUrl", u.getProfilePic());
+                    String profilePicUrl = UrlUtils.toAbsoluteUrl(request, u.getProfilePic());
+                    item.put("profilePic", profilePicUrl);
+                    item.put("profilePicUrl", profilePicUrl);
                     return item;
                 })
                 .distinct()
@@ -392,7 +492,8 @@ public class ProfileController {
             @RequestParam String name,
             @RequestParam(required = false) MultipartFile profilePic,
             @RequestParam(required = false) String bio,
-            Authentication auth
+            Authentication auth,
+            HttpServletRequest request
     ) {
         if (auth == null || !auth.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
@@ -408,7 +509,12 @@ public class ProfileController {
 
         try {
             Map<String, Object> updated = profileService.setupProfile(effectiveUserId, name, bio, profilePic);
-            return ResponseEntity.ok(updated);
+            Map<String, Object> response = new HashMap<>(updated);
+            Object raw = updated.get("profilePic");
+            String profilePicUrl = UrlUtils.toAbsoluteUrl(request, raw == null ? null : String.valueOf(raw));
+            response.put("profilePic", profilePicUrl == null ? "" : profilePicUrl);
+            response.put("profilePicUrl", profilePicUrl == null ? "" : profilePicUrl);
+            return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             Map<String, Object> availability = profileService.checkNameAvailability(name, effectiveUserId);
             return ResponseEntity.badRequest().body(Map.of(

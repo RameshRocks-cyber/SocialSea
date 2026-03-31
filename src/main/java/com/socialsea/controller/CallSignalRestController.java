@@ -30,7 +30,8 @@ public class CallSignalRestController {
 
     private static final Set<String> ALLOWED_TYPES = Set.of(
             "offer", "answer", "ice", "hangup", "reject", "busy", "ringing",
-            "livekit-invite", "livekit-accept"
+            "livekit-invite", "livekit-accept",
+            "connected", "refreshing", "ended", "accepted"
     );
     private static final Logger log = LoggerFactory.getLogger(CallSignalRestController.class);
 

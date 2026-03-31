@@ -5,6 +5,8 @@ import com.socialsea.model.User;
 import com.socialsea.repository.ChatMessageRepository;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.CloudinaryService;
+import com.socialsea.util.UrlUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.http.HttpStatus;
@@ -37,7 +39,8 @@ public class ChatController {
     private final CloudinaryService cloudinaryService;
 
     @GetMapping("/conversations")
-    public ResponseEntity<?> conversations(Authentication auth) {
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> conversations(Authentication auth, HttpServletRequest request) {
         User me = currentUser(auth);
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
 
@@ -57,7 +60,9 @@ public class ChatController {
             item.put("userId", other.getId());
             item.put("name", displayName(other));
             item.put("email", other.getEmail());
-            item.put("profilePic", other.getProfilePic());
+            String profilePicUrl = UrlUtils.toAbsoluteUrl(request, other.getProfilePic());
+            item.put("profilePic", profilePicUrl);
+            item.put("profilePicUrl", profilePicUrl);
             item.put("lastMessage", m.getText());
             item.put("lastAt", m.getCreatedAt());
             LocalDateTime locationUpdatedAt = other.getLocationUpdatedAt();
@@ -73,6 +78,7 @@ public class ChatController {
     }
 
     @GetMapping("/{otherUserId}/messages")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> messages(@PathVariable Long otherUserId, Authentication auth) {
         User me = currentUser(auth);
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
@@ -240,6 +246,7 @@ public class ChatController {
         String label = switch (mediaType) {
             case "image" -> "[Image]";
             case "video" -> "[Video]";
+            case "audio" -> "[Audio]";
             default -> "[File]";
         };
         String fileName = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
@@ -275,6 +282,7 @@ public class ChatController {
         String ct = contentType == null ? "" : contentType.toLowerCase(Locale.ROOT);
         if (ct.startsWith("image/")) return "image";
         if (ct.startsWith("video/")) return "video";
+        if (ct.startsWith("audio/")) return "audio";
         return "file";
     }
 

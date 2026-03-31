@@ -27,8 +27,22 @@ Get-Content $EnvFile | ForEach-Object {
 
 Write-Host "Loaded env from $EnvFile" -ForegroundColor Green
 
-if (Test-Path ".\mvnw.cmd") {
-  .\mvnw.cmd -DskipTests spring-boot:run
-} else {
-  mvn -DskipTests spring-boot:run
+if (-not $env:OPENAI_API_KEY -or $env:OPENAI_API_KEY.Trim() -eq "") {
+  Write-Host "OPENAI_API_KEY is missing or empty (check .env.local)." -ForegroundColor Yellow
 }
+
+$mvn = Get-Command mvn -ErrorAction SilentlyContinue
+if ($mvn) {
+  Write-Host "Starting backend with system Maven..." -ForegroundColor Green
+  mvn -DskipTests spring-boot:run
+  exit $LASTEXITCODE
+}
+
+if (Test-Path ".\mvnw.cmd") {
+  Write-Host "Starting backend with Maven Wrapper..." -ForegroundColor Green
+  .\mvnw.cmd -DskipTests spring-boot:run
+  exit $LASTEXITCODE
+}
+
+Write-Host "Maven not found (mvn) and Maven Wrapper missing." -ForegroundColor Red
+exit 1

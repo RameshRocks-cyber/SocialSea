@@ -6,6 +6,7 @@ public class LiveBroadcastDto {
     private String hostName;
     private String language;
     private String filter;
+    private String screenRatio;
     private boolean screenSharing;
     private Long startedAt;
     private Long expiresAt;
@@ -25,6 +26,9 @@ public class LiveBroadcastDto {
 
     public String getFilter() { return filter; }
     public void setFilter(String filter) { this.filter = filter; }
+
+    public String getScreenRatio() { return screenRatio; }
+    public void setScreenRatio(String screenRatio) { this.screenRatio = screenRatio; }
 
     public boolean isScreenSharing() { return screenSharing; }
     public void setScreenSharing(boolean screenSharing) { this.screenSharing = screenSharing; }

@@ -12,4 +12,6 @@ public interface StoryRepository extends JpaRepository<Story, Long> {
 
     @Query("select s from Story s where s.expiresAt is null or s.expiresAt > :now order by s.createdAt desc")
     List<Story> findActive(@Param("now") LocalDateTime now);
+
+    List<Story> findByUserOrderByCreatedAtDesc(com.socialsea.model.User user);
 }

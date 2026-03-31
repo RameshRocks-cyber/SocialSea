@@ -78,15 +78,7 @@ public class PostController {
                 .body(Map.of("message", e.getMessage()));
         }
 
-        Post post = new Post();
-        post.setMediaUrl(url);
-        post.setReel(isVideo(file));
-        post.setApproved(true);
-        post.setUser(user);
-
         try {
-            Post saved = postRepo.save(post);
-
             boolean wantsStory = isStory != null && isStory.equalsIgnoreCase("true");
             if (wantsStory) {
                 Story story = new Story();
@@ -100,15 +92,34 @@ public class PostController {
                 if (storyExpiresHours != null) {
                     try {
                         long hours = Long.parseLong(storyExpiresHours);
-                        story.setExpiresAt(java.time.LocalDateTime.now().plusHours(hours));
+                        story.setExpiresAt(java.time.LocalDateTime.now().plusHours(Math.max(1, hours)));
                     } catch (Exception ignored) {
                         story.setExpiresAt(java.time.LocalDateTime.now().plusHours(24));
                     }
                 } else {
                     story.setExpiresAt(java.time.LocalDateTime.now().plusHours(24));
                 }
-                storyRepo.save(story);
+
+                Story savedStory = storyRepo.save(story);
+                return ResponseEntity.ok(Map.of(
+                    "id", savedStory.getId(),
+                    "mediaUrl", savedStory.getMediaUrl(),
+                    "storyUrl", savedStory.getMediaUrl(),
+                    "isVideo", isVideo(file),
+                    "caption", savedStory.getCaption(),
+                    "storyText", savedStory.getStoryText(),
+                    "privacy", savedStory.getPrivacy(),
+                    "createdAt", String.valueOf(savedStory.getCreatedAt()),
+                    "expiresAt", String.valueOf(savedStory.getExpiresAt())
+                ));
             }
+
+            Post post = new Post();
+            post.setMediaUrl(url);
+            post.setReel(isVideo(file));
+            post.setApproved(true);
+            post.setUser(user);
+            Post saved = postRepo.save(post);
 
             return ResponseEntity.ok(Map.of(
                 "id", saved.getId(),

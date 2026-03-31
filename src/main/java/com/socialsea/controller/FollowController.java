@@ -7,8 +7,12 @@ import com.socialsea.repository.FollowRepository;
 import com.socialsea.repository.FollowRequestRepository;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.NotificationService;
+import com.socialsea.util.UrlUtils;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
 import java.util.List;
@@ -47,7 +51,7 @@ public class FollowController {
     @PostMapping("/{identifier}")
     public Map<String, Object> follow(@PathVariable String identifier, Authentication auth) {
         User follower = userRepo.findByEmail(auth.getName()).orElseThrow();
-        User following = resolveUser(identifier);
+        User following = resolveUser(identifier, auth);
 
         if (follower.getId().equals(following.getId())) {
             return Map.of("status", "ERROR", "message", "Cannot follow yourself");
@@ -82,7 +86,7 @@ public class FollowController {
     @PostMapping("/requests/{identifier}")
     public Map<String, Object> requestFollow(@PathVariable String identifier, Authentication auth) {
         User follower = userRepo.findByEmail(auth.getName()).orElseThrow();
-        User following = resolveUser(identifier);
+        User following = resolveUser(identifier, auth);
 
         if (follower.getId().equals(following.getId())) {
             return Map.of("status", "ERROR", "message", "Cannot follow yourself");
@@ -108,7 +112,7 @@ public class FollowController {
     @DeleteMapping("/{identifier}")
     public String unfollow(@PathVariable String identifier, Authentication auth) {
         User follower = userRepo.findByEmail(auth.getName()).orElseThrow();
-        User following = resolveUser(identifier);
+        User following = resolveUser(identifier, auth);
 
         followRepo.findAll().stream()
                 .filter(f -> f.getFollower().equals(follower)
@@ -120,18 +124,18 @@ public class FollowController {
     }
 
     @GetMapping("/requests")
-    public List<Map<String, Object>> incomingRequests(Authentication auth) {
+    public List<Map<String, Object>> incomingRequests(Authentication auth, HttpServletRequest request) {
         User receiver = userRepo.findByEmail(auth.getName()).orElseThrow();
         return followRequestRepo.findByReceiverAndStatus(receiver, "PENDING").stream()
-                .map(this::toFollowRequestItem)
+                .map(req -> toFollowRequestItem(request, req))
                 .toList();
     }
 
     @GetMapping("/pending-requests")
-    public List<Map<String, Object>> pendingRequests(Authentication auth) {
+    public List<Map<String, Object>> pendingRequests(Authentication auth, HttpServletRequest request) {
         User sender = userRepo.findByEmail(auth.getName()).orElseThrow();
         return followRequestRepo.findBySenderAndStatus(sender, "PENDING").stream()
-                .map(this::toFollowRequestItem)
+                .map(req -> toFollowRequestItem(request, req))
                 .toList();
     }
 
@@ -167,63 +171,84 @@ public class FollowController {
     }
 
     @GetMapping("/{identifier}/followers")
-    public long followers(@PathVariable String identifier) {
-        User user = resolveUser(identifier);
+    public long followers(@PathVariable String identifier, Authentication auth) {
+        User user = resolveUser(identifier, auth);
         return followRepo.countByFollowing(user);
     }
 
     @GetMapping("/{identifier}/following")
-    public long following(@PathVariable String identifier) {
-        User user = resolveUser(identifier);
+    public long following(@PathVariable String identifier, Authentication auth) {
+        User user = resolveUser(identifier, auth);
         return followRepo.countByFollower(user);
     }
 
     @GetMapping("/{identifier}/followers/users")
-    public List<Map<String, Object>> followerUsers(@PathVariable String identifier) {
-        User user = resolveUser(identifier);
+    public List<Map<String, Object>> followerUsers(
+            @PathVariable String identifier,
+            Authentication auth,
+            HttpServletRequest request
+    ) {
+        User user = resolveUser(identifier, auth);
         return followRepo.findByFollowing(user).stream()
                 .map(Follow::getFollower)
                 .filter(Objects::nonNull)
-                .map(this::toUserItem)
+                .map(u -> toUserItem(request, u))
                 .distinct()
                 .toList();
     }
 
     @GetMapping("/{identifier}/following/users")
-    public List<Map<String, Object>> followingUsers(@PathVariable String identifier) {
-        User user = resolveUser(identifier);
+    public List<Map<String, Object>> followingUsers(
+            @PathVariable String identifier,
+            Authentication auth,
+            HttpServletRequest request
+    ) {
+        User user = resolveUser(identifier, auth);
         return followRepo.findByFollower(user).stream()
                 .map(Follow::getFollowing)
                 .filter(Objects::nonNull)
-                .map(this::toUserItem)
+                .map(u -> toUserItem(request, u))
                 .distinct()
                 .toList();
     }
 
-    private User resolveUser(String identifier) {
+    private User resolveUser(String identifier, Authentication auth) {
+        if (identifier != null) {
+            String clean = identifier.trim();
+            if (clean.equalsIgnoreCase("me") || clean.equalsIgnoreCase("self")) {
+                if (auth == null || !auth.isAuthenticated()) {
+                    throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login required");
+                }
+                return userRepo.findByEmail(auth.getName())
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+            }
+        }
         if (identifier != null && identifier.matches("\\d+")) {
-            return userRepo.findById(Long.parseLong(identifier)).orElseThrow();
+            return userRepo.findById(Long.parseLong(identifier))
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         }
         return userRepo.findByEmailIgnoreCase(identifier)
                 .or(() -> userRepo.findByNameIgnoreCase(identifier))
-                .orElseThrow();
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
-    private Map<String, Object> toUserItem(User user) {
+    private Map<String, Object> toUserItem(HttpServletRequest request, User user) {
         Map<String, Object> item = new HashMap<>();
         item.put("id", user.getId());
         item.put("email", user.getEmail());
         item.put("name", (user.getName() != null && !user.getName().isBlank()) ? user.getName() : user.getEmail());
-        item.put("profilePic", user.getProfilePic());
+        String profilePicUrl = UrlUtils.toAbsoluteUrl(request, user.getProfilePic());
+        item.put("profilePic", profilePicUrl);
+        item.put("profilePicUrl", profilePicUrl);
         return item;
     }
 
-    private Map<String, Object> toFollowRequestItem(FollowRequest request) {
+    private Map<String, Object> toFollowRequestItem(HttpServletRequest httpRequest, FollowRequest request) {
         Map<String, Object> item = new HashMap<>();
         item.put("id", request.getId());
         item.put("status", request.getStatus());
-        item.put("sender", toUserItem(request.getSender()));
-        item.put("receiver", toUserItem(request.getReceiver()));
+        item.put("sender", toUserItem(httpRequest, request.getSender()));
+        item.put("receiver", toUserItem(httpRequest, request.getReceiver()));
         return item;
     }
 }

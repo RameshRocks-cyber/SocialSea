@@ -2,8 +2,10 @@ package com.socialsea.controller;
 
 import com.socialsea.dto.FeedItemDto;
 import com.socialsea.model.User;
+import com.socialsea.model.Story;
 import com.socialsea.repository.FollowRepository;
 import com.socialsea.repository.PostRepository;
+import com.socialsea.repository.StoryRepository;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.AnonymousPostService;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,7 @@ public class FeedController {
     private final PostRepository postRepo;
     private final UserRepository userRepo;
     private final FollowRepository followRepo;
+    private final StoryRepository storyRepo;
 
     @Value("${app.feed.include-unapproved:false}")
     private boolean includeUnapproved;
@@ -49,6 +52,7 @@ public class FeedController {
 
         List<FeedItemDto> normalPosts = postRepo.findAll()
                 .stream()
+                .filter(p -> !isStoryPost(p.getMediaUrl()))
                 .filter(p -> includeUnapproved || p.isApproved())
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
                 .filter(p -> canViewPost(viewer, allowedPrivateIds, p.getUser()))
@@ -66,6 +70,18 @@ public class FeedController {
         if (owner == null) return false;
         if (!owner.isPrivateAccount()) return true;
         return viewer != null && owner.getId() != null && allowedPrivateIds.contains(owner.getId());
+    }
+
+    private boolean isStoryPost(String mediaUrl) {
+        if (mediaUrl == null || mediaUrl.isBlank()) return false;
+        List<Story> stories = storyRepo.findAll();
+        for (Story story : stories) {
+            String storyUrl = story.getMediaUrl();
+            if (storyUrl != null && !storyUrl.isBlank() && storyUrl.equals(mediaUrl)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
 

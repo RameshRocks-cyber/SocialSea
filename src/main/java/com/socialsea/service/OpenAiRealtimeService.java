@@ -57,8 +57,9 @@ public class OpenAiRealtimeService {
         session.put("instructions", buildInstructions(safeName, safeSubject, safeTopic));
 
         ArrayNode modalities = session.putArray("output_modalities");
+        // Realtime currently supports a single output modality at a time.
+        // The client can switch between "audio" and "text" via session.update.
         modalities.add("audio");
-        modalities.add("text");
 
         ObjectNode audio = session.putObject("audio");
         audio.putObject("output").put("voice", DEFAULT_VOICE);

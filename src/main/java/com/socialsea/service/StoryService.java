@@ -5,7 +5,10 @@ import com.socialsea.model.Follow;
 import com.socialsea.model.Story;
 import com.socialsea.model.User;
 import com.socialsea.repository.FollowRepository;
+import com.socialsea.repository.StoryCommentRepository;
+import com.socialsea.repository.StoryLikeRepository;
 import com.socialsea.repository.StoryRepository;
+import com.socialsea.repository.StoryViewRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -19,10 +22,22 @@ public class StoryService {
 
     private final StoryRepository storyRepo;
     private final FollowRepository followRepo;
+    private final StoryLikeRepository storyLikeRepo;
+    private final StoryCommentRepository storyCommentRepo;
+    private final StoryViewRepository storyViewRepo;
 
-    public StoryService(StoryRepository storyRepo, FollowRepository followRepo) {
+    public StoryService(
+            StoryRepository storyRepo,
+            FollowRepository followRepo,
+            StoryLikeRepository storyLikeRepo,
+            StoryCommentRepository storyCommentRepo,
+            StoryViewRepository storyViewRepo
+    ) {
         this.storyRepo = storyRepo;
         this.followRepo = followRepo;
+        this.storyLikeRepo = storyLikeRepo;
+        this.storyCommentRepo = storyCommentRepo;
+        this.storyViewRepo = storyViewRepo;
     }
 
     public List<StoryDto> fetchFeed(User viewer) {
@@ -45,6 +60,18 @@ public class StoryService {
             if (owner != null) {
                 dto.setUserId(ownerId);
                 dto.setUsername(owner.getEmail());
+            }
+            if (storyLikeRepo != null) {
+                dto.setLikeCount(storyLikeRepo.countByStory(story));
+                if (viewer != null) {
+                    dto.setLikedByMe(storyLikeRepo.existsByUserAndStory(viewer, story));
+                }
+            }
+            if (storyCommentRepo != null) {
+                dto.setCommentCount(storyCommentRepo.countByStory(story));
+            }
+            if (storyViewRepo != null) {
+                dto.setViewCount(storyViewRepo.countByStory(story));
             }
             result.add(dto);
         }

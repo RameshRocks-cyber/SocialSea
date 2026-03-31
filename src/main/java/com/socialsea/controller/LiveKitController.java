@@ -42,7 +42,8 @@ public class LiveKitController {
         if (room.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("message", "room required"));
         }
-        String identity = auth.getName();
+        String requestedIdentity = String.valueOf(payload.getOrDefault("identity", "")).trim();
+        String identity = requestedIdentity.isBlank() ? auth.getName() : requestedIdentity;
         AccessToken token = new AccessToken(apiKey, apiSecret);
         token.setIdentity(identity);
         token.addGrants(new RoomJoin(true), new RoomName(room));

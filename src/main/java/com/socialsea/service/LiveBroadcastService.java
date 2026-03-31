@@ -44,6 +44,7 @@ public class LiveBroadcastService {
             next.setLanguage(payload.getLanguage());
             next.setFilter(payload.getFilter());
             next.setScreenSharing(payload.isScreenSharing());
+            next.setScreenRatio(payload.getScreenRatio());
         }
 
         next.setStartedAt(now);
