@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentMap;
 @RequiredArgsConstructor
 public class PresenceService {
 
-    private static final Duration ONLINE_TTL = Duration.ofSeconds(70);
+    private static final Duration ONLINE_TTL = Duration.ofMinutes(5);
     private static final Duration PERSIST_THROTTLE = Duration.ofSeconds(15);
 
     private final UserRepository userRepo;

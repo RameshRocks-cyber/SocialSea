@@ -80,7 +80,7 @@ public class ChatController {
             item.put("profilePic", profilePicUrl);
             item.put("profilePicUrl", profilePicUrl);
             item.put("lastMessage", m.getText());
-            item.put("lastAt", m.getCreatedAt());
+            item.put("lastAt", toInstant(m.getCreatedAt()) != null ? toInstant(m.getCreatedAt()).toString() : null);
             boolean online = presenceService.isOnline(other);
             item.put("online", online);
             LocalDateTime locationUpdatedAt = other.getLocationUpdatedAt();
@@ -94,7 +94,7 @@ public class ChatController {
             if (presenceAt != null) {
                 item.put("presenceUpdatedAt", presenceAt.toString());
             }
-            item.put("locationUpdatedAt", locationUpdatedAt);
+            item.put("locationUpdatedAt", locationAt != null ? locationAt.toString() : null);
             byOtherUser.put(otherId, item);
         }
 
@@ -137,7 +137,8 @@ public class ChatController {
             item.put("mediaUrl", m.getMediaUrl());
             item.put("mediaType", m.getMediaType());
             item.put("fileName", m.getFileName());
-            item.put("createdAt", m.getCreatedAt());
+            Instant createdAt = toInstant(m.getCreatedAt());
+            item.put("createdAt", createdAt != null ? createdAt.toString() : null);
             item.put("mine", Objects.equals(m.getSender().getId(), me.getId()));
             return item;
         }).toList();
@@ -379,7 +380,8 @@ public class ChatController {
         payload.put("mediaUrl", saved.getMediaUrl());
         payload.put("mediaType", saved.getMediaType());
         payload.put("fileName", saved.getFileName());
-        payload.put("createdAt", saved.getCreatedAt());
+        Instant createdAt = toInstant(saved.getCreatedAt());
+        payload.put("createdAt", createdAt != null ? createdAt.toString() : null);
         payload.put("mine", mine);
         return payload;
     }
