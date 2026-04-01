@@ -140,7 +140,7 @@ public class SecurityConfig {
             config.setAllowedOrigins(origins);
             config.setAllowCredentials(true);
         }
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
@@ -159,7 +159,7 @@ public class SecurityConfig {
                         : origins.toArray(new String[0]);
                 registry.addMapping("/**")
                     .allowedOriginPatterns(originPatterns)
-                    .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                    .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
                     .allowedHeaders("*")
                     .allowCredentials(!origins.isEmpty());
             }

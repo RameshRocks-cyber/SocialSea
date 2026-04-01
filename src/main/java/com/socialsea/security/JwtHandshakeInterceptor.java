@@ -32,6 +32,14 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
             @NonNull Map<String, Object> attributes
     ) {
         if (request instanceof ServletServerHttpRequest servletRequest) {
+            String path = servletRequest.getServletRequest().getRequestURI();
+            if (path != null) {
+                String normalized = path.toLowerCase();
+                if (normalized.endsWith("/ws/info") || normalized.contains("/ws/info") || normalized.contains("/ws/iframe")) {
+                    return true; // allow SockJS info/iframe without auth
+                }
+            }
+
             String token = servletRequest.getServletRequest().getParameter("token");
 
             if (token != null && !jwtUtil.isExpired(token)) {

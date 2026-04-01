@@ -67,6 +67,29 @@ public class NotificationController {
         repo.save(n);
     }
 
+    @PostMapping({"/read-all", "/mark-all-read"})
+    public Map<String, Object> markAllRead(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return Map.of("ok", false, "message", "Login required");
+        }
+        String recipient = auth.getName();
+        repo.markAllAsRead(recipient);
+        return Map.of("ok", true);
+    }
+
+    @PatchMapping
+    public Map<String, Object> patchAll(@RequestBody(required = false) Map<String, Object> body, Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return Map.of("ok", false, "message", "Login required");
+        }
+        boolean read = body == null || Boolean.TRUE.equals(body.get("read"));
+        if (read) {
+            repo.markAllAsRead(auth.getName());
+            return Map.of("ok", true, "read", true);
+        }
+        return Map.of("ok", false, "message", "Unsupported patch");
+    }
+
     private String normalizeSenderName(String message) {
         if (message == null || message.isBlank()) return message;
 

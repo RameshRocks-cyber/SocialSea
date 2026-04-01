@@ -21,7 +21,9 @@ import java.util.Set;
 public class CallSignalingController {
 
     private static final Set<String> ALLOWED_TYPES = Set.of(
-            "offer", "answer", "ice", "hangup", "reject", "busy", "ringing"
+            "offer", "answer", "ice", "hangup", "reject", "busy", "ringing",
+            "livekit-invite", "livekit-accept",
+            "connected", "refreshing", "ended", "accepted"
     );
 
     private final UserRepository userRepository;
