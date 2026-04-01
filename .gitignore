@@ -42,6 +42,7 @@ build/
 *.mv.db
 data/*.trace.db
 data/*.mv.db
+uploads/
 
 _m2/
 .m2/

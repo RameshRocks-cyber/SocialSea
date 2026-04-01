@@ -14,8 +14,15 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${app.upload.dir:uploads}")
     private String uploadDir;
 
+    @Value("${app.upload.serve-local:false}")
+    private boolean serveLocalUploads;
+
     @Override
     public void addResourceHandlers(@NonNull ResourceHandlerRegistry registry) {
+        if (!serveLocalUploads) {
+            return;
+        }
+
         String location = Path.of(uploadDir).toAbsolutePath().normalize().toUri().toString();
         if (!location.endsWith("/")) {
             location = location + "/";

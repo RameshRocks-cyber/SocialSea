@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/feed")
@@ -40,6 +41,11 @@ public class FeedController {
         User viewer = (auth != null && auth.isAuthenticated())
                 ? userRepo.findByEmail(auth.getName()).orElse(null)
                 : null;
+        Set<String> storyMediaUrls = storyRepo.findAll()
+                .stream()
+                .map(Story::getMediaUrl)
+                .filter(url -> url != null && !url.isBlank())
+                .collect(Collectors.toSet());
         Set<Long> allowedPrivateIds = new HashSet<>();
         if (viewer != null) {
             allowedPrivateIds.add(viewer.getId());
@@ -52,7 +58,7 @@ public class FeedController {
 
         List<FeedItemDto> normalPosts = postRepo.findAll()
                 .stream()
-                .filter(p -> !isStoryPost(p.getMediaUrl()))
+                .filter(p -> !isStoryPost(p.getMediaUrl(), storyMediaUrls))
                 .filter(p -> includeUnapproved || p.isApproved())
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
                 .filter(p -> canViewPost(viewer, allowedPrivateIds, p.getUser()))
@@ -72,16 +78,9 @@ public class FeedController {
         return viewer != null && owner.getId() != null && allowedPrivateIds.contains(owner.getId());
     }
 
-    private boolean isStoryPost(String mediaUrl) {
+    private boolean isStoryPost(String mediaUrl, Set<String> storyMediaUrls) {
         if (mediaUrl == null || mediaUrl.isBlank()) return false;
-        List<Story> stories = storyRepo.findAll();
-        for (Story story : stories) {
-            String storyUrl = story.getMediaUrl();
-            if (storyUrl != null && !storyUrl.isBlank() && storyUrl.equals(mediaUrl)) {
-                return true;
-            }
-        }
-        return false;
+        return storyMediaUrls.contains(mediaUrl);
     }
 }
 

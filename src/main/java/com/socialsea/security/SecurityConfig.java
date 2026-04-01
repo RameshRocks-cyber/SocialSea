@@ -1,6 +1,7 @@
 package com.socialsea.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -14,13 +15,16 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Configuration
 @EnableWebSecurity
@@ -30,6 +34,15 @@ public class SecurityConfig {
     @Autowired
     private JwtFilter jwtFilter;
 
+    @Value("${app.security.allowed-origins:*}")
+    private String allowedOrigins;
+
+    @Value("${app.admin.open:false}")
+    private boolean openAdmin;
+
+    @Value("${app.security.require-https:false}")
+    private boolean requireHttps;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -37,13 +50,20 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-            .authorizeHttpRequests(auth -> auth
+            );
+
+        if (requireHttps) {
+            http.requiresChannel(channel -> channel.anyRequest().requiresSecure());
+        }
+
+        http.authorizeHttpRequests(auth -> {
+                auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers(
                     "/",
                     "/health",
                     "/actuator/**",
+                    "/ws/**",
 
                     // AUTH
                     "/auth/**",
@@ -77,11 +97,27 @@ public class SecurityConfig {
                     "/login/**",
                     "/error"
                 ).permitAll()
+                ;
 
-                // Admin routes open in local/dev to avoid role/permission lockouts during testing
-                .requestMatchers("/api/admin/**", "/admin/**").permitAll()
+                // Admin routes: open in dev if explicitly enabled, otherwise require admin roles
+                if (openAdmin) {
+                    auth.requestMatchers("/api/admin/**", "/admin/**").permitAll();
+                } else {
+                    auth.requestMatchers("/api/admin/**", "/admin/**").hasAnyRole("ADMIN", "SUPER_ADMIN");
+                }
 
-                .anyRequest().authenticated()
+                auth.anyRequest().authenticated();
+            })
+            .headers(headers -> headers
+                .contentTypeOptions(Customizer.withDefaults())
+                .frameOptions(frame -> frame.deny())
+                .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+                .httpStrictTransportSecurity(hsts -> hsts
+                    .includeSubDomains(true)
+                    .preload(true)
+                    .maxAgeInSeconds(31536000)
+                )
+                .permissionsPolicy(permissions -> permissions.policy("camera=(), microphone=(), geolocation=()"))
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
@@ -96,10 +132,16 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("*"));
+        List<String> origins = getAllowedOrigins();
+        if (origins.isEmpty()) {
+            config.addAllowedOriginPattern("*");
+            config.setAllowCredentials(false);
+        } else {
+            config.setAllowedOrigins(origins);
+            config.setAllowCredentials(true);
+        }
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
-        config.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
@@ -111,12 +153,24 @@ public class SecurityConfig {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(@NonNull CorsRegistry registry) {
+                List<String> origins = getAllowedOrigins();
                 registry.addMapping("/**")
-                    .allowedOriginPatterns("*")
+                    .allowedOriginPatterns(origins.isEmpty() ? "*" : origins.toArray(new String[0]))
                     .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                     .allowedHeaders("*")
-                    .allowCredentials(true);
+                    .allowCredentials(!origins.isEmpty());
             }
         };
+    }
+
+    private List<String> getAllowedOrigins() {
+        if (allowedOrigins == null || allowedOrigins.isBlank()) {
+            return List.of();
+        }
+        return Arrays.stream(allowedOrigins.split(","))
+            .map(String::trim)
+            .filter(value -> !value.isEmpty())
+            .distinct()
+            .collect(Collectors.toList());
     }
 }

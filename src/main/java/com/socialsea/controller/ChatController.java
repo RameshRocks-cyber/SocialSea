@@ -8,6 +8,7 @@ import com.socialsea.service.CloudinaryService;
 import com.socialsea.util.UrlUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -40,12 +41,22 @@ public class ChatController {
 
     @GetMapping("/conversations")
     @Transactional(readOnly = true)
-    public ResponseEntity<?> conversations(Authentication auth, HttpServletRequest request) {
+    public ResponseEntity<?> conversations(
+            Authentication auth,
+            HttpServletRequest request,
+            @RequestParam(name = "limit", defaultValue = "300") int limit
+    ) {
         User me = currentUser(auth);
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
 
-        List<ChatMessage> messages = chatRepo.findBySenderIdOrReceiverIdOrderByCreatedAtDesc(me.getId(), me.getId());
+        int safeLimit = normalizeLimit(limit, 10, 1000, 300);
         Map<Long, Map<String, Object>> byOtherUser = new LinkedHashMap<>();
+
+        List<ChatMessage> messages = chatRepo.findBySenderIdOrReceiverIdOrderByCreatedAtDesc(
+                me.getId(),
+                me.getId(),
+                PageRequest.of(0, safeLimit)
+        );
 
         for (ChatMessage m : messages) {
             User sender = m.getSender();
@@ -79,7 +90,11 @@ public class ChatController {
 
     @GetMapping("/{otherUserId}/messages")
     @Transactional(readOnly = true)
-    public ResponseEntity<?> messages(@PathVariable Long otherUserId, Authentication auth) {
+    public ResponseEntity<?> messages(
+            @PathVariable Long otherUserId,
+            Authentication auth,
+            @RequestParam(name = "limit", defaultValue = "100") int limit
+    ) {
         User me = currentUser(auth);
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
 
@@ -87,9 +102,16 @@ public class ChatController {
         Optional<User> otherOpt = userRepo.findById(safeOtherUserId);
         if (otherOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
 
-        List<ChatMessage> list = chatRepo.findBySenderIdAndReceiverIdOrSenderIdAndReceiverIdOrderByCreatedAtAsc(
-                me.getId(), safeOtherUserId, safeOtherUserId, me.getId()
+        int safeLimit = normalizeLimit(limit, 20, 200, 100);
+        List<ChatMessage> recent = chatRepo.findBySenderIdAndReceiverIdOrSenderIdAndReceiverIdOrderByCreatedAtDesc(
+                me.getId(),
+                safeOtherUserId,
+                safeOtherUserId,
+                me.getId(),
+                PageRequest.of(0, safeLimit)
         );
+        List<ChatMessage> list = new ArrayList<>(recent);
+        Collections.reverse(list);
 
         List<Map<String, Object>> payload = list.stream().map(m -> {
             Map<String, Object> item = new HashMap<>();
@@ -107,6 +129,11 @@ public class ChatController {
         }).toList();
 
         return ResponseEntity.ok(payload);
+    }
+
+    private int normalizeLimit(int requested, int min, int max, int fallback) {
+        if (requested < min || requested > max) return fallback;
+        return requested;
     }
 
     @DeleteMapping("/{otherUserId}")

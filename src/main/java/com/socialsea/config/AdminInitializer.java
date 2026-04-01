@@ -9,9 +9,19 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.beans.factory.annotation.Value;
 
 @Configuration
 public class AdminInitializer {
+
+    @Value("${app.admin.bootstrap.enabled:false}")
+    private boolean adminBootstrapEnabled;
+
+    @Value("${app.admin.bootstrap.email:}")
+    private String adminBootstrapEmail;
+
+    @Value("${app.admin.bootstrap.password:}")
+    private String adminBootstrapPassword;
 
     @Bean
     CommandLineRunner initAdmin(
@@ -25,12 +35,22 @@ public class AdminInitializer {
             ensureUserLocationColumns(jdbcTemplate);
 
             try {
-                String adminEmail = "jekkaramesh788@gmail.com";
+                if (!adminBootstrapEnabled) {
+                    return;
+                }
+
+                String adminEmail = adminBootstrapEmail != null ? adminBootstrapEmail.trim() : "";
+                String adminPassword = adminBootstrapPassword != null ? adminBootstrapPassword.trim() : "";
+
+                if (adminEmail.isBlank() || adminPassword.isBlank()) {
+                    System.err.println("ADMIN INIT SKIPPED: set APP_ADMIN_BOOTSTRAP_EMAIL and APP_ADMIN_BOOTSTRAP_PASSWORD");
+                    return;
+                }
 
                 if (userRepository.findByEmail(adminEmail).isEmpty()) {
                     User admin = new User();
                     admin.setEmail(adminEmail);
-                    admin.setPassword(passwordEncoder.encode("Root@000"));
+                    admin.setPassword(passwordEncoder.encode(adminPassword));
                     admin.setRole(Role.ADMIN);
                     admin.setBanned(false);
 
