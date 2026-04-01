@@ -52,6 +52,7 @@ public class ChatController {
     ) {
         User me = currentUser(auth);
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        presenceService.touch(me);
 
         int safeLimit = normalizeLimit(limit, 10, 1000, 300);
         Map<Long, Map<String, Object>> byOtherUser = new LinkedHashMap<>();
@@ -80,12 +81,12 @@ public class ChatController {
             item.put("profilePicUrl", profilePicUrl);
             item.put("lastMessage", m.getText());
             item.put("lastAt", m.getCreatedAt());
-            boolean online = presenceService.isOnline(other.getEmail());
+            boolean online = presenceService.isOnline(other);
             item.put("online", online);
             LocalDateTime locationUpdatedAt = other.getLocationUpdatedAt();
             Instant messageAt = toInstant(m.getCreatedAt());
             Instant locationAt = toInstant(locationUpdatedAt);
-            Instant presenceAt = presenceService.getLastSeenAt(other.getEmail());
+            Instant presenceAt = presenceService.getLastSeenAt(other);
             Instant lastActiveAt = latestInstant(messageAt, locationAt, presenceAt);
             if (lastActiveAt != null) {
                 item.put("lastActiveAt", lastActiveAt.toString());
@@ -109,6 +110,7 @@ public class ChatController {
     ) {
         User me = currentUser(auth);
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        presenceService.touch(me);
 
         Long safeOtherUserId = Objects.requireNonNull(otherUserId, "otherUserId");
         Optional<User> otherOpt = userRepo.findById(safeOtherUserId);
@@ -141,6 +143,19 @@ public class ChatController {
         }).toList();
 
         return ResponseEntity.ok(payload);
+    }
+
+    @PostMapping("/presence")
+    public ResponseEntity<?> presence(Authentication auth) {
+        User me = currentUser(auth);
+        if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        presenceService.touch(me);
+        Instant presenceAt = presenceService.getLastSeenAt(me);
+        return ResponseEntity.ok(Map.of(
+                "ok", true,
+                "online", true,
+                "presenceUpdatedAt", presenceAt != null ? presenceAt.toString() : Instant.now().toString()
+        ));
     }
 
     private int normalizeLimit(int requested, int min, int max, int fallback) {

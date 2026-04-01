@@ -39,7 +39,9 @@ public class LiveKitController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         }
         if (apiKey == null || apiKey.isBlank() || apiSecret == null || apiSecret.isBlank()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "LiveKit is not configured"));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                    "message", "LiveKit is not configured on the backend. Set LIVEKIT_API_KEY and LIVEKIT_API_SECRET."
+            ));
         }
         String room = String.valueOf(payload.getOrDefault("room", "")).trim();
         if (room.isBlank()) {

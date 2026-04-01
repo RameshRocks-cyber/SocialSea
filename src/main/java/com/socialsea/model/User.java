@@ -49,6 +49,7 @@ public class User implements UserDetails {
     private Double lastLatitude;
     private Double lastLongitude;
     private LocalDateTime locationUpdatedAt;
+    private LocalDateTime presenceUpdatedAt;
 
     public Long getId() {
         return id;
@@ -176,6 +177,14 @@ public class User implements UserDetails {
 
     public void setLocationUpdatedAt(LocalDateTime locationUpdatedAt) {
         this.locationUpdatedAt = locationUpdatedAt;
+    }
+
+    public LocalDateTime getPresenceUpdatedAt() {
+        return presenceUpdatedAt;
+    }
+
+    public void setPresenceUpdatedAt(LocalDateTime presenceUpdatedAt) {
+        this.presenceUpdatedAt = presenceUpdatedAt;
     }
 
     @Override
