@@ -154,8 +154,11 @@ public class SecurityConfig {
             @Override
             public void addCorsMappings(@NonNull CorsRegistry registry) {
                 List<String> origins = getAllowedOrigins();
+                String[] originPatterns = origins.isEmpty()
+                        ? new String[]{"*"}
+                        : origins.toArray(new String[0]);
                 registry.addMapping("/**")
-                    .allowedOriginPatterns(origins.isEmpty() ? "*" : origins.toArray(new String[0]))
+                    .allowedOriginPatterns(originPatterns)
                     .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                     .allowedHeaders("*")
                     .allowCredentials(!origins.isEmpty());

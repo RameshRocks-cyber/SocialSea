@@ -45,22 +45,14 @@ public class ProfileController {
             Authentication auth,
             HttpServletRequest request
     ) {
-        Optional<User> userOpt;
-
-        if (identifier.matches("\\d+")) {
-            userOpt = userRepo.findById(Long.parseLong(identifier));
-        } else {
-            userOpt = userRepo.findByEmail(identifier);
-        }
+        Optional<User> userOpt = resolveUser(identifier, auth);
 
         if (userOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "User not found"));
         }
         User user = userOpt.get();
-        User viewer = (auth != null && auth.isAuthenticated())
-                ? userRepo.findByEmail(auth.getName()).orElse(null)
-                : null;
+        User viewer = resolveAuthenticatedUser(auth).orElse(null);
         boolean canViewContent = canViewProfileContent(viewer, user);
         String followStatus = resolveFollowStatus(viewer, user);
 
@@ -102,7 +94,7 @@ public class ProfileController {
         if (auth == null || !auth.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Login required");
         }
-        User user = userRepo.findByEmail(auth.getName())
+        User user = resolveAuthenticatedUser(auth)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         List<Post> posts = postRepo.findByUser(user)
@@ -119,8 +111,10 @@ public class ProfileController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Login required");
         }
 
-        User user = userRepo.findByEmail(auth.getName())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+        User user = resolveAuthenticatedUser(auth).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Session expired"));
+        }
 
         long followers = followRepo.countByFollowing(user);
         long following = followRepo.countByFollower(user);
@@ -156,7 +150,7 @@ public class ProfileController {
         if (auth == null || !auth.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         }
-        User user = userRepo.findByEmail(auth.getName())
+        User user = resolveAuthenticatedUser(auth)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         Object raw = body.get("privateAccount");
         boolean next = raw instanceof Boolean
@@ -175,7 +169,7 @@ public class ProfileController {
         if (auth == null || !auth.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         }
-        User user = userRepo.findByEmail(auth.getName())
+        User user = resolveAuthenticatedUser(auth)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Object raw = body != null ? body.get("mediaUrls") : null;
@@ -271,7 +265,7 @@ public class ProfileController {
     ) {
         Long myUserId = null;
         if (auth != null && auth.isAuthenticated()) {
-            myUserId = userRepo.findByEmail(auth.getName()).map(User::getId).orElse(null);
+            myUserId = resolveAuthenticatedUser(auth).map(User::getId).orElse(null);
         }
         return ResponseEntity.ok(profileService.checkNameAvailability(name, myUserId));
     }
@@ -282,7 +276,7 @@ public class ProfileController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Login required");
         }
 
-        User user = userRepo.findByEmail(auth.getName())
+        User user = resolveAuthenticatedUser(auth)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         List<FeedItemDto> posts = postRepo.findByUserIdOrderByCreatedAtDesc(user.getId())
@@ -308,7 +302,7 @@ public class ProfileController {
 
         Long myUserId = null;
         if (auth != null && auth.isAuthenticated()) {
-            myUserId = userRepo.findByEmail(auth.getName()).map(User::getId).orElse(null);
+            myUserId = resolveAuthenticatedUser(auth).map(User::getId).orElse(null);
         }
 
         Long finalMyUserId = myUserId;
@@ -341,9 +335,7 @@ public class ProfileController {
         }
 
         User target = userOpt.get();
-        User viewer = (auth != null && auth.isAuthenticated())
-                ? userRepo.findByEmail(auth.getName()).orElse(null)
-                : null;
+        User viewer = resolveAuthenticatedUser(auth).orElse(null);
         if (!canViewProfileContent(viewer, target)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "This account is private"));
@@ -385,9 +377,7 @@ public class ProfileController {
         }
 
         User target = userOpt.get();
-        User viewer = (auth != null && auth.isAuthenticated())
-                ? userRepo.findByEmail(auth.getName()).orElse(null)
-                : null;
+        User viewer = resolveAuthenticatedUser(auth).orElse(null);
         if (!canViewProfileContent(viewer, target)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "This account is private"));
@@ -427,9 +417,7 @@ public class ProfileController {
         }
 
         User target = userOpt.get();
-        User viewer = (auth != null && auth.isAuthenticated())
-                ? userRepo.findByEmail(auth.getName()).orElse(null)
-                : null;
+        User viewer = resolveAuthenticatedUser(auth).orElse(null);
         if (!canViewProfileContent(viewer, target)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(Map.of("message", "This account is private"));
@@ -472,17 +460,26 @@ public class ProfileController {
 
     private Optional<User> resolveUser(String identifier, Authentication auth) {
         if ("me".equalsIgnoreCase(identifier)) {
-            if (auth == null || !auth.isAuthenticated()) {
-                return Optional.empty();
-            }
-            return userRepo.findByEmail(auth.getName());
+            return resolveAuthenticatedUser(auth);
         }
 
         if (identifier != null && identifier.matches("\\d+")) {
             return userRepo.findById(Long.parseLong(identifier));
         }
 
-        return userRepo.findByEmail(identifier)
+        return userRepo.findByEmailIgnoreCase(identifier)
+                .or(() -> userRepo.findByNameIgnoreCase(identifier));
+    }
+
+    private Optional<User> resolveAuthenticatedUser(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return Optional.empty();
+        }
+        String identifier = String.valueOf(auth.getName()).trim();
+        if (identifier.isEmpty()) {
+            return Optional.empty();
+        }
+        return userRepo.findByEmailIgnoreCase(identifier)
                 .or(() -> userRepo.findByNameIgnoreCase(identifier));
     }
 
@@ -499,7 +496,7 @@ public class ProfileController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         }
 
-        User currentUser = userRepo.findByEmail(auth.getName())
+        User currentUser = resolveAuthenticatedUser(auth)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Long effectiveUserId = currentUser.getId();
