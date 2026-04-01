@@ -5,6 +5,7 @@ import com.socialsea.model.User;
 import com.socialsea.repository.ChatMessageRepository;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.CloudinaryService;
+import com.socialsea.service.PresenceService;
 import com.socialsea.util.UrlUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +20,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 @RestController
@@ -38,6 +41,7 @@ public class ChatController {
     private final ChatMessageRepository chatRepo;
     private final SimpMessagingTemplate messagingTemplate;
     private final CloudinaryService cloudinaryService;
+    private final PresenceService presenceService;
 
     @GetMapping("/conversations")
     @Transactional(readOnly = true)
@@ -76,11 +80,19 @@ public class ChatController {
             item.put("profilePicUrl", profilePicUrl);
             item.put("lastMessage", m.getText());
             item.put("lastAt", m.getCreatedAt());
+            boolean online = presenceService.isOnline(other.getEmail());
+            item.put("online", online);
             LocalDateTime locationUpdatedAt = other.getLocationUpdatedAt();
-            LocalDateTime lastActiveAt = locationUpdatedAt == null || m.getCreatedAt().isAfter(locationUpdatedAt)
-                    ? m.getCreatedAt()
-                    : locationUpdatedAt;
-            item.put("lastActiveAt", lastActiveAt);
+            Instant messageAt = toInstant(m.getCreatedAt());
+            Instant locationAt = toInstant(locationUpdatedAt);
+            Instant presenceAt = presenceService.getLastSeenAt(other.getEmail());
+            Instant lastActiveAt = latestInstant(messageAt, locationAt, presenceAt);
+            if (lastActiveAt != null) {
+                item.put("lastActiveAt", lastActiveAt.toString());
+            }
+            if (presenceAt != null) {
+                item.put("presenceUpdatedAt", presenceAt.toString());
+            }
             item.put("locationUpdatedAt", locationUpdatedAt);
             byOtherUser.put(otherId, item);
         }
@@ -134,6 +146,22 @@ public class ChatController {
     private int normalizeLimit(int requested, int min, int max, int fallback) {
         if (requested < min || requested > max) return fallback;
         return requested;
+    }
+
+    private Instant latestInstant(Instant... values) {
+        Instant latest = null;
+        for (Instant value : values) {
+            if (value == null) continue;
+            if (latest == null || value.isAfter(latest)) {
+                latest = value;
+            }
+        }
+        return latest;
+    }
+
+    private Instant toInstant(LocalDateTime value) {
+        if (value == null) return null;
+        return value.atZone(ZoneId.systemDefault()).toInstant();
     }
 
     @DeleteMapping("/{otherUserId}")

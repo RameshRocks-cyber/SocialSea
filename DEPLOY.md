@@ -10,6 +10,7 @@
 
 ### Netlify env vars
 - `VITE_API_URL=https://api.socialsea.co.in`
+- `VITE_LIVEKIT_URL=wss://socialsea-mb50m9kr.livekit.cloud`
 
 ## Backend (Spring Boot)
 - Project path: `SocialSea-main`
@@ -27,6 +28,9 @@
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
 - `APP_FRONTEND_BASE_URL=https://socialsea.co.in`
+- `LIVEKIT_URL=wss://socialsea-mb50m9kr.livekit.cloud`
+- `LIVEKIT_API_KEY`
+- `LIVEKIT_API_SECRET`
 
 ### Optional backend env vars
 - `JWT_EXPIRATION` (default `86400000`)

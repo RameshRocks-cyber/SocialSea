@@ -117,7 +117,7 @@ public class SecurityConfig {
                     .preload(true)
                     .maxAgeInSeconds(31536000)
                 )
-                .permissionsPolicy(permissions -> permissions.policy("camera=(), microphone=(), geolocation=()"))
+                .permissionsPolicy(permissions -> permissions.policy("camera=(self), microphone=(self), geolocation=(self)"))
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
