@@ -146,8 +146,7 @@ public class ChatController {
         return ResponseEntity.ok(payload);
     }
 
-    @PostMapping("/presence")
-    public ResponseEntity<?> presence(Authentication auth) {
+    private ResponseEntity<?> presenceResponse(Authentication auth) {
         User me = currentUser(auth);
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         presenceService.touch(me);
@@ -157,6 +156,16 @@ public class ChatController {
                 "online", true,
                 "presenceUpdatedAt", presenceAt != null ? presenceAt.toString() : Instant.now().toString()
         ));
+    }
+
+    @GetMapping("/presence")
+    public ResponseEntity<?> presenceGet(Authentication auth) {
+        return presenceResponse(auth);
+    }
+
+    @PostMapping("/presence")
+    public ResponseEntity<?> presencePost(Authentication auth) {
+        return presenceResponse(auth);
     }
 
     private int normalizeLimit(int requested, int min, int max, int fallback) {
@@ -386,3 +395,4 @@ public class ChatController {
         return payload;
     }
 }
+

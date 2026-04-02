@@ -50,7 +50,7 @@ public class FollowController {
 
     @PostMapping("/{identifier}")
     public Map<String, Object> follow(@PathVariable String identifier, Authentication auth) {
-        User follower = userRepo.findByEmail(auth.getName()).orElseThrow();
+        User follower = requireAuth(auth);
         User following = resolveUser(identifier, auth);
 
         if (follower.getId().equals(following.getId())) {
@@ -85,7 +85,7 @@ public class FollowController {
 
     @PostMapping("/requests/{identifier}")
     public Map<String, Object> requestFollow(@PathVariable String identifier, Authentication auth) {
-        User follower = userRepo.findByEmail(auth.getName()).orElseThrow();
+        User follower = requireAuth(auth);
         User following = resolveUser(identifier, auth);
 
         if (follower.getId().equals(following.getId())) {
@@ -111,7 +111,7 @@ public class FollowController {
 
     @DeleteMapping("/{identifier}")
     public String unfollow(@PathVariable String identifier, Authentication auth) {
-        User follower = userRepo.findByEmail(auth.getName()).orElseThrow();
+        User follower = requireAuth(auth);
         User following = resolveUser(identifier, auth);
 
         followRepo.findAll().stream()
@@ -125,7 +125,7 @@ public class FollowController {
 
     @GetMapping("/requests")
     public List<Map<String, Object>> incomingRequests(Authentication auth, HttpServletRequest request) {
-        User receiver = userRepo.findByEmail(auth.getName()).orElseThrow();
+        User receiver = requireAuth(auth);
         return followRequestRepo.findByReceiverAndStatus(receiver, "PENDING").stream()
                 .map(req -> toFollowRequestItem(request, req))
                 .toList();
@@ -133,7 +133,7 @@ public class FollowController {
 
     @GetMapping("/pending-requests")
     public List<Map<String, Object>> pendingRequests(Authentication auth, HttpServletRequest request) {
-        User sender = userRepo.findByEmail(auth.getName()).orElseThrow();
+        User sender = requireAuth(auth);
         return followRequestRepo.findBySenderAndStatus(sender, "PENDING").stream()
                 .map(req -> toFollowRequestItem(request, req))
                 .toList();
@@ -141,7 +141,7 @@ public class FollowController {
 
     @PostMapping("/requests/{id}/accept")
     public Map<String, Object> acceptRequest(@PathVariable Long id, Authentication auth) {
-        User receiver = userRepo.findByEmail(auth.getName()).orElseThrow();
+        User receiver = requireAuth(auth);
         FollowRequest request = followRequestRepo.findById(id).orElseThrow();
         if (!request.getReceiver().getId().equals(receiver.getId())) {
             return Map.of("status", "ERROR", "message", "Not allowed");
@@ -160,7 +160,7 @@ public class FollowController {
 
     @PostMapping("/requests/{id}/reject")
     public Map<String, Object> rejectRequest(@PathVariable Long id, Authentication auth) {
-        User receiver = userRepo.findByEmail(auth.getName()).orElseThrow();
+        User receiver = requireAuth(auth);
         FollowRequest request = followRequestRepo.findById(id).orElseThrow();
         if (!request.getReceiver().getId().equals(receiver.getId())) {
             return Map.of("status", "ERROR", "message", "Not allowed");
@@ -172,12 +172,14 @@ public class FollowController {
 
     @GetMapping("/{identifier}/followers")
     public long followers(@PathVariable String identifier, Authentication auth) {
+        requireAuth(auth);
         User user = resolveUser(identifier, auth);
         return followRepo.countByFollowing(user);
     }
 
     @GetMapping("/{identifier}/following")
     public long following(@PathVariable String identifier, Authentication auth) {
+        requireAuth(auth);
         User user = resolveUser(identifier, auth);
         return followRepo.countByFollower(user);
     }
@@ -188,6 +190,7 @@ public class FollowController {
             Authentication auth,
             HttpServletRequest request
     ) {
+        requireAuth(auth);
         User user = resolveUser(identifier, auth);
         return followRepo.findByFollowing(user).stream()
                 .map(Follow::getFollower)
@@ -203,6 +206,7 @@ public class FollowController {
             Authentication auth,
             HttpServletRequest request
     ) {
+        requireAuth(auth);
         User user = resolveUser(identifier, auth);
         return followRepo.findByFollower(user).stream()
                 .map(Follow::getFollowing)
@@ -212,6 +216,13 @@ public class FollowController {
                 .toList();
     }
 
+    private User requireAuth(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login required");
+        }
+        return userRepo.findByEmail(auth.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login required"));
+    }
     private User resolveUser(String identifier, Authentication auth) {
         if (identifier != null) {
             String clean = identifier.trim();
@@ -252,3 +263,4 @@ public class FollowController {
         return item;
     }
 }
+
