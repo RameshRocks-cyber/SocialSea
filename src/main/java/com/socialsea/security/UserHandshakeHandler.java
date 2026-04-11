@@ -20,6 +20,9 @@ public class UserHandshakeHandler extends DefaultHandshakeHandler {
             @NonNull Map<String, Object> attributes
     ) {
         UserDetails user = (UserDetails) attributes.get("user");
+        if (user == null) {
+            return super.determineUser(request, wsHandler, attributes);
+        }
         return user::getUsername;
     }
 }

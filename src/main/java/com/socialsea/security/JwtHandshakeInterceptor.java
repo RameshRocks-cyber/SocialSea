@@ -3,6 +3,8 @@ package com.socialsea.security;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
+import org.springframework.http.HttpHeaders;
+import jakarta.servlet.http.Cookie;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.stereotype.Component;
@@ -40,7 +42,7 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
                 }
             }
 
-            String token = servletRequest.getServletRequest().getParameter("token");
+            String token = resolveToken(servletRequest);
 
             if (token != null && !jwtUtil.isExpired(token)) {
                 String email = jwtUtil.extractUsername(token);
@@ -50,6 +52,33 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
             }
         }
         return false;
+    }
+
+    private String resolveToken(ServletServerHttpRequest servletRequest) {
+        String authHeader = servletRequest.getServletRequest().getHeader(HttpHeaders.AUTHORIZATION);
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7).trim();
+            if (!token.isBlank()) return token;
+        }
+
+        Cookie[] cookies = servletRequest.getServletRequest().getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if (cookie == null || cookie.getName() == null) continue;
+                String name = cookie.getName();
+                if (!"token".equalsIgnoreCase(name) && !"jwt".equalsIgnoreCase(name) && !"access_token".equalsIgnoreCase(name)) {
+                    continue;
+                }
+                String value = cookie.getValue();
+                if (value != null && !value.isBlank()) return value.trim();
+            }
+        }
+
+        String queryToken = servletRequest.getServletRequest().getParameter("token");
+        if (queryToken != null && !queryToken.isBlank()) {
+            return queryToken.trim();
+        }
+        return null;
     }
 
     @Override

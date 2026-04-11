@@ -27,13 +27,7 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api/chat")
-@CrossOrigin(origins = {
-        "https://socialsea.netlify.app",
-        "https://socialsea.co.in",
-        "https://www.socialsea.co.in",
-        "http://localhost:5173",
-        "http://43.205.213.14:5173"
-})
+@CrossOrigin(origins = "${app.security.allowed-origins}")
 @RequiredArgsConstructor
 public class ChatController {
 
@@ -48,28 +42,25 @@ public class ChatController {
     public ResponseEntity<?> conversations(
             Authentication auth,
             HttpServletRequest request,
-            @RequestParam(name = "limit", defaultValue = "300") int limit
+            @RequestParam(name = "limit", defaultValue = "100") int limit
     ) {
         User me = currentUser(auth);
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         presenceService.touch(me);
 
-        int safeLimit = normalizeLimit(limit, 10, 1000, 300);
+        int safeLimit = normalizeLimit(limit, 1, 200, 100);
         Map<Long, Map<String, Object>> byOtherUser = new LinkedHashMap<>();
 
-        List<ChatMessage> messages = chatRepo.findBySenderIdOrReceiverIdOrderByCreatedAtDesc(
-                me.getId(),
-                me.getId(),
-                PageRequest.of(0, safeLimit)
-        );
-
-        for (ChatMessage m : messages) {
-            User sender = m.getSender();
-            User receiver = m.getReceiver();
-            if (sender == null || receiver == null) continue;
-            Long otherId = Objects.equals(sender.getId(), me.getId()) ? receiver.getId() : sender.getId();
-            User other = Objects.equals(sender.getId(), me.getId()) ? receiver : sender;
-            if (otherId == null || other == null || byOtherUser.containsKey(otherId)) continue;
+        List<Object[]> partners = chatRepo.findConversationPartners(me.getId(), PageRequest.of(0, safeLimit));
+        for (Object[] partner : partners) {
+            if (partner == null || partner.length == 0 || partner[0] == null) continue;
+            Long otherId = ((Number) partner[0]).longValue();
+            Optional<User> otherOpt = userRepo.findById(otherId);
+            if (otherOpt.isEmpty()) continue;
+            User other = otherOpt.get();
+            ChatMessage m = chatRepo.findTopBySenderIdAndReceiverIdOrSenderIdAndReceiverIdOrderByCreatedAtDesc(
+                    me.getId(), otherId, otherId, me.getId());
+            if (m == null) continue;
 
             Map<String, Object> item = new HashMap<>();
             item.put("id", String.valueOf(other.getId()));
@@ -140,6 +131,10 @@ public class ChatController {
             Instant createdAt = toInstant(m.getCreatedAt());
             item.put("createdAt", createdAt != null ? createdAt.toString() : null);
             item.put("mine", Objects.equals(m.getSender().getId(), me.getId()));
+            Instant deliveredAt = toInstant(m.getDeliveredAt());
+            item.put("deliveredAt", deliveredAt != null ? deliveredAt.toString() : null);
+            Instant readAt = toInstant(m.getReadAt());
+            item.put("readAt", readAt != null ? readAt.toString() : null);
             return item;
         }).toList();
 
@@ -240,6 +235,8 @@ public class ChatController {
         message.setMediaType(null);
         message.setFileName(null);
         message.setCreatedAt(LocalDateTime.now());
+        message.setDeliveredAt(LocalDateTime.now());
+        message.setReadAt(null);
         ChatMessage saved = chatRepo.save(message);
 
         Map<String, Object> receiverPayload = Objects.requireNonNull(toChatPayload(saved, me, false), "payload");
@@ -286,6 +283,8 @@ public class ChatController {
         message.setMediaType(null);
         message.setFileName(null);
         message.setCreatedAt(LocalDateTime.now());
+        message.setDeliveredAt(LocalDateTime.now());
+        message.setReadAt(null);
         ChatMessage saved = chatRepo.save(message);
 
         Map<String, Object> receiverPayload = Objects.requireNonNull(toChatPayload(saved, me, false), "payload");
@@ -340,6 +339,8 @@ public class ChatController {
         message.setMediaType(mediaType);
         message.setFileName(fileName);
         message.setCreatedAt(LocalDateTime.now());
+        message.setDeliveredAt(LocalDateTime.now());
+        message.setReadAt(null);
         ChatMessage saved = chatRepo.save(message);
 
         Map<String, Object> receiverPayload = Objects.requireNonNull(toChatPayload(saved, me, false), "payload");
@@ -391,8 +392,42 @@ public class ChatController {
         payload.put("fileName", saved.getFileName());
         Instant createdAt = toInstant(saved.getCreatedAt());
         payload.put("createdAt", createdAt != null ? createdAt.toString() : null);
+        Instant deliveredAt = toInstant(saved.getDeliveredAt());
+        payload.put("deliveredAt", deliveredAt != null ? deliveredAt.toString() : null);
+        Instant readAt = toInstant(saved.getReadAt());
+        payload.put("readAt", readAt != null ? readAt.toString() : null);
         payload.put("mine", mine);
         return payload;
+    }
+
+    @PostMapping("/{otherUserId}/mark-read")
+    @Transactional
+    public ResponseEntity<?> markRead(@PathVariable Long otherUserId, Authentication auth) {
+        User me = currentUser(auth);
+        if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+
+        Long safeOtherUserId = Objects.requireNonNull(otherUserId, "otherUserId");
+        Optional<User> otherOpt = userRepo.findById(safeOtherUserId);
+        if (otherOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+
+        List<ChatMessage> list = chatRepo.findBySenderIdAndReceiverIdOrSenderIdAndReceiverIdOrderByCreatedAtAsc(
+                safeOtherUserId, me.getId(), me.getId(), safeOtherUserId
+        );
+
+        LocalDateTime now = LocalDateTime.now();
+        int updated = 0;
+        for (ChatMessage m : list) {
+            if (!Objects.equals(m.getReceiver().getId(), me.getId())) continue;
+            if (m.getReadAt() != null) continue;
+            if (m.getDeliveredAt() == null) {
+                m.setDeliveredAt(now);
+            }
+            m.setReadAt(now);
+            chatRepo.save(m);
+            updated++;
+        }
+
+        return ResponseEntity.ok(Map.of("updated", updated, "readAt", toInstant(now).toString()));
     }
 }
 
