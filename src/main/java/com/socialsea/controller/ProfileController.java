@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.List;
@@ -34,6 +35,9 @@ public class ProfileController {
     private final PostRepository postRepo;
     private final FollowRepository followRepo;
     private final FollowRequestRepository followRequestRepo;
+    private final LikeRepository likeRepo;
+    private final CommentRepository commentRepo;
+    private final SavedPostRepository savedPostRepo;
     private final EmergencyAlertRepository emergencyRepo;
     private final ProfileService profileService;
     private final StoryRepository storyRepo;
@@ -138,6 +142,8 @@ public class ProfileController {
         profile.put("following", following);
         profile.put("postsCount", postsCount);
         profile.put("privateAccount", user.isPrivateAccount());
+        profile.put("trafficAlertsEnabled", user.isTrafficAlertsEnabled());
+        profile.put("ambulanceDriverApproved", user.isAmbulanceDriverApproved());
         profile.put("canViewContent", true);
         profile.put("followStatus", "FOLLOWING");
         profile.put("isFollowing", true);
@@ -161,7 +167,24 @@ public class ProfileController {
         return ResponseEntity.ok(Map.of("privateAccount", user.isPrivateAccount()));
     }
 
+    @PostMapping("/me/traffic-alerts")
+    public ResponseEntity<?> updateTrafficAlerts(@RequestBody Map<String, Object> body, Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+        User user = resolveAuthenticatedUser(auth)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        Object raw = body != null ? body.get("enabled") : null;
+        boolean next = raw instanceof Boolean
+                ? (Boolean) raw
+                : Boolean.parseBoolean(String.valueOf(raw));
+        user.setTrafficAlertsEnabled(next);
+        userRepo.save(user);
+        return ResponseEntity.ok(Map.of("trafficAlertsEnabled", user.isTrafficAlertsEnabled()));
+    }
+
     @PostMapping("/me/posts/cleanup-stories")
+    @Transactional
     public ResponseEntity<?> cleanupStoryPosts(
             @RequestBody Map<String, Object> body,
             Authentication auth
@@ -203,6 +226,10 @@ public class ProfileController {
             int h = bare.indexOf('#');
             if (h > 0) bare = bare.substring(0, h);
             if (targets.contains(trimmed) || targets.contains(bare)) {
+                // ensure dependent entities are removed first (FK constraints)
+                commentRepo.deleteByPost(post);
+                likeRepo.deleteByPost(post);
+                savedPostRepo.deleteByPost(post);
                 postRepo.delete(post);
                 deleted++;
             }

@@ -8,16 +8,22 @@ import com.socialsea.repository.UserRepository;
 
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.core.Authentication;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 
 @RestController
-@RequestMapping("/api/reels")
+@RequestMapping({"/api/reels", "/reels"})
 @CrossOrigin(origins = {"https://socialsea.netlify.app", "https://socialsea.co.in", "https://www.socialsea.co.in", "http://localhost:5173", "http://127.0.0.1:5173", "http://43.205.213.14:5173"})
 public class ReelController {
 
@@ -53,6 +59,44 @@ public class ReelController {
                 .filter(p -> canViewPost(viewer, allowedPrivateIds, p.getUser()))
                 .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .toList();
+    }
+
+    @GetMapping("/{postId}")
+    public ResponseEntity<?> reelById(@PathVariable("postId") Long postId, Authentication auth) {
+        User viewer = (auth != null && auth.isAuthenticated())
+                ? userRepo.findByEmail(auth.getName()).orElse(null)
+                : null;
+        Set<Long> allowedPrivateIds = new HashSet<>();
+        if (viewer != null) {
+            allowedPrivateIds.add(viewer.getId());
+            followRepo.findByFollower(viewer).forEach(f -> {
+                if (f.getFollowing() != null && f.getFollowing().getId() != null) {
+                    allowedPrivateIds.add(f.getFollowing().getId());
+                }
+            });
+        }
+
+        Long safeId = Objects.requireNonNull(postId, "postId");
+        Optional<Post> postOpt = postRepo.findById(safeId);
+        if (postOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Reel not found"));
+        }
+
+        Post post = postOpt.get();
+        if (!post.isApproved()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Reel not found"));
+        }
+        if (!post.isReel()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Reel not found"));
+        }
+        if (post.getMediaUrl() == null || post.getMediaUrl().isBlank()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Reel not found"));
+        }
+        if (!canViewPost(viewer, allowedPrivateIds, post.getUser())) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Reel not found"));
+        }
+
+        return ResponseEntity.ok(post);
     }
 
     private boolean canViewPost(User viewer, Set<Long> allowedPrivateIds, User owner) {

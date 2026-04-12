@@ -46,21 +46,27 @@ public class ChatController {
     ) {
         User me = currentUser(auth);
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
-        presenceService.touch(me);
+        safeTouch(me);
 
         int safeLimit = normalizeLimit(limit, 1, 200, 100);
         Map<Long, Map<String, Object>> byOtherUser = new LinkedHashMap<>();
 
-        List<Object[]> partners = chatRepo.findConversationPartners(me.getId(), PageRequest.of(0, safeLimit));
-        for (Object[] partner : partners) {
-            if (partner == null || partner.length == 0 || partner[0] == null) continue;
-            Long otherId = ((Number) partner[0]).longValue();
-            Optional<User> otherOpt = userRepo.findById(otherId);
-            if (otherOpt.isEmpty()) continue;
-            User other = otherOpt.get();
-            ChatMessage m = chatRepo.findTopBySenderIdAndReceiverIdOrSenderIdAndReceiverIdOrderByCreatedAtDesc(
-                    me.getId(), otherId, otherId, me.getId());
+        int scanLimit = Math.min(Math.max(200, safeLimit * 50), 5000);
+        List<ChatMessage> recent = chatRepo.findBySenderIdOrReceiverIdOrderByCreatedAtDesc(
+                me.getId(),
+                me.getId(),
+                PageRequest.of(0, scanLimit)
+        );
+
+        for (ChatMessage m : recent) {
             if (m == null) continue;
+            User sender = m.getSender();
+            User receiver = m.getReceiver();
+            if (sender == null || receiver == null) continue;
+            User other = Objects.equals(sender.getId(), me.getId()) ? receiver : sender;
+            if (other == null || other.getId() == null) continue;
+            Long otherId = other.getId();
+            if (byOtherUser.containsKey(otherId)) continue;
 
             Map<String, Object> item = new HashMap<>();
             item.put("id", String.valueOf(other.getId()));
@@ -87,6 +93,7 @@ public class ChatController {
             }
             item.put("locationUpdatedAt", locationAt != null ? locationAt.toString() : null);
             byOtherUser.put(otherId, item);
+            if (byOtherUser.size() >= safeLimit) break;
         }
 
         return ResponseEntity.ok(new ArrayList<>(byOtherUser.values()));
@@ -101,7 +108,7 @@ public class ChatController {
     ) {
         User me = currentUser(auth);
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
-        presenceService.touch(me);
+        safeTouch(me);
 
         Long safeOtherUserId = Objects.requireNonNull(otherUserId, "otherUserId");
         Optional<User> otherOpt = userRepo.findById(safeOtherUserId);
@@ -144,13 +151,21 @@ public class ChatController {
     private ResponseEntity<?> presenceResponse(Authentication auth) {
         User me = currentUser(auth);
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
-        presenceService.touch(me);
+        safeTouch(me);
         Instant presenceAt = presenceService.getLastSeenAt(me);
         return ResponseEntity.ok(Map.of(
                 "ok", true,
                 "online", true,
                 "presenceUpdatedAt", presenceAt != null ? presenceAt.toString() : Instant.now().toString()
         ));
+    }
+
+    private void safeTouch(User user) {
+        try {
+            presenceService.touch(user);
+        } catch (Exception ignored) {
+            // Presence must never break core chat APIs.
+        }
     }
 
     @GetMapping("/presence")

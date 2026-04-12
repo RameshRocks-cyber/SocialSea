@@ -1,6 +1,7 @@
 package com.socialsea.model;
 
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -46,6 +47,12 @@ public class User implements UserDetails {
     @Column(columnDefinition = "boolean default false")
     private boolean privateAccount = false;
 
+    @Column(columnDefinition = "boolean default false")
+    private boolean trafficAlertsEnabled = false;
+
+    @Column(columnDefinition = "boolean default false")
+    private boolean ambulanceDriverApproved = false;
+
     private Double lastLatitude;
     private Double lastLongitude;
     private LocalDateTime locationUpdatedAt;
@@ -75,6 +82,7 @@ public class User implements UserDetails {
         this.role = role;
     }
 
+    @JsonIgnore
     public String getPassword() {
         return password;
     }
@@ -123,6 +131,7 @@ public class User implements UserDetails {
         this.profilePic = profilePic;
     }
 
+    @JsonIgnore
     public String getResumeJson() {
         return resumeJson;
     }
@@ -153,6 +162,22 @@ public class User implements UserDetails {
 
     public void setPrivateAccount(boolean privateAccount) {
         this.privateAccount = privateAccount;
+    }
+
+    public boolean isTrafficAlertsEnabled() {
+        return trafficAlertsEnabled;
+    }
+
+    public void setTrafficAlertsEnabled(boolean trafficAlertsEnabled) {
+        this.trafficAlertsEnabled = trafficAlertsEnabled;
+    }
+
+    public boolean isAmbulanceDriverApproved() {
+        return ambulanceDriverApproved;
+    }
+
+    public void setAmbulanceDriverApproved(boolean ambulanceDriverApproved) {
+        this.ambulanceDriverApproved = ambulanceDriverApproved;
     }
 
     public Double getLastLatitude() {

@@ -114,8 +114,12 @@ public class NotificationController {
         for (Notification n : items) {
             String raw = n.getMessage();
             String kind = deriveKind(raw);
-            if ("EMERGENCY".equalsIgnoreCase(String.valueOf(n.getType()))) {
+            String type = String.valueOf(n.getType());
+            if ("EMERGENCY".equalsIgnoreCase(type)) {
                 kind = "emergency";
+            }
+            if ("TRAFFIC".equalsIgnoreCase(type)) {
+                kind = "traffic";
             }
             String actorEmail = extractFirstEmail(raw);
             Optional<User> actorOpt = actorEmail == null ? Optional.empty() : userRepo.findByEmail(actorEmail);
@@ -158,6 +162,20 @@ public class NotificationController {
                 if (mapsUrl == null) {
                     mapsUrl = extractUrlContaining(raw, "maps.google.com");
                 }
+                row.put("mapsUrl", mapsUrl);
+            }
+            if ("traffic".equals(kind)) {
+                String spotUrl = extractUrlContaining(raw, "/maps/search");
+                String routeUrl = extractUrlContaining(raw, "/maps/dir");
+                String mapsUrl = routeUrl != null ? routeUrl : spotUrl;
+                if (mapsUrl == null) {
+                    mapsUrl = extractUrlContaining(raw, "google.com/maps");
+                }
+                if (mapsUrl == null) {
+                    mapsUrl = extractUrlContaining(raw, "maps.google.com");
+                }
+                row.put("spotUrl", spotUrl);
+                row.put("routeUrl", routeUrl);
                 row.put("mapsUrl", mapsUrl);
             }
             out.add(row);

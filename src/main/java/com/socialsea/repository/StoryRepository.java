@@ -14,4 +14,6 @@ public interface StoryRepository extends JpaRepository<Story, Long> {
     List<Story> findActive(@Param("now") LocalDateTime now);
 
     List<Story> findByUserOrderByCreatedAtDesc(com.socialsea.model.User user);
+
+    boolean existsByMediaUrl(String mediaUrl);
 }

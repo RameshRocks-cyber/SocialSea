@@ -74,6 +74,8 @@ public class SecurityConfig {
                     "/api/posts/**",
                     "/api/reels/**",
                     "/api/feed/**",
+                    "/reels/**",
+                    "/feed/**",
                     "/api/profile/**",
                     "/anonymous/**",
                     "/api/anonymous/**",
