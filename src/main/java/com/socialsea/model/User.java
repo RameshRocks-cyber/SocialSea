@@ -50,6 +50,9 @@ public class User implements UserDetails {
     @Column(columnDefinition = "boolean default false")
     private boolean trafficAlertsEnabled = false;
 
+    @Column(length = 16)
+    private String preferredLanguage = "en";
+
     @Column(columnDefinition = "boolean default false")
     private boolean ambulanceDriverApproved = false;
 
@@ -170,6 +173,14 @@ public class User implements UserDetails {
 
     public void setTrafficAlertsEnabled(boolean trafficAlertsEnabled) {
         this.trafficAlertsEnabled = trafficAlertsEnabled;
+    }
+
+    public String getPreferredLanguage() {
+        return preferredLanguage == null || preferredLanguage.isBlank() ? "en" : preferredLanguage;
+    }
+
+    public void setPreferredLanguage(String preferredLanguage) {
+        this.preferredLanguage = preferredLanguage;
     }
 
     public boolean isAmbulanceDriverApproved() {

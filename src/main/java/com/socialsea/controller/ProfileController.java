@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/api/profile")
@@ -30,6 +31,9 @@ import java.util.HashSet;
     "https://www.socialsea.co.in", "http://localhost:5173", "http://43.205.213.14:5173"})
 @RequiredArgsConstructor
 public class ProfileController {
+
+    private static final Pattern LANGUAGE_TAG_PATTERN =
+            Pattern.compile("^[A-Za-z]{2,8}(-[A-Za-z0-9]{1,8})*$");
 
     private final UserRepository userRepo;
     private final PostRepository postRepo;
@@ -143,6 +147,7 @@ public class ProfileController {
         profile.put("postsCount", postsCount);
         profile.put("privateAccount", user.isPrivateAccount());
         profile.put("trafficAlertsEnabled", user.isTrafficAlertsEnabled());
+        profile.put("preferredLanguage", user.getPreferredLanguage());
         profile.put("ambulanceDriverApproved", user.isAmbulanceDriverApproved());
         profile.put("canViewContent", true);
         profile.put("followStatus", "FOLLOWING");
@@ -181,6 +186,42 @@ public class ProfileController {
         user.setTrafficAlertsEnabled(next);
         userRepo.save(user);
         return ResponseEntity.ok(Map.of("trafficAlertsEnabled", user.isTrafficAlertsEnabled()));
+    }
+
+    @GetMapping("/me/language")
+    public ResponseEntity<?> myLanguage(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+        User user = resolveAuthenticatedUser(auth)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return ResponseEntity.ok(Map.of("preferredLanguage", user.getPreferredLanguage()));
+    }
+
+    @PostMapping("/me/language")
+    public ResponseEntity<?> updateLanguage(@RequestBody(required = false) Map<String, Object> body, Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+        User user = resolveAuthenticatedUser(auth)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Object raw = body != null ? (body.get("preferredLanguage") != null
+                ? body.get("preferredLanguage")
+                : (body.get("language") != null ? body.get("language") : body.get("lang"))) : null;
+
+        String next = raw == null ? "" : String.valueOf(raw).trim();
+        next = next.replace('_', '-');
+        if (next.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Missing preferredLanguage"));
+        }
+        if (next.length() > 16 || !LANGUAGE_TAG_PATTERN.matcher(next).matches()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Invalid language tag"));
+        }
+
+        user.setPreferredLanguage(next);
+        userRepo.save(user);
+        return ResponseEntity.ok(Map.of("preferredLanguage", user.getPreferredLanguage()));
     }
 
     @PostMapping("/me/posts/cleanup-stories")
