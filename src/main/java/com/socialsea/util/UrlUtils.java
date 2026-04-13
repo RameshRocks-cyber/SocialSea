@@ -18,11 +18,18 @@ public final class UrlUtils {
             return trimmed;
         }
 
-        String base = ServletUriComponentsBuilder.fromRequest(request)
-                .replacePath(request.getContextPath())
-                .replaceQuery(null)
-                .build()
-                .toUriString();
+        String base;
+        try {
+            base = ServletUriComponentsBuilder.fromRequest(request)
+                    .replacePath(request.getContextPath())
+                    .replaceQuery(null)
+                    .build()
+                    .toUriString();
+        } catch (Exception ignored) {
+            // Never throw from helpers used by multiple APIs. Fall back to relative paths if
+            // forwarded headers/host parsing fails behind certain proxies.
+            return trimmed;
+        }
 
         boolean baseEndsWithSlash = base.endsWith("/");
         boolean pathStartsWithSlash = trimmed.startsWith("/");

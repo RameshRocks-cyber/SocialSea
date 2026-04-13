@@ -3,6 +3,7 @@ package com.socialsea.controller;
 import com.socialsea.dto.CallSignalDto;
 import com.socialsea.model.User;
 import com.socialsea.repository.UserRepository;
+import com.socialsea.service.CallSignalInboxService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -28,6 +29,7 @@ public class CallSignalingController {
 
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final CallSignalInboxService inboxService;
 
     @MessageMapping({"/call.signal/{targetUserId}", "/call.signal.{targetUserId}"})
     public void signal(
@@ -63,6 +65,7 @@ public class CallSignalingController {
         outbound.setSdpMLineIndex(payload.getSdpMLineIndex());
         outbound.setTimestamp(System.currentTimeMillis());
 
+        inboxService.enqueue(target.getId(), outbound);
         messagingTemplate.convertAndSend("/topic/calls/" + target.getId(), outbound);
         String targetEmail = target.getEmail();
         if (targetEmail != null && !targetEmail.isBlank()) {

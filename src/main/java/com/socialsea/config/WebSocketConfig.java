@@ -29,7 +29,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public WebSocketConfig(
             JwtHandshakeInterceptor jwtHandshakeInterceptor,
             UserHandshakeHandler userHandshakeHandler,
-            @Value("${app.security.allowed-origins:}") String allowedOriginsCsv,
+            @Value("${app.security.allowed-origins:*}") String allowedOriginsCsv,
             @Value("${app.websocket.broker-relay.enabled:false}") boolean brokerRelayEnabled,
             @Value("${app.websocket.broker-relay.host:localhost}") String brokerRelayHost,
             @Value("${app.websocket.broker-relay.port:61613}") int brokerRelayPort,
@@ -38,10 +38,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     ) {
         this.jwtHandshakeInterceptor = jwtHandshakeInterceptor;
         this.userHandshakeHandler = userHandshakeHandler;
-        this.allowedOrigins = Arrays.stream(allowedOriginsCsv.split(","))
+        String[] configuredOrigins = Arrays.stream(allowedOriginsCsv.split(","))
                 .map(String::trim)
                 .filter(v -> !v.isBlank())
                 .toArray(String[]::new);
+        this.allowedOrigins = configuredOrigins.length > 0 ? configuredOrigins : new String[]{"*"};
         this.brokerRelayEnabled = brokerRelayEnabled;
         this.brokerRelayHost = brokerRelayHost;
         this.brokerRelayPort = brokerRelayPort;

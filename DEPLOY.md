@@ -5,11 +5,12 @@
 - Build command: `npm run build`
 - Publish directory: `dist`
 - SPA routing: configured in `netlify.toml`
-- Production API URL: `.env.production` -> `VITE_API_URL=https://api.socialsea.co.in`
-  - If you proxy `/api` from `https://socialsea.co.in` to the backend, set this to `https://socialsea.co.in` instead.
+- Production API URL: `.env.production` -> `VITE_API_URL=/api` + `VITE_API_BASE_URL=/api`
+  - Netlify proxies `/api/*` → the backend (see `netlify.toml`), so the frontend should call the API via the same origin.
 
 ### Netlify env vars
-- `VITE_API_URL=https://api.socialsea.co.in`
+- `VITE_API_URL=/api`
+- `VITE_API_BASE_URL=/api`
 - `VITE_LIVEKIT_URL=wss://socialsea-mb50m9kr.livekit.cloud`
 
 ## Backend (Spring Boot)
@@ -27,7 +28,7 @@
 - `CLOUDINARY_CLOUD_NAME`
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
-- `APP_FRONTEND_BASE_URL=https://socialsea.co.in`
+- `APP_FRONTEND_BASE_URL=https://socialsea.netlify.app` (or your custom frontend domain)
 - `LIVEKIT_URL=wss://socialsea-mb50m9kr.livekit.cloud`
 - `LIVEKIT_API_KEY`
 - `LIVEKIT_API_SECRET`
