@@ -6,6 +6,7 @@ import com.socialsea.dto.VerifyOtpRequest;
 import com.socialsea.model.User;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.AuthService;
+import com.socialsea.service.DeviceSessionLimitException;
 import com.socialsea.service.OtpService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
@@ -91,9 +92,13 @@ public class OtpController {
             return ResponseEntity.badRequest().body(Map.of("message", "OTP is required"));
         }
 
-        AuthResponse response = authService.verifyOtp(email, otp, httpRequest);
-
-        return ResponseEntity.ok(response);
+        try {
+            AuthResponse response = authService.verifyOtp(email, otp, httpRequest);
+            return ResponseEntity.ok(response);
+        } catch (DeviceSessionLimitException ex) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of("message", ex.getMessage(), "code", "DEVICE_LIMIT"));
+        }
     }
 
     @PostMapping("/login")
@@ -110,9 +115,13 @@ public class OtpController {
             return ResponseEntity.badRequest().body(Map.of("message", "OTP is required"));
         }
 
-        AuthResponse response = authService.verifyOtp(email, otp, httpRequest);
-
-        return ResponseEntity.ok(response);
+        try {
+            AuthResponse response = authService.verifyOtp(email, otp, httpRequest);
+            return ResponseEntity.ok(response);
+        } catch (DeviceSessionLimitException ex) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of("message", ex.getMessage(), "code", "DEVICE_LIMIT"));
+        }
     }
 
     @PostMapping({"/reset-password", "/resetPassword"})

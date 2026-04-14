@@ -9,6 +9,7 @@ import jakarta.annotation.PostConstruct;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtUtil {
@@ -30,9 +31,15 @@ public class JwtUtil {
     private final long CLOCK_SKEW_SECONDS = 300; // allow 5 minutes drift
 
     public String generateAccessToken(String username) {
+        return generateAccessToken(username, null);
+    }
+
+    public String generateAccessToken(String username, String sessionId) {
         String subject = normalizeSubject(username);
+        String sid = normalizeTokenId(sessionId);
         return Jwts.builder()
                 .setSubject(subject)
+                .setId(sid)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + ACCESS_EXP))
                 .signWith(key, SignatureAlgorithm.HS256)
@@ -40,9 +47,15 @@ public class JwtUtil {
     }
 
     public String generateRefreshToken(String username) {
+        return generateRefreshToken(username, null);
+    }
+
+    public String generateRefreshToken(String username, String sessionId) {
         String subject = normalizeSubject(username);
+        String sid = normalizeTokenId(sessionId);
         return Jwts.builder()
                 .setSubject(subject)
+                .setId(sid)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + REFRESH_EXP))
                 .signWith(key, SignatureAlgorithm.HS256)
@@ -62,6 +75,16 @@ public class JwtUtil {
                 .parseClaimsJws(token)
                 .getBody()
                 .getSubject();
+    }
+
+    public String extractTokenId(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .setAllowedClockSkewSeconds(CLOCK_SKEW_SECONDS)
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getId();
     }
 
     // Alias for compatibility
@@ -107,6 +130,13 @@ public class JwtUtil {
             throw new IllegalArgumentException("JWT subject cannot be null or blank");
         }
         return username.trim();
+    }
+
+    private String normalizeTokenId(String sessionId) {
+        if (sessionId == null || sessionId.trim().isEmpty()) {
+            return UUID.randomUUID().toString();
+        }
+        return sessionId.trim();
     }
 }
 

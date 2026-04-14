@@ -17,11 +17,18 @@ public class AuthService {
     private final UserRepository userRepository;
     private final OtpService otpService;
     private final JwtUtil jwtUtil;
+    private final LoginSessionService loginSessionService;
 
-    public AuthService(UserRepository userRepository, OtpService otpService, JwtUtil jwtUtil) {
+    public AuthService(
+            UserRepository userRepository,
+            OtpService otpService,
+            JwtUtil jwtUtil,
+            LoginSessionService loginSessionService
+    ) {
         this.userRepository = userRepository;
         this.otpService = otpService;
         this.jwtUtil = jwtUtil;
+        this.loginSessionService = loginSessionService;
     }
 
     @Transactional
@@ -36,8 +43,9 @@ public class AuthService {
             return userRepository.save(newUser);
         });
 
-        String token = jwtUtil.generateAccessToken(user.getEmail());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getEmail());
-        return new AuthResponse(token, refreshToken, user);
+        var session = loginSessionService.startSession(user, request, null, null);
+        String token = jwtUtil.generateAccessToken(user.getEmail(), session.getSessionId());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getEmail(), session.getSessionId());
+        return new AuthResponse(token, refreshToken, user, session.getDeviceId());
     }
 }

@@ -659,14 +659,14 @@ public class EmergencyController {
 
         EmergencyAlert saved = emergencyRepo.save(alert);
 
-        return ResponseEntity.ok(Map.of(
-                "alertId", saved.getId(),
-                "active", saved.isActive(),
-                "mediaUrl", saved.getMediaUrl(),
-                "durationMs", saved.getDurationMs(),
-                "audioActive", saved.isLiveAudioActive(),
-                "videoActive", saved.isLiveVideoActive()
-        ));
+        Map<String, Object> response = new HashMap<>();
+        response.put("alertId", saved.getId());
+        response.put("active", saved.isActive());
+        response.put("mediaUrl", saved.getMediaUrl());
+        response.put("durationMs", saved.getDurationMs());
+        response.put("audioActive", saved.isLiveAudioActive());
+        response.put("videoActive", saved.isLiveVideoActive());
+        return ResponseEntity.ok(response);
     }
 
     private List<Map<String, Object>> buildNearbyUsers(EmergencyAlert alert, List<User> allUsers) {

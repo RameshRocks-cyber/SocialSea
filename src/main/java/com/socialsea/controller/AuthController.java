@@ -8,6 +8,8 @@ import com.socialsea.model.Role;
 import com.socialsea.model.User;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.AuthService;
+import com.socialsea.service.DeviceSessionLimitException;
+import com.socialsea.service.LoginSessionService;
 import com.socialsea.service.OtpService;
 import com.socialsea.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +40,9 @@ public class AuthController {
 
     @Autowired
     private AuthService authService;
+
+    @Autowired
+    private LoginSessionService loginSessionService;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -92,7 +97,12 @@ public class AuthController {
                 .body(Map.of("message", "Email or OTP missing"));
         }
 
-        return ResponseEntity.ok(authService.verifyOtp(email, otp, httpRequest));
+        try {
+            return ResponseEntity.ok(authService.verifyOtp(email, otp, httpRequest));
+        } catch (DeviceSessionLimitException ex) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of("message", ex.getMessage(), "code", "DEVICE_LIMIT"));
+        }
     }
 
     @PostMapping("/register")
@@ -162,15 +172,21 @@ public class AuthController {
         user.setPassword(passwordEncoder.encode(password));
         userRepository.save(user);
 
-        String tokenSubject = resolveTokenSubject(user, email != null ? email : username);
-        String accessToken = jwtUtil.generateAccessToken(tokenSubject);
-        String refreshToken = jwtUtil.generateRefreshToken(tokenSubject);
+        try {
+            var session = loginSessionService.startSession(user, httpRequest, body.get("deviceId"), body.get("deviceName"));
+            String tokenSubject = resolveTokenSubject(user, email != null ? email : username);
+            String accessToken = jwtUtil.generateAccessToken(tokenSubject, session.getSessionId());
+            String refreshToken = jwtUtil.generateRefreshToken(tokenSubject, session.getSessionId());
 
-        return ResponseEntity.ok(new AuthResponse(accessToken, refreshToken, user));
+            return ResponseEntity.ok(new AuthResponse(accessToken, refreshToken, user, session.getDeviceId()));
+        } catch (DeviceSessionLimitException ex) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of("message", ex.getMessage(), "code", "DEVICE_LIMIT"));
+        }
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> login(@RequestBody Map<String, String> body, HttpServletRequest httpRequest) {
         String identifier = normalize(body.get("identifier"));
         if (identifier == null) {
             identifier = normalize(body.get("username"));
@@ -196,11 +212,17 @@ public class AuthController {
             }
         }
 
-        String tokenSubject = resolveTokenSubject(user, identifier);
-        String accessToken = jwtUtil.generateAccessToken(tokenSubject);
-        String refreshToken = jwtUtil.generateRefreshToken(tokenSubject);
+        try {
+            var session = loginSessionService.startSession(user, httpRequest, body.get("deviceId"), body.get("deviceName"));
+            String tokenSubject = resolveTokenSubject(user, identifier);
+            String accessToken = jwtUtil.generateAccessToken(tokenSubject, session.getSessionId());
+            String refreshToken = jwtUtil.generateRefreshToken(tokenSubject, session.getSessionId());
 
-        return ResponseEntity.ok(new AuthResponse(accessToken, refreshToken, user));
+            return ResponseEntity.ok(new AuthResponse(accessToken, refreshToken, user, session.getDeviceId()));
+        } catch (DeviceSessionLimitException ex) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of("message", ex.getMessage(), "code", "DEVICE_LIMIT"));
+        }
     }
 
     @PostMapping({"/reset-password", "/resetPassword"})
@@ -336,7 +358,7 @@ public class AuthController {
     }
 
     @PostMapping("/admin/login")
-    public ResponseEntity<?> adminLogin(@RequestBody LoginRequest request) {
+    public ResponseEntity<?> adminLogin(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
 
         User admin = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Admin not found"));
@@ -349,15 +371,22 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Not an admin");
         }
 
-        String tokenSubject = resolveTokenSubject(admin, request.getEmail());
-        String accessToken = jwtUtil.generateAccessToken(tokenSubject);
-        String refreshToken = jwtUtil.generateRefreshToken(tokenSubject);
+        try {
+            var session = loginSessionService.startSession(admin, httpRequest, null, null);
+            String tokenSubject = resolveTokenSubject(admin, request.getEmail());
+            String accessToken = jwtUtil.generateAccessToken(tokenSubject, session.getSessionId());
+            String refreshToken = jwtUtil.generateRefreshToken(tokenSubject, session.getSessionId());
 
-        return ResponseEntity.ok(Map.of(
-                "role", "ADMIN",
-                "accessToken", accessToken,
-                "refreshToken", refreshToken
-        ));
+            return ResponseEntity.ok(Map.of(
+                    "role", "ADMIN",
+                    "accessToken", accessToken,
+                    "refreshToken", refreshToken,
+                    "deviceId", session.getDeviceId()
+            ));
+        } catch (DeviceSessionLimitException ex) {
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .body(Map.of("message", ex.getMessage(), "code", "DEVICE_LIMIT"));
+        }
     }
 
     @PostMapping("/refresh")
@@ -387,7 +416,32 @@ public class AuthController {
                     .body("Refresh token invalid");
         }
 
-        String newAccessToken = jwtUtil.generateAccessToken(username);
+        String sessionId;
+        try {
+            sessionId = jwtUtil.extractTokenId(refreshToken);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Refresh token invalid");
+        }
+
+        if (sessionId == null || sessionId.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Refresh token invalid");
+        }
+
+        User user = userRepository.findByEmailIgnoreCase(username).orElse(null);
+        if (user == null || user.getId() == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Refresh token invalid");
+        }
+
+        if (!loginSessionService.isActiveSession(user.getId(), sessionId)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Session expired. Please login again.");
+        }
+        loginSessionService.touch(sessionId);
+
+        String newAccessToken = jwtUtil.generateAccessToken(username, sessionId);
 
         return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
     }

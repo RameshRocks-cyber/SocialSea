@@ -13,6 +13,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.lang.NonNull;
 
+import com.socialsea.model.User;
+import com.socialsea.repository.UserRepository;
+import com.socialsea.service.LoginSessionService;
+
 import java.io.IOException;
 
 @Component
@@ -20,10 +24,19 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
+    private final UserRepository userRepository;
+    private final LoginSessionService loginSessionService;
 
-    public JwtFilter(JwtUtil jwtUtil, UserDetailsService userDetailsService) {
+    public JwtFilter(
+            JwtUtil jwtUtil,
+            UserDetailsService userDetailsService,
+            UserRepository userRepository,
+            LoginSessionService loginSessionService
+    ) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
+        this.userRepository = userRepository;
+        this.loginSessionService = loginSessionService;
     }
 
     @Override
@@ -69,8 +82,24 @@ public class JwtFilter extends OncePerRequestFilter {
 
         try {
             String username = jwtUtil.extractEmail(token);
+            String sessionId = jwtUtil.extractTokenId(token);
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+
+                if (sessionId == null || sessionId.isBlank()) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+
+                User dbUser = userRepository.findByEmailIgnoreCase(username).orElse(null);
+                if (dbUser == null || dbUser.getId() == null) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+                if (!loginSessionService.isActiveSession(dbUser.getId(), sessionId)) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
@@ -88,6 +117,7 @@ public class JwtFilter extends OncePerRequestFilter {
                     );
 
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                    loginSessionService.touch(sessionId);
                 }
             }
 

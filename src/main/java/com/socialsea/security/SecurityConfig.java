@@ -21,6 +21,7 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import jakarta.servlet.http.HttpServletResponse;
 
 import java.util.Arrays;
 import java.util.List;
@@ -50,6 +51,26 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((request, response, authException) -> {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    try {
+                        response.getWriter().write("{\"message\":\"Login required\"}");
+                    } catch (Exception ignored) {
+                        // ignore write failures
+                    }
+                })
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json");
+                    try {
+                        response.getWriter().write("{\"message\":\"Forbidden\"}");
+                    } catch (Exception ignored) {
+                        // ignore write failures
+                    }
+                })
             );
 
         if (requireHttps) {
@@ -77,6 +98,7 @@ public class SecurityConfig {
                     "/reels/**",
                     "/feed/**",
                     "/api/profile/**",
+                    "/api/jobs/**",
                     "/anonymous/**",
                     "/api/anonymous/**",
                     "/api/public/**",

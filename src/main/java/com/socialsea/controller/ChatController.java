@@ -138,10 +138,7 @@ public class ChatController {
             Instant createdAt = toInstant(m.getCreatedAt());
             item.put("createdAt", createdAt != null ? createdAt.toString() : null);
             item.put("mine", Objects.equals(m.getSender().getId(), me.getId()));
-            Instant deliveredAt = toInstant(m.getDeliveredAt());
-            item.put("deliveredAt", deliveredAt != null ? deliveredAt.toString() : null);
-            Instant readAt = toInstant(m.getReadAt());
-            item.put("readAt", readAt != null ? readAt.toString() : null);
+            applyDeliveryState(item, m);
             return item;
         }).toList();
 
@@ -407,12 +404,49 @@ public class ChatController {
         payload.put("fileName", saved.getFileName());
         Instant createdAt = toInstant(saved.getCreatedAt());
         payload.put("createdAt", createdAt != null ? createdAt.toString() : null);
-        Instant deliveredAt = toInstant(saved.getDeliveredAt());
-        payload.put("deliveredAt", deliveredAt != null ? deliveredAt.toString() : null);
-        Instant readAt = toInstant(saved.getReadAt());
-        payload.put("readAt", readAt != null ? readAt.toString() : null);
+        applyDeliveryState(payload, saved);
         payload.put("mine", mine);
         return payload;
+    }
+
+    private void applyDeliveryState(Map<String, Object> payload, ChatMessage message) {
+        Instant deliveredAt = toInstant(message.getDeliveredAt());
+        Instant readAt = toInstant(message.getReadAt());
+        payload.put("deliveredAt", deliveredAt != null ? deliveredAt.toString() : null);
+        payload.put("readAt", readAt != null ? readAt.toString() : null);
+        payload.put("delivered", deliveredAt != null);
+        payload.put("read", readAt != null);
+        payload.put("status", resolveDeliveryStatus(message));
+    }
+
+    private String resolveDeliveryStatus(ChatMessage message) {
+        if (message.getReadAt() != null) return "READ";
+        if (message.getDeliveredAt() != null) return "DELIVERED";
+        return "SENT";
+    }
+
+    private void publishReadReceipt(User sender, User reader, List<Long> messageIds, String readAtIso) {
+        if (sender == null || reader == null || messageIds == null || messageIds.isEmpty()) return;
+
+        Map<String, Object> receipt = new HashMap<>();
+        receipt.put("type", "CHAT_READ_RECEIPT");
+        receipt.put("readerId", reader.getId());
+        receipt.put("readerName", displayName(reader));
+        receipt.put("conversationUserId", reader.getId());
+        receipt.put("messageIds", new ArrayList<>(messageIds));
+        receipt.put("readAt", readAtIso);
+
+        Long senderId = sender.getId();
+        if (senderId != null) {
+            messagingTemplate.convertAndSend("/topic/chat/read/" + senderId, receipt);
+        }
+
+        String senderEmail = sender.getEmail();
+        if (senderEmail != null && !senderEmail.isBlank()) {
+            String encodedEmail = URLEncoder.encode(senderEmail, StandardCharsets.UTF_8);
+            messagingTemplate.convertAndSend("/topic/chat/read/email/" + encodedEmail, receipt);
+            messagingTemplate.convertAndSendToUser(senderEmail, "/queue/chat/read", receipt);
+        }
     }
 
     @PostMapping("/{otherUserId}/mark-read")
@@ -424,13 +458,15 @@ public class ChatController {
         Long safeOtherUserId = Objects.requireNonNull(otherUserId, "otherUserId");
         Optional<User> otherOpt = userRepo.findById(safeOtherUserId);
         if (otherOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+        User other = otherOpt.get();
 
         List<ChatMessage> list = chatRepo.findBySenderIdAndReceiverIdOrSenderIdAndReceiverIdOrderByCreatedAtAsc(
                 safeOtherUserId, me.getId(), me.getId(), safeOtherUserId
         );
 
         LocalDateTime now = LocalDateTime.now();
-        int updated = 0;
+        List<ChatMessage> changed = new ArrayList<>();
+        List<Long> messageIds = new ArrayList<>();
         for (ChatMessage m : list) {
             if (!Objects.equals(m.getReceiver().getId(), me.getId())) continue;
             if (m.getReadAt() != null) continue;
@@ -438,11 +474,27 @@ public class ChatController {
                 m.setDeliveredAt(now);
             }
             m.setReadAt(now);
-            chatRepo.save(m);
-            updated++;
+            changed.add(m);
+            if (m.getId() != null) {
+                messageIds.add(m.getId());
+            }
         }
 
-        return ResponseEntity.ok(Map.of("updated", updated, "readAt", toInstant(now).toString()));
+        if (!changed.isEmpty()) {
+            chatRepo.saveAll(changed);
+        }
+
+        String readAtIso = toInstant(now).toString();
+        publishReadReceipt(other, me, messageIds, readAtIso);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("updated", changed.size());
+        response.put("readAt", readAtIso);
+        response.put("messageIds", messageIds);
+        response.put("readerId", me.getId());
+        response.put("otherUserId", other.getId());
+        response.put("type", "CHAT_READ_RECEIPT");
+        return ResponseEntity.ok(response);
     }
 }
 
