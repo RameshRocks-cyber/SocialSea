@@ -84,7 +84,9 @@ public class SecurityConfig {
                     "/",
                     "/health",
                     "/actuator/**",
+                    "/api/actuator/**",
                     "/ws/**",
+                    "/api/ws/**",
 
                     // AUTH
                     "/auth/**",

@@ -51,6 +51,9 @@ public class JwtFilter extends OncePerRequestFilter {
             path.startsWith("/anonymous") ||
             path.startsWith("/uploads") ||
             path.startsWith("/actuator") ||
+            path.startsWith("/api/actuator") ||
+            path.startsWith("/ws") ||
+            path.startsWith("/api/ws") ||
             path.startsWith("/error");
     }
 

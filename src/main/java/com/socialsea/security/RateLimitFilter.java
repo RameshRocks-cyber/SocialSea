@@ -64,13 +64,15 @@ public class RateLimitFilter extends OncePerRequestFilter {
             || path.equals("/")
             || path.equals("/health")
             || path.startsWith("/actuator")
+            || path.startsWith("/api/actuator")
             || path.startsWith("/uploads")
             || path.startsWith("/swagger-ui")
             || path.startsWith("/v3/api-docs")
             || path.startsWith("/h2-console")
             || path.startsWith("/anonymous")
             || path.startsWith("/api/anonymous")
-            || path.startsWith("/ws");
+            || path.startsWith("/ws")
+            || path.startsWith("/api/ws");
     }
 
     @Override
