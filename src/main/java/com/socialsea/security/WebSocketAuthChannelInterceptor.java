@@ -79,6 +79,9 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
         if (token == null || token.isBlank()) {
             token = firstHeader(accessor, "access_token");
         }
+        if (token == null || token.isBlank()) {
+            token = firstHeader(accessor, "accessToken");
+        }
         if (token != null && !token.isBlank()) {
             return token.trim();
         }
@@ -91,7 +94,7 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
         }
         String normalized = headerValue.toLowerCase(Locale.ROOT);
         if (!normalized.startsWith("bearer ")) {
-            return null;
+            return headerValue.trim();
         }
         return headerValue.substring(7).trim();
     }

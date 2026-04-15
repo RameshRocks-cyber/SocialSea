@@ -13,30 +13,18 @@ import org.springframework.web.socket.server.HandshakeInterceptor;
 import org.springframework.lang.NonNull;
 import org.springframework.lang.Nullable;
 
-import com.socialsea.model.User;
-import com.socialsea.repository.UserRepository;
-import com.socialsea.service.LoginSessionService;
-
 import java.util.Map;
+import java.util.Locale;
 
 @Component
 public class JwtHandshakeInterceptor implements HandshakeInterceptor {
 
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
-    private final UserRepository userRepository;
-    private final LoginSessionService loginSessionService;
 
-    public JwtHandshakeInterceptor(
-            JwtUtil jwtUtil,
-            UserDetailsService userDetailsService,
-            UserRepository userRepository,
-            LoginSessionService loginSessionService
-    ) {
+    public JwtHandshakeInterceptor(JwtUtil jwtUtil, UserDetailsService userDetailsService) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
-        this.userRepository = userRepository;
-        this.loginSessionService = loginSessionService;
     }
 
     @Override
@@ -46,49 +34,43 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
             @NonNull WebSocketHandler wsHandler,
             @NonNull Map<String, Object> attributes
     ) {
-        if (isPublicSockJsPath(request)) {
-            return true;
-        }
-
-        if (!(request instanceof ServletServerHttpRequest servletRequest)) {
-            return false;
-        }
-
-        String token = resolveToken(servletRequest);
-
-        if (token != null && !jwtUtil.isExpired(token)) {
-            String email = jwtUtil.extractUsername(token);
-            String sessionId = jwtUtil.extractTokenId(token);
-            if (sessionId == null || sessionId.isBlank()) {
-                return false;
+        if (request instanceof ServletServerHttpRequest servletRequest) {
+            String path = servletRequest.getServletRequest().getRequestURI();
+            if (path != null) {
+                String normalized = path.toLowerCase();
+                if (normalized.endsWith("/ws/info") || normalized.contains("/ws/info") || normalized.contains("/ws/iframe")) {
+                    return true; // allow SockJS info/iframe without auth
+                }
             }
-            User dbUser = userRepository.findByEmailIgnoreCase(email).orElse(null);
-            if (dbUser == null || dbUser.getId() == null) {
-                return false;
-            }
-            if (!loginSessionService.isActiveSession(dbUser.getId(), sessionId)) {
-                return false;
-            }
-            UserDetails user = userDetailsService.loadUserByUsername(email);
-            attributes.put("user", user);
-            loginSessionService.touch(sessionId);
-            return true;
-        }
-        return false;
-    }
 
-    private boolean isPublicSockJsPath(ServerHttpRequest request) {
-        String path = request.getURI() != null ? request.getURI().getPath() : null;
-        if (path == null || path.isBlank()) return false;
-        String normalized = path.toLowerCase();
-        return normalized.contains("/ws/info") || normalized.contains("/ws/iframe");
+            String token = resolveToken(servletRequest);
+
+            if (token != null && !token.isBlank()) {
+                try {
+                    if (!jwtUtil.isExpired(token)) {
+                        String email = jwtUtil.extractUsername(token);
+                        UserDetails user = userDetailsService.loadUserByUsername(email);
+                        attributes.put("user", user);
+                    }
+                } catch (Exception ignored) {
+                    // Do not block websocket handshake for malformed/expired tokens.
+                }
+            }
+        }
+        // Always allow handshake. STOMP CONNECT authentication can still happen later via channel interceptor.
+        return true;
     }
 
     private String resolveToken(ServletServerHttpRequest servletRequest) {
         String authHeader = servletRequest.getServletRequest().getHeader(HttpHeaders.AUTHORIZATION);
-        if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String token = authHeader.substring(7).trim();
-            if (!token.isBlank()) return token;
+        if (authHeader != null && !authHeader.isBlank()) {
+            String normalized = authHeader.toLowerCase(Locale.ROOT);
+            if (normalized.startsWith("bearer ")) {
+                String token = authHeader.substring(7).trim();
+                if (!token.isBlank()) return token;
+            } else {
+                return authHeader.trim();
+            }
         }
 
         Cookie[] cookies = servletRequest.getServletRequest().getCookies();
@@ -107,6 +89,14 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
         String queryToken = servletRequest.getServletRequest().getParameter("token");
         if (queryToken != null && !queryToken.isBlank()) {
             return queryToken.trim();
+        }
+        String accessToken = servletRequest.getServletRequest().getParameter("access_token");
+        if (accessToken != null && !accessToken.isBlank()) {
+            return accessToken.trim();
+        }
+        String accessTokenCamel = servletRequest.getServletRequest().getParameter("accessToken");
+        if (accessTokenCamel != null && !accessTokenCamel.isBlank()) {
+            return accessTokenCamel.trim();
         }
         return null;
     }
