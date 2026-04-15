@@ -6,7 +6,7 @@
 - Publish directory: `dist`
 - SPA routing: configured in `netlify.toml`
 - Production API URL: `.env.production` -> `VITE_API_URL=/api` + `VITE_API_BASE_URL=/api`
-  - Netlify proxies `/api/*` → the backend (see `netlify.toml`), so the frontend should call the API via the same origin.
+  - Netlify proxies `/api/*` -> the backend (see `netlify.toml`), so the frontend should call the API via the same origin.
 
 ### Netlify env vars
 - `VITE_API_URL=/api`
