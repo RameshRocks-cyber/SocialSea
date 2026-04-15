@@ -22,12 +22,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final JwtHandshakeInterceptor jwtHandshakeInterceptor;
     private final UserHandshakeHandler userHandshakeHandler;
     private final WebSocketAuthChannelInterceptor webSocketAuthChannelInterceptor;
-    private final String[] allowedOrigins;
+    private final @NonNull String[] allowedOrigins;
     private final boolean brokerRelayEnabled;
-    private final String brokerRelayHost;
+    private final @NonNull String brokerRelayHost;
     private final int brokerRelayPort;
-    private final String brokerRelayUsername;
-    private final String brokerRelayPassword;
+    private final @NonNull String brokerRelayUsername;
+    private final @NonNull String brokerRelayPassword;
 
     public WebSocketConfig(
             JwtHandshakeInterceptor jwtHandshakeInterceptor,
@@ -43,16 +43,16 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         this.jwtHandshakeInterceptor = jwtHandshakeInterceptor;
         this.userHandshakeHandler = userHandshakeHandler;
         this.webSocketAuthChannelInterceptor = webSocketAuthChannelInterceptor;
-        String[] configuredOrigins = Arrays.stream(allowedOriginsCsv.split(","))
+        String[] configuredOrigins = Arrays.stream(Objects.requireNonNullElse(allowedOriginsCsv, "*").split(","))
                 .map(String::trim)
                 .filter(v -> !v.isBlank())
                 .toArray(String[]::new);
         this.allowedOrigins = configuredOrigins.length > 0 ? configuredOrigins : new String[]{"*"};
         this.brokerRelayEnabled = brokerRelayEnabled;
-        this.brokerRelayHost = brokerRelayHost;
+        this.brokerRelayHost = Objects.requireNonNullElse(brokerRelayHost, "localhost");
         this.brokerRelayPort = brokerRelayPort;
-        this.brokerRelayUsername = brokerRelayUsername;
-        this.brokerRelayPassword = brokerRelayPassword;
+        this.brokerRelayUsername = Objects.requireNonNullElse(brokerRelayUsername, "");
+        this.brokerRelayPassword = Objects.requireNonNullElse(brokerRelayPassword, "");
     }
 
     @Override

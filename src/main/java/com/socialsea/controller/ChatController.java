@@ -155,16 +155,20 @@ public class ChatController {
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         safeTouch(me);
         Instant presenceAt = presenceService.getLastSeenAt(me);
-        Instant now = Instant.now();
-        Instant effectivePresenceAt = presenceAt != null ? presenceAt : now;
-        return ResponseEntity.ok(Map.of(
-                "ok", true,
-                "online", true,
-                "isOnline", true,
-                "is_online", true,
-                "presenceUpdatedAt", effectivePresenceAt.toString(),
-                "presence_updated_at", effectivePresenceAt.toString()
-        ));
+        boolean online = presenceService.isOnline(me);
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("ok", true);
+        payload.put("online", online);
+        payload.put("isOnline", online);
+        payload.put("is_online", online);
+        if (presenceAt != null) {
+            payload.put("presenceUpdatedAt", presenceAt.toString());
+            payload.put("presence_updated_at", presenceAt.toString());
+        } else {
+            payload.put("presenceUpdatedAt", null);
+            payload.put("presence_updated_at", null);
+        }
+        return ResponseEntity.ok(payload);
     }
 
     private void safeTouch(User user) {
@@ -507,5 +511,3 @@ public class ChatController {
         return ResponseEntity.ok(response);
     }
 }
-
-
