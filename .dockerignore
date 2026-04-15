@@ -1,0 +1,22 @@
+# Build output / caches
+target/
+.m2/
+_m2/
+
+# Uploads / runtime artifacts
+uploads/
+*.log
+*.out.log
+*.err.log
+*.trace.db
+*.mv.db
+
+# Local env
+.env
+.env.*
+
+# Legacy duplicate project folder (do not ship in Docker context)
+SocialSea-main/
+
+# Tooling logs
+.github/java-upgrade/

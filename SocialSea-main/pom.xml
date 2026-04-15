@@ -48,6 +48,13 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <!-- Swagger / OpenAPI -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.5.0</version>
+        </dependency>
+
         <!-- WebSocket -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -145,8 +152,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.32</version>
-            <scope>provided</scope>
+            <optional>true</optional>
         </dependency>
 
         <!-- Redis Cache -->
@@ -161,9 +167,31 @@
             <version>4.12.0</version>
         </dependency>
 
+        <!-- LiveKit Server SDK -->
+        <dependency>
+            <groupId>io.livekit</groupId>
+            <artifactId>livekit-server</artifactId>
+            <version>0.10.1</version>
+        </dependency>
+
     </dependencies>
 
     <build>
+        <sourceDirectory>../src/main/java</sourceDirectory>
+        <testSourceDirectory>../src/test/java</testSourceDirectory>
+
+        <resources>
+            <resource>
+                <directory>../src/main/resources</directory>
+            </resource>
+        </resources>
+
+        <testResources>
+            <testResource>
+                <directory>../src/test/resources</directory>
+            </testResource>
+        </testResources>
+
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

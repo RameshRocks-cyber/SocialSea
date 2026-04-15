@@ -14,10 +14,14 @@
 - `VITE_LIVEKIT_URL=wss://socialsea-mb50m9kr.livekit.cloud`
 
 ## Backend (Spring Boot)
-- Project path: `SocialSea-main`
+- Project path: repository root (this folder)
 - Java: 17
 - Build: `mvn -DskipTests package`
 - Run (prod): `java -Dspring.profiles.active=prod -jar target/*.jar`
+
+### Important
+This repo historically had a second backend folder at `SocialSea-main/`.
+That folder is now a Maven wrapper that compiles the backend from the repository root (`../src/...`), so builds from either location match.
 
 ### Required backend env vars
 - `SPRING_PROFILES_ACTIVE=prod`
