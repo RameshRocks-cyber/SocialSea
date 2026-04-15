@@ -5,6 +5,7 @@ import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -59,6 +60,7 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
             accessor.setUser(authentication);
+            return MessageBuilder.createMessage(message.getPayload(), accessor.getMessageHeaders());
         } catch (Exception ignored) {
             // Keep socket flow resilient; anonymous connect may still be used for non-user channels.
         }
