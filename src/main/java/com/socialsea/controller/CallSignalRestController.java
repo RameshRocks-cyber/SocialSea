@@ -94,7 +94,7 @@ public class CallSignalRestController {
 
     private User currentUser(Authentication auth) {
         if (auth == null || !auth.isAuthenticated()) return null;
-        return userRepository.findByEmail(auth.getName()).orElse(null);
+        return userRepository.findByEmailIgnoreCase(auth.getName()).orElse(null);
     }
 
     private String normalize(String value) {

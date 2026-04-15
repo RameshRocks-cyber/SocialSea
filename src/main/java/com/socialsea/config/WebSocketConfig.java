@@ -2,16 +2,18 @@ package com.socialsea.config;
 
 import com.socialsea.security.JwtHandshakeInterceptor;
 import com.socialsea.security.UserHandshakeHandler;
+import com.socialsea.security.WebSocketAuthChannelInterceptor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
-import java.util.Objects;
 import java.util.Arrays;
+import java.util.Objects;
 
 @Configuration
 @EnableWebSocketMessageBroker
@@ -19,6 +21,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final JwtHandshakeInterceptor jwtHandshakeInterceptor;
     private final UserHandshakeHandler userHandshakeHandler;
+    private final WebSocketAuthChannelInterceptor webSocketAuthChannelInterceptor;
     private final String[] allowedOrigins;
     private final boolean brokerRelayEnabled;
     private final String brokerRelayHost;
@@ -29,6 +32,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public WebSocketConfig(
             JwtHandshakeInterceptor jwtHandshakeInterceptor,
             UserHandshakeHandler userHandshakeHandler,
+            WebSocketAuthChannelInterceptor webSocketAuthChannelInterceptor,
             @Value("${app.security.allowed-origins:*}") String allowedOriginsCsv,
             @Value("${app.websocket.broker-relay.enabled:false}") boolean brokerRelayEnabled,
             @Value("${app.websocket.broker-relay.host:localhost}") String brokerRelayHost,
@@ -38,6 +42,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     ) {
         this.jwtHandshakeInterceptor = jwtHandshakeInterceptor;
         this.userHandshakeHandler = userHandshakeHandler;
+        this.webSocketAuthChannelInterceptor = webSocketAuthChannelInterceptor;
         String[] configuredOrigins = Arrays.stream(allowedOriginsCsv.split(","))
                 .map(String::trim)
                 .filter(v -> !v.isBlank())
@@ -74,5 +79,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .addInterceptors(jwtHandshakeInterceptor)
                 .setAllowedOriginPatterns(allowedOrigins)
                 .withSockJS();
+    }
+
+    @Override
+    public void configureClientInboundChannel(@NonNull ChannelRegistration registration) {
+        registration.interceptors(webSocketAuthChannelInterceptor);
     }
 }

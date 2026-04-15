@@ -80,6 +80,8 @@ public class ChatController {
             item.put("lastAt", toInstant(m.getCreatedAt()) != null ? toInstant(m.getCreatedAt()).toString() : null);
             boolean online = presenceService.isOnline(other);
             item.put("online", online);
+            item.put("isOnline", online);
+            item.put("is_online", online);
             LocalDateTime locationUpdatedAt = other.getLocationUpdatedAt();
             Instant messageAt = toInstant(m.getCreatedAt());
             Instant locationAt = toInstant(locationUpdatedAt);
@@ -87,11 +89,14 @@ public class ChatController {
             Instant lastActiveAt = latestInstant(messageAt, locationAt, presenceAt);
             if (lastActiveAt != null) {
                 item.put("lastActiveAt", lastActiveAt.toString());
+                item.put("last_active_at", lastActiveAt.toString());
             }
             if (presenceAt != null) {
                 item.put("presenceUpdatedAt", presenceAt.toString());
+                item.put("presence_updated_at", presenceAt.toString());
             }
             item.put("locationUpdatedAt", locationAt != null ? locationAt.toString() : null);
+            item.put("location_updated_at", locationAt != null ? locationAt.toString() : null);
             byOtherUser.put(otherId, item);
             if (byOtherUser.size() >= safeLimit) break;
         }
@@ -150,10 +155,15 @@ public class ChatController {
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         safeTouch(me);
         Instant presenceAt = presenceService.getLastSeenAt(me);
+        Instant now = Instant.now();
+        Instant effectivePresenceAt = presenceAt != null ? presenceAt : now;
         return ResponseEntity.ok(Map.of(
                 "ok", true,
                 "online", true,
-                "presenceUpdatedAt", presenceAt != null ? presenceAt.toString() : Instant.now().toString()
+                "isOnline", true,
+                "is_online", true,
+                "presenceUpdatedAt", effectivePresenceAt.toString(),
+                "presence_updated_at", effectivePresenceAt.toString()
         ));
     }
 
@@ -497,4 +507,5 @@ public class ChatController {
         return ResponseEntity.ok(response);
     }
 }
+
 

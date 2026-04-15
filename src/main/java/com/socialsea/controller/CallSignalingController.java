@@ -39,7 +39,7 @@ public class CallSignalingController {
     ) {
         if (auth == null || !auth.isAuthenticated() || targetUserId == null || payload == null) return;
 
-        User sender = userRepository.findByEmail(auth.getName()).orElse(null);
+        User sender = userRepository.findByEmailIgnoreCase(auth.getName()).orElse(null);
         if (sender == null || sender.getId() == null) return;
         if (sender.getId().equals(targetUserId)) return;
 
