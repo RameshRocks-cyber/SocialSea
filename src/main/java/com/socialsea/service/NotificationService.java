@@ -137,20 +137,43 @@ public class NotificationService {
     }
 
     private void saveAndSendInApp(String email, String title, String message, String type) {
+        String normalizedRecipient = normalizeRecipient(email);
+        if (normalizedRecipient == null || normalizedRecipient.isBlank()) {
+            return;
+        }
+        String safeRecipient = clip(normalizedRecipient, MAX_RECIPIENT_LEN);
+        String safeRawRecipient = clip(email != null ? email.trim() : null, MAX_RECIPIENT_LEN);
+
         Notification n = new Notification();
-        n.setRecipient(clip(normalizeRecipient(email), MAX_RECIPIENT_LEN));
+        n.setRecipient(safeRecipient);
         n.setTitle(clip(title, MAX_TITLE_LEN));
         n.setType(clip(type, MAX_TYPE_LEN));
         n.setMessage(clip(message, MAX_MESSAGE_LEN));
         repo.save(n);
 
         try {
-            messagingTemplate.convertAndSend(
-                    "/topic/notifications/" + clip(normalizeRecipient(email), MAX_RECIPIENT_LEN),
-                    n
-            );
+            messagingTemplate.convertAndSend("/topic/notifications/" + safeRecipient, n);
         } catch (Exception ignored) {
             // Notification persistence already succeeded.
+        }
+
+        try {
+            messagingTemplate.convertAndSendToUser(safeRecipient, "/queue/notifications", n);
+        } catch (Exception ignored) {
+            // Notification persistence already succeeded.
+        }
+
+        if (safeRawRecipient != null && !safeRawRecipient.isBlank() && !safeRawRecipient.equalsIgnoreCase(safeRecipient)) {
+            try {
+                messagingTemplate.convertAndSend("/topic/notifications/" + safeRawRecipient, n);
+            } catch (Exception ignored) {
+                // Notification persistence already succeeded.
+            }
+            try {
+                messagingTemplate.convertAndSendToUser(safeRawRecipient, "/queue/notifications", n);
+            } catch (Exception ignored) {
+                // Notification persistence already succeeded.
+            }
         }
     }
 
