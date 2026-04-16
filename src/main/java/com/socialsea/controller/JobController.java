@@ -34,11 +34,10 @@ public class JobController {
             @RequestParam(name = "includeExpired", defaultValue = "false") boolean includeExpired,
             @RequestParam(name = "includeClosed", defaultValue = "false") boolean includeClosed
     ) {
-        List<JobOpening> source = includeClosed
-                ? jobRepo.findAllByOrderByCreatedAtDesc()
-                : jobRepo.findByStatusOrderByCreatedAtDesc("open");
+        List<JobOpening> source = jobRepo.findAllByOrderByCreatedAtDesc();
 
         List<Map<String, Object>> items = source.stream()
+                .filter(job -> includeClosed || "open".equals(normalizeStatus(job.getStatus())))
                 .filter(job -> includeExpired || !isExpired(job))
                 .map(this::toPayload)
                 .toList();

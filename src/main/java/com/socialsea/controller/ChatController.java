@@ -76,7 +76,11 @@ public class ChatController {
             String profilePicUrl = UrlUtils.toAbsoluteUrl(request, other.getProfilePic());
             item.put("profilePic", profilePicUrl);
             item.put("profilePicUrl", profilePicUrl);
-            item.put("lastMessage", m.getText());
+            String lastMessage = lastMessagePreview(m);
+            if (lastMessage == null) {
+                continue;
+            }
+            item.put("lastMessage", lastMessage);
             item.put("lastAt", toInstant(m.getCreatedAt()) != null ? toInstant(m.getCreatedAt()).toString() : null);
             boolean online = presenceService.isOnline(other);
             item.put("online", online);
@@ -102,6 +106,46 @@ public class ChatController {
         }
 
         return ResponseEntity.ok(new ArrayList<>(byOtherUser.values()));
+    }
+
+    private String lastMessagePreview(ChatMessage message) {
+        if (message == null) return null;
+
+        String text = message.getText();
+        if (text != null) {
+            String trimmed = text.trim();
+            if (trimmed.startsWith("__SS_READ_RECEIPT__:")) {
+                return null;
+            }
+            if (trimmed.startsWith("__SS_DELETE_EVERYONE__:")) {
+                return "This message was deleted";
+            }
+            if (!trimmed.isBlank()) {
+                return trimmed;
+            }
+        }
+
+        String audioUrl = message.getAudioUrl();
+        if (audioUrl != null && !audioUrl.isBlank()) {
+            return "Voice message";
+        }
+
+        String mediaType = message.getMediaType();
+        if (mediaType != null && !mediaType.isBlank()) {
+            String normalized = mediaType.trim().toLowerCase(Locale.ROOT);
+            if ("image".equals(normalized)) return "[Image]";
+            if ("video".equals(normalized)) return "[Video]";
+            if ("audio".equals(normalized)) return "Voice message";
+        }
+
+        String mediaUrl = message.getMediaUrl();
+        if (mediaUrl != null && !mediaUrl.isBlank()) {
+            String fileName = message.getFileName();
+            if (fileName != null && !fileName.isBlank()) return fileName.trim();
+            return "[File]";
+        }
+
+        return "";
     }
 
     @GetMapping("/{otherUserId}/messages")
