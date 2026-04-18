@@ -31,7 +31,7 @@ public class CallSignalRestController {
     private static final Set<String> ALLOWED_TYPES = Set.of(
             "offer", "answer", "ice", "hangup", "reject", "busy", "ringing",
             "livekit-invite", "livekit-accept",
-            "connected", "refreshing", "ended", "accepted"
+            "connected", "refreshing", "ended", "accepted", "typing"
     );
     private static final Logger log = LoggerFactory.getLogger(CallSignalRestController.class);
 
@@ -61,6 +61,7 @@ public class CallSignalRestController {
 
         CallSignalDto outbound = new CallSignalDto();
         outbound.setType(type);
+        outbound.setTyping(payload.getTyping());
         outbound.setFromUserId(me.getId());
         outbound.setToUserId(target.getId());
         outbound.setFromName(displayName(me));

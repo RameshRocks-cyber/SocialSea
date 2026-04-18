@@ -21,6 +21,9 @@ public class User implements UserDetails {
 
     @Column(unique = true, nullable = false)
     private String email;
+    
+    @Column(unique = true, length = 20)
+    private String phoneNumber;
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
@@ -53,6 +56,9 @@ public class User implements UserDetails {
     @Column(length = 16)
     private String preferredLanguage = "en";
 
+    @Column(length = 16)
+    private String notificationVoice = "male";
+
     @Column(columnDefinition = "boolean default false")
     private boolean ambulanceDriverApproved = false;
 
@@ -75,6 +81,14 @@ public class User implements UserDetails {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getPhoneNumber() {
+        return phoneNumber;
+    }
+
+    public void setPhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
     }
 
     public Role getRole() {
@@ -181,6 +195,14 @@ public class User implements UserDetails {
 
     public void setPreferredLanguage(String preferredLanguage) {
         this.preferredLanguage = preferredLanguage;
+    }
+
+    public String getNotificationVoice() {
+        return notificationVoice == null || notificationVoice.isBlank() ? "male" : notificationVoice;
+    }
+
+    public void setNotificationVoice(String notificationVoice) {
+        this.notificationVoice = notificationVoice;
     }
 
     public boolean isAmbulanceDriverApproved() {

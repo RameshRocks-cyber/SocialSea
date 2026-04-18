@@ -2,6 +2,9 @@ package com.socialsea.security;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import jakarta.annotation.PostConstruct;
@@ -13,16 +16,24 @@ import java.util.UUID;
 
 @Component
 public class JwtUtil {
+    private static final Logger log = LoggerFactory.getLogger(JwtUtil.class);
 
-    @Value("${jwt.secret:socialsea_secret_key_123_secure_and_long_enough_for_hs256}")
+    @Value("${jwt.secret:}")
     private String secret;
+
+    private final Environment environment;
 
     private Key key;
     private static final String DEFAULT_SECRET = "socialsea_secret_key_123_secure_and_long_enough_for_hs256";
 
+    public JwtUtil(Environment environment) {
+        this.environment = environment;
+    }
+
     @PostConstruct
     public void init() {
-        String normalizedSecret = normalizeSecret(secret);
+        boolean prod = environment != null && environment.acceptsProfiles("prod");
+        String normalizedSecret = normalizeSecret(secret, prod);
         this.key = Keys.hmacShaKeyFor(normalizedSecret.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -108,13 +119,21 @@ public class JwtUtil {
         return isExpired(token);
     }
 
-    private String normalizeSecret(String configuredSecret) {
+    private String normalizeSecret(String configuredSecret, boolean prod) {
         String candidate = configuredSecret == null ? "" : configuredSecret.trim();
+        if (prod && candidate.isEmpty()) {
+            throw new IllegalStateException("JWT_SECRET must be configured in prod profile");
+        }
+
         if (candidate.isEmpty()) {
+            log.warn("JWT secret is missing; using development fallback secret");
             candidate = DEFAULT_SECRET;
         }
 
         byte[] bytes = candidate.getBytes(StandardCharsets.UTF_8);
+        if (prod && bytes.length < 32) {
+            throw new IllegalStateException("JWT_SECRET must be at least 32 bytes in prod profile");
+        }
         if (bytes.length < 32) {
             StringBuilder sb = new StringBuilder(candidate);
             while (sb.toString().getBytes(StandardCharsets.UTF_8).length < 32) {

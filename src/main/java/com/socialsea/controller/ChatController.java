@@ -87,10 +87,10 @@ public class ChatController {
             item.put("isOnline", online);
             item.put("is_online", online);
             LocalDateTime locationUpdatedAt = other.getLocationUpdatedAt();
-            Instant messageAt = toInstant(m.getCreatedAt());
             Instant locationAt = toInstant(locationUpdatedAt);
             Instant presenceAt = presenceService.getLastSeenAt(other);
-            Instant lastActiveAt = latestInstant(messageAt, locationAt, presenceAt);
+            // Last seen must represent peer presence/activity, not latest conversation item.
+            Instant lastActiveAt = presenceAt;
             if (lastActiveAt != null) {
                 item.put("lastActiveAt", lastActiveAt.toString());
                 item.put("last_active_at", lastActiveAt.toString());

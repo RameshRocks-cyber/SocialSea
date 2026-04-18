@@ -16,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.regex.Pattern;
 
 @Service
 public class OpenAiRealtimeService {
@@ -23,7 +24,9 @@ public class OpenAiRealtimeService {
     private static final String REALTIME_TOKEN_URL = "https://api.openai.com/v1/realtime/client_secrets";
     private static final String DEFAULT_MODEL = "gpt-realtime";
     private static final String DEFAULT_TRANSCRIBE_MODEL = "gpt-4o-mini-transcribe";
-    private static final String DEFAULT_VOICE = "alloy";
+    private static final String DEFAULT_MALE_VOICE = "alloy";
+    private static final String DEFAULT_FEMALE_VOICE = "nova";
+    private static final Pattern VOICE_ID_PATTERN = Pattern.compile("^[A-Za-z0-9_-]{1,32}$");
 
     private final OkHttpClient client = new OkHttpClient.Builder()
             .connectTimeout(Duration.ofSeconds(6))
@@ -37,6 +40,12 @@ public class OpenAiRealtimeService {
     @Value("${OPENAI_API_KEY:}")
     private String apiKey;
 
+    @Value("${app.openai.voice.male:alloy}")
+    private String maleVoice;
+
+    @Value("${app.openai.voice.female:nova}")
+    private String femaleVoice;
+
     private volatile String overrideKey;
 
     public OpenAiRealtimeService(ObjectMapper mapper) {
@@ -44,11 +53,16 @@ public class OpenAiRealtimeService {
     }
 
     public JsonNode createRealtimeToken(String assistantName, String subject, String topic) {
+        return createRealtimeToken(assistantName, subject, topic, null);
+    }
+
+    public JsonNode createRealtimeToken(String assistantName, String subject, String topic, String voice) {
         String resolvedKey = resolveApiKey();
         ensureConfigured(resolvedKey);
         String safeName = normalize(assistantName, "HRS");
         String safeSubject = normalize(subject, "Study");
         String safeTopic = normalize(topic, "");
+        String resolvedVoice = resolveVoice(voice);
 
         ObjectNode root = mapper.createObjectNode();
         ObjectNode session = root.putObject("session");
@@ -62,7 +76,7 @@ public class OpenAiRealtimeService {
         modalities.add("audio");
 
         ObjectNode audio = session.putObject("audio");
-        audio.putObject("output").put("voice", DEFAULT_VOICE);
+        audio.putObject("output").put("voice", resolvedVoice);
 
         String jsonBody = toJson(root);
         Request request = new Request.Builder()
@@ -131,6 +145,24 @@ public class OpenAiRealtimeService {
     private String normalize(String value, String fallback) {
         String trimmed = value == null ? "" : value.trim();
         return trimmed.isBlank() ? fallback : trimmed;
+    }
+
+    private String resolveVoice(String voice) {
+        String requested = voice == null ? "" : voice.trim().toLowerCase();
+        if (requested.isBlank() || "male".equals(requested) || "m".equals(requested)) {
+            return normalizeVoiceId(maleVoice, DEFAULT_MALE_VOICE);
+        }
+        if ("female".equals(requested) || "f".equals(requested)) {
+            return normalizeVoiceId(femaleVoice, DEFAULT_FEMALE_VOICE);
+        }
+        return normalizeVoiceId(requested, normalizeVoiceId(maleVoice, DEFAULT_MALE_VOICE));
+    }
+
+    private String normalizeVoiceId(String value, String fallback) {
+        String trimmed = value == null ? "" : value.trim();
+        if (trimmed.isBlank()) return fallback;
+        if (!VOICE_ID_PATTERN.matcher(trimmed).matches()) return fallback;
+        return trimmed.toLowerCase();
     }
 
     private String normalizeKey(String value) {

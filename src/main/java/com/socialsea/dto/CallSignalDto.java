@@ -5,6 +5,7 @@ import lombok.Data;
 @Data
 public class CallSignalDto {
     private String type;
+    private Boolean typing;
     private Long fromUserId;
     private Long toUserId;
     private String fromName;

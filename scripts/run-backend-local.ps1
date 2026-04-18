@@ -31,6 +31,10 @@ if (-not $env:OPENAI_API_KEY -or $env:OPENAI_API_KEY.Trim() -eq "") {
   Write-Host "OPENAI_API_KEY is missing or empty (check .env.local)." -ForegroundColor Yellow
 }
 
+if (-not $env:GEMINI_API_KEY -or $env:GEMINI_API_KEY.Trim() -eq "") {
+  Write-Host "GEMINI_API_KEY is missing or empty (check .env.local)." -ForegroundColor Yellow
+}
+
 $mvn = Get-Command mvn -ErrorAction SilentlyContinue
 if ($mvn) {
   Write-Host "Starting backend with system Maven..." -ForegroundColor Green

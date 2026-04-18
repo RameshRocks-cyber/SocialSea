@@ -35,34 +35,7 @@ public class OtpService {
 
     @Transactional
     public OtpSendResult sendOtp(String email) {
-
-        log.info("OTP service hit for {}", email);
-
-        List<EmailOtp> otps = otpRepository.findByEmailOrderByExpiresAtDesc(email);
-        EmailOtp otp = otps.isEmpty() ? null : otps.get(0);
-        LocalDateTime now = LocalDateTime.now();
-
-        // DEV: bypass cooldown and resend limit for testing
-
-        String code = String.valueOf(100000 + new Random().nextInt(900000));
-
-        if (otp == null) {
-            otp = new EmailOtp();
-            otp.setEmail(email);
-            otp.setOtp(code);
-            otp.setResendCount(1);
-            otp.setAttempts(0);
-        } else {
-            otp.setOtp(code);
-            otp.setResendCount(otp.getResendCount() + 1);
-        }
-
-        otp.setAttempts(0);
-        otp.setLastSentAt(now);
-        otp.setExpiresAt(now.plusMinutes(5));
-        otp.setVerified(false);
-
-        otpRepository.save(otp);
+        String code = createOrUpdateOtpRecord(email);
         if (isDevProfile()) {
             log.info("DEV OTP for {} is {}", email, code);
         }
@@ -80,6 +53,14 @@ public class OtpService {
                 throw ex;
             }
         }
+    }
+
+    @Transactional
+    public OtpSendResult sendOtpToPhone(String phoneNumber) {
+        String code = createOrUpdateOtpRecord(phoneNumber);
+        log.info("OTP generated for phone {}", phoneNumber);
+        // SMS provider is not configured yet. Keep flow unblocked with fallback OTP.
+        return new OtpSendResult(code, true, "SMS gateway not configured");
     }
 
     @Transactional
@@ -130,5 +111,33 @@ public class OtpService {
             // fall through
         }
         return false;
+    }
+
+    private String createOrUpdateOtpRecord(String identifier) {
+        log.info("OTP service hit for {}", identifier);
+
+        List<EmailOtp> otps = otpRepository.findByEmailOrderByExpiresAtDesc(identifier);
+        EmailOtp otp = otps.isEmpty() ? null : otps.get(0);
+        LocalDateTime now = LocalDateTime.now();
+        String code = String.valueOf(100000 + new Random().nextInt(900000));
+
+        if (otp == null) {
+            otp = new EmailOtp();
+            otp.setEmail(identifier);
+            otp.setOtp(code);
+            otp.setResendCount(1);
+            otp.setAttempts(0);
+        } else {
+            otp.setOtp(code);
+            otp.setResendCount(otp.getResendCount() + 1);
+        }
+
+        otp.setAttempts(0);
+        otp.setLastSentAt(now);
+        otp.setExpiresAt(now.plusMinutes(5));
+        otp.setVerified(false);
+        otpRepository.save(otp);
+
+        return code;
     }
 }

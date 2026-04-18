@@ -1,6 +1,5 @@
 package com.socialsea.controller;
 
-import com.socialsea.dto.VerifyOtpRequest;
 import com.socialsea.dto.AuthResponse;
 import com.socialsea.dto.OtpSendResult;
 import com.socialsea.model.LoginRequest;
@@ -58,20 +57,24 @@ public class AuthController {
 
     @PostMapping("/send-otp")
     public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> body) {
-        String email = normalize(body.get("email"));
-        if (email == null) {
-            email = normalize(body.get("username"));
+        String identifier = resolveIdentifier(body);
+        if (identifier == null || identifier.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Email or mobile number is required"));
         }
+        String normalizedPhone = normalizePhone(identifier);
+        boolean isPhoneIdentifier = normalizedPhone != null && !identifier.contains("@");
+        String otpKey = isPhoneIdentifier ? normalizedPhone : identifier.toLowerCase(Locale.ROOT);
 
-        if (email == null || email.isBlank()) {
-            return ResponseEntity.badRequest().body("Email is required");
-        }
-
-        OtpSendResult result = otpService.sendOtp(email);
+        OtpSendResult result = isPhoneIdentifier
+                ? otpService.sendOtpToPhone(otpKey)
+                : otpService.sendOtp(otpKey);
         boolean deliveryFailed = result.isDeliveryFailed();
 
         Map<String, Object> response = new HashMap<>();
-        response.put("message", deliveryFailed ? "OTP generated, but email delivery failed" : "OTP sent");
+        response.put("channel", isPhoneIdentifier ? "sms" : "email");
+        response.put("message", deliveryFailed
+                ? (isPhoneIdentifier ? "OTP generated, but SMS delivery is not configured yet" : "OTP generated, but email delivery failed")
+                : "OTP sent");
         response.put("deliveryFailed", deliveryFailed);
         if (deliveryFailed) {
             response.put("failureReason", result.getFailureReason());
@@ -84,21 +87,26 @@ public class AuthController {
     }
 
     @PostMapping("/verify-otp")
-    public ResponseEntity<?> verifyOtp(@RequestBody VerifyOtpRequest request, HttpServletRequest httpRequest) {
-        String email = normalize(request.getEmail());
-        if (email == null) {
-            email = normalize(request.getUsername());
+    public ResponseEntity<?> verifyOtp(@RequestBody Map<String, String> body, HttpServletRequest httpRequest) {
+        String identifier = resolveIdentifier(body);
+        String otp = normalize(body.get("otp"));
+        if (otp == null) {
+            otp = normalize(body.get("code"));
         }
-        String otp = normalize(request.getOtp());
 
-        if (email == null || otp == null) {
+        if (identifier == null || otp == null) {
             return ResponseEntity
                 .badRequest()
-                .body(Map.of("message", "Email or OTP missing"));
+                .body(Map.of("message", "Email/mobile or OTP missing"));
         }
 
+        String normalizedPhone = normalizePhone(identifier);
+        String otpKey = (normalizedPhone != null && !identifier.contains("@"))
+                ? normalizedPhone
+                : identifier.toLowerCase(Locale.ROOT);
+
         try {
-            return ResponseEntity.ok(authService.verifyOtp(email, otp, httpRequest));
+            return ResponseEntity.ok(authService.verifyOtp(otpKey, otp, httpRequest));
         } catch (DeviceSessionLimitException ex) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(Map.of("message", ex.getMessage(), "code", "DEVICE_LIMIT"));
@@ -109,6 +117,13 @@ public class AuthController {
     public ResponseEntity<?> register(@RequestBody Map<String, String> body, HttpServletRequest httpRequest) {
         String username = normalize(body.get("username"));
         String email = normalize(body.get("email"));
+        String phoneInput = normalize(body.get("phoneNumber"));
+        if (phoneInput == null) phoneInput = normalize(body.get("mobileNumber"));
+        if (phoneInput == null) phoneInput = normalize(body.get("phone"));
+        String phoneNumber = normalizePhone(phoneInput);
+        if (phoneInput != null && phoneNumber == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Invalid mobile number"));
+        }
         String password = normalize(body.get("password"));
 
         if (password == null) {
@@ -135,6 +150,12 @@ public class AuthController {
                 user = byName.get();
             }
         }
+        if (user == null && phoneNumber != null) {
+            Optional<User> byPhone = userRepository.findByPhoneNumber(phoneNumber);
+            if (byPhone.isPresent()) {
+                user = byPhone.get();
+            }
+        }
 
         if (user != null && user.getPassword() != null && !user.getPassword().isBlank()) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "User already registered"));
@@ -154,6 +175,14 @@ public class AuthController {
             user.setEmail(email);
         } else if (!user.getEmail().equalsIgnoreCase(email)) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "Email already linked to another account"));
+        }
+
+        if (phoneNumber != null) {
+            if (user.getPhoneNumber() == null || user.getPhoneNumber().isBlank()) {
+                user.setPhoneNumber(phoneNumber);
+            } else if (!user.getPhoneNumber().equals(phoneNumber)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "Mobile number already linked to another account"));
+            }
         }
 
         String preferredName = username;
@@ -282,6 +311,16 @@ public class AuthController {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
+    private String resolveIdentifier(Map<String, String> body) {
+        String identifier = normalize(body.get("identifier"));
+        if (identifier == null) identifier = normalize(body.get("email"));
+        if (identifier == null) identifier = normalize(body.get("username"));
+        if (identifier == null) identifier = normalize(body.get("phoneNumber"));
+        if (identifier == null) identifier = normalize(body.get("mobileNumber"));
+        if (identifier == null) identifier = normalize(body.get("phone"));
+        return identifier;
+    }
+
     private Optional<User> findUserByIdentifier(String identifier) {
         if (identifier == null || identifier.isBlank()) {
             return Optional.empty();
@@ -290,7 +329,31 @@ public class AuthController {
         if (byEmail.isPresent()) {
             return byEmail;
         }
+        String normalizedPhone = normalizePhone(identifier);
+        if (normalizedPhone != null) {
+            Optional<User> byPhone = userRepository.findByPhoneNumber(normalizedPhone);
+            if (byPhone.isPresent()) {
+                return byPhone;
+            }
+        }
         return userRepository.findByNameIgnoreCase(identifier);
+    }
+
+    private String normalizePhone(String value) {
+        String normalized = normalize(value);
+        if (normalized == null) return null;
+        String compact = normalized.replaceAll("[\\s\\-()]", "");
+        if (compact.startsWith("00")) {
+            compact = "+" + compact.substring(2);
+        }
+        if (compact.startsWith("+")) {
+            String rest = compact.substring(1).replaceAll("[^0-9]", "");
+            if (rest.length() < 6 || rest.length() > 15) return null;
+            return "+" + rest;
+        }
+        String digits = compact.replaceAll("[^0-9]", "");
+        if (digits.length() < 6 || digits.length() > 15) return null;
+        return digits;
     }
 
     private boolean legacyPasswordMatchAndUpgrade(User user, String rawPassword) {

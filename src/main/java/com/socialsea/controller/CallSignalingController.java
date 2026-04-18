@@ -24,7 +24,7 @@ public class CallSignalingController {
     private static final Set<String> ALLOWED_TYPES = Set.of(
             "offer", "answer", "ice", "hangup", "reject", "busy", "ringing",
             "livekit-invite", "livekit-accept",
-            "connected", "refreshing", "ended", "accepted"
+            "connected", "refreshing", "ended", "accepted", "typing"
     );
 
     private final UserRepository userRepository;
@@ -51,6 +51,7 @@ public class CallSignalingController {
 
         CallSignalDto outbound = new CallSignalDto();
         outbound.setType(type);
+        outbound.setTyping(payload.getTyping());
         outbound.setFromUserId(sender.getId());
         outbound.setToUserId(target.getId());
         outbound.setFromName(displayName(sender));

@@ -2,7 +2,6 @@ package com.socialsea.controller;
 
 import com.socialsea.dto.AuthResponse;
 import com.socialsea.dto.OtpSendResult;
-import com.socialsea.dto.VerifyOtpRequest;
 import com.socialsea.model.User;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.AuthService;
@@ -16,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -43,21 +43,23 @@ public class OtpController {
 
     @PostMapping("/send-otp")
     public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> body) {
-        String email = body.get("email");
-        if (email == null || email.isBlank()) {
-            email = body.get("username");
+        String identifier = resolveIdentifier(body);
+        if (identifier == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Email or mobile number is required"));
         }
+        String normalizedPhone = normalizePhone(identifier);
+        boolean isPhoneIdentifier = normalizedPhone != null && !identifier.contains("@");
+        String otpKey = isPhoneIdentifier ? normalizedPhone : identifier.toLowerCase(Locale.ROOT);
 
-        if (email == null || email.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Email is required"));
-        }
-
-        OtpSendResult result = otpService.sendOtp(email);
+        OtpSendResult result = isPhoneIdentifier ? otpService.sendOtpToPhone(otpKey) : otpService.sendOtp(otpKey);
         boolean deliveryFailed = result.isDeliveryFailed();
 
         if (exposeDebugOtp || (deliveryFailed && returnFallbackOtpOnDeliveryFailure)) {
             return ResponseEntity.ok(Map.of(
-                    "message", deliveryFailed ? "OTP generated, but email delivery failed" : "OTP sent",
+                    "message", deliveryFailed
+                            ? (isPhoneIdentifier ? "OTP generated, but SMS delivery is not configured yet" : "OTP generated, but email delivery failed")
+                            : "OTP sent",
+                    "channel", isPhoneIdentifier ? "sms" : "email",
                     "deliveryFailed", deliveryFailed,
                     "failureReason", deliveryFailed ? result.getFailureReason() : "",
                     "debugOtp", result.getOtp()
@@ -66,7 +68,8 @@ public class OtpController {
 
         if (deliveryFailed) {
             return ResponseEntity.ok(Map.of(
-                    "message", "OTP generated, but email delivery failed",
+                    "message", isPhoneIdentifier ? "OTP generated, but SMS delivery is not configured yet" : "OTP generated, but email delivery failed",
+                    "channel", isPhoneIdentifier ? "sms" : "email",
                     "deliveryFailed", true,
                     "failureReason", result.getFailureReason()
             ));
@@ -74,26 +77,35 @@ public class OtpController {
 
         return ResponseEntity.ok(Map.of(
                 "message", "OTP sent",
+                "channel", isPhoneIdentifier ? "sms" : "email",
                 "deliveryFailed", false
         ));
     }
 
     @PostMapping("/verify-otp")
     public ResponseEntity<?> verifyOtp(
-            @RequestBody VerifyOtpRequest request,
+            @RequestBody Map<String, String> body,
             HttpServletRequest httpRequest
     ) {
-        String email = resolveEmail(request.getEmail(), request.getUsername());
-        if (email == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Email is required"));
+        String identifier = resolveIdentifier(body);
+        if (identifier == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Email or mobile number is required"));
         }
-        String otp = request.getOtp();
+        String otp = body.get("otp");
+        if (otp == null || otp.isBlank()) {
+            otp = body.get("code");
+        }
         if (otp == null || otp.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("message", "OTP is required"));
         }
 
+        String normalizedPhone = normalizePhone(identifier);
+        String otpKey = (normalizedPhone != null && !identifier.contains("@"))
+                ? normalizedPhone
+                : identifier.toLowerCase(Locale.ROOT);
+
         try {
-            AuthResponse response = authService.verifyOtp(email, otp, httpRequest);
+            AuthResponse response = authService.verifyOtp(otpKey, otp, httpRequest);
             return ResponseEntity.ok(response);
         } catch (DeviceSessionLimitException ex) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
@@ -122,6 +134,31 @@ public class OtpController {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(Map.of("message", ex.getMessage(), "code", "DEVICE_LIMIT"));
         }
+    }
+
+    private String resolveIdentifier(Map<String, String> body) {
+        String identifier = resolveEmail(body.get("identifier"), body.get("email"));
+        if (identifier == null) identifier = resolveEmail(body.get("username"), null);
+        if (identifier == null) identifier = resolveEmail(body.get("phoneNumber"), null);
+        if (identifier == null) identifier = resolveEmail(body.get("mobileNumber"), null);
+        if (identifier == null) identifier = resolveEmail(body.get("phone"), null);
+        return identifier;
+    }
+
+    private String normalizePhone(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        if (trimmed.isBlank()) return null;
+        String compact = trimmed.replaceAll("[\\s\\-()]", "");
+        if (compact.startsWith("00")) compact = "+" + compact.substring(2);
+        if (compact.startsWith("+")) {
+            String rest = compact.substring(1).replaceAll("[^0-9]", "");
+            if (rest.length() < 6 || rest.length() > 15) return null;
+            return "+" + rest;
+        }
+        String digits = compact.replaceAll("[^0-9]", "");
+        if (digits.length() < 6 || digits.length() > 15) return null;
+        return digits;
     }
 
     @PostMapping({"/reset-password", "/resetPassword"})

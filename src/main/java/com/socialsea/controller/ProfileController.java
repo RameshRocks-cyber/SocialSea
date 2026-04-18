@@ -148,6 +148,7 @@ public class ProfileController {
         profile.put("privateAccount", user.isPrivateAccount());
         profile.put("trafficAlertsEnabled", user.isTrafficAlertsEnabled());
         profile.put("preferredLanguage", user.getPreferredLanguage());
+        profile.put("notificationVoice", user.getNotificationVoice());
         profile.put("ambulanceDriverApproved", user.isAmbulanceDriverApproved());
         profile.put("canViewContent", true);
         profile.put("followStatus", "FOLLOWING");
@@ -222,6 +223,49 @@ public class ProfileController {
         user.setPreferredLanguage(next);
         userRepo.save(user);
         return ResponseEntity.ok(Map.of("preferredLanguage", user.getPreferredLanguage()));
+    }
+
+    @GetMapping("/me/notification-voice")
+    public ResponseEntity<?> myNotificationVoice(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+        User user = resolveAuthenticatedUser(auth)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return ResponseEntity.ok(Map.of("notificationVoice", user.getNotificationVoice()));
+    }
+
+    @PostMapping("/me/notification-voice")
+    public ResponseEntity<?> updateNotificationVoice(
+            @RequestBody(required = false) Map<String, Object> body,
+            Authentication auth
+    ) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+        User user = resolveAuthenticatedUser(auth)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Object raw = body != null ? (body.get("notificationVoice") != null
+                ? body.get("notificationVoice")
+                : (body.get("voice") != null ? body.get("voice") : body.get("gender"))) : null;
+
+        String next = raw == null ? "" : String.valueOf(raw).trim();
+        if (next.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Missing notificationVoice"));
+        }
+
+        next = next.toLowerCase();
+        if ("m".equals(next)) next = "male";
+        if ("f".equals(next)) next = "female";
+
+        if (!"male".equals(next) && !"female".equals(next)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "notificationVoice must be 'male' or 'female'"));
+        }
+
+        user.setNotificationVoice(next);
+        userRepo.save(user);
+        return ResponseEntity.ok(Map.of("notificationVoice", user.getNotificationVoice()));
     }
 
     @PostMapping("/me/posts/cleanup-stories")
@@ -587,6 +631,11 @@ public class ProfileController {
                     "available", availability.get("available"),
                     "suggestions", availability.get("suggestions")
             ));
+        } catch (RuntimeException e) {
+            String message = e.getMessage() == null || e.getMessage().isBlank()
+                    ? "Failed to update profile"
+                    : e.getMessage();
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", message));
         }
     }
 }
