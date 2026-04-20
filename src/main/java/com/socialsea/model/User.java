@@ -59,6 +59,11 @@ public class User implements UserDetails {
     @Column(length = 16)
     private String notificationVoice = "male";
 
+    @Column(columnDefinition = "TEXT")
+    private String vaultLockJson;
+
+    private LocalDateTime vaultLockUpdatedAt;
+
     @Column(columnDefinition = "boolean default false")
     private boolean ambulanceDriverApproved = false;
 
@@ -203,6 +208,23 @@ public class User implements UserDetails {
 
     public void setNotificationVoice(String notificationVoice) {
         this.notificationVoice = notificationVoice;
+    }
+
+    @JsonIgnore
+    public String getVaultLockJson() {
+        return vaultLockJson;
+    }
+
+    public void setVaultLockJson(String vaultLockJson) {
+        this.vaultLockJson = vaultLockJson;
+    }
+
+    public LocalDateTime getVaultLockUpdatedAt() {
+        return vaultLockUpdatedAt;
+    }
+
+    public void setVaultLockUpdatedAt(LocalDateTime vaultLockUpdatedAt) {
+        this.vaultLockUpdatedAt = vaultLockUpdatedAt;
     }
 
     public boolean isAmbulanceDriverApproved() {

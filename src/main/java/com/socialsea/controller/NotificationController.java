@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Optional;
 import java.util.Set;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -51,9 +52,13 @@ public class NotificationController {
     public long unread(Authentication auth) {
         if (auth == null || !auth.isAuthenticated()) return 0;
         try {
-            return buildNotificationPayload(auth.getName()).stream()
-                    .filter(item -> !Boolean.TRUE.equals(item.get("read")))
-                    .count();
+            List<Notification> all = repo.findByRecipientIgnoreCaseOrderByCreatedAtDesc(auth.getName());
+            Set<String> unreadThreads = new LinkedHashSet<>();
+            for (Notification n : all) {
+                if (n == null || n.isRead()) continue;
+                unreadThreads.add(buildNotificationThreadKey(n));
+            }
+            return unreadThreads.size();
         } catch (Exception ex) {
             log.error("Failed to load unread notifications for {}", auth.getName(), ex);
             return 0;
@@ -233,6 +238,35 @@ public class NotificationController {
             if (idx > 0) return message.substring(0, idx).trim();
         }
         return "user";
+    }
+
+    private String buildNotificationThreadKey(Notification notification) {
+        String message = notification != null ? notification.getMessage() : null;
+        String type = notification != null && notification.getType() != null ? notification.getType() : "SYSTEM";
+        String kind = deriveKind(message);
+        if ("EMERGENCY".equalsIgnoreCase(type)) {
+            kind = "emergency";
+        } else if ("TRAFFIC".equalsIgnoreCase(type)) {
+            kind = "traffic";
+        }
+
+        String actorEmail = extractFirstEmail(message);
+        if (actorEmail != null && !actorEmail.isBlank()) {
+            return kind + ":" + actorEmail.trim().toLowerCase(Locale.ROOT);
+        }
+
+        if ("emergency".equals(kind)) {
+            String alertId = extractAlertId(message);
+            if (alertId != null && !alertId.isBlank()) {
+                return "emergency:" + alertId.trim();
+            }
+        }
+
+        String raw = message == null ? "" : message.trim().toLowerCase(Locale.ROOT);
+        if (raw.length() > 240) {
+            raw = raw.substring(0, 240);
+        }
+        return kind + ":" + type.toLowerCase(Locale.ROOT) + ":" + raw;
     }
 }
 

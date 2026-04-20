@@ -35,6 +35,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class EmergencyController {
 
     private static final int DEFAULT_RADIUS_METERS = 5000;
+    private static final long PREVIEW_CACHE_TTL_MS = Duration.ofMinutes(20).toMillis();
+    private static final int MAX_PREVIEW_CACHE_ENTRIES = 300;
     @Value("${app.emergency.location-stale-minutes:180}")
     private long locationStaleMinutes;
     private static final int MAX_PREVIEW_FRAME_CHARS = 700000;
@@ -56,20 +58,14 @@ public class EmergencyController {
             return ResponseEntity.badRequest().body(Map.of("message", "latitude and longitude are required"));
         }
 
-        String reporterEmail = null;
-        if (auth != null && auth.isAuthenticated()) {
-            reporterEmail = auth.getName();
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         }
-        if ((reporterEmail == null || reporterEmail.isBlank()) && request.reporterEmail != null) {
-            reporterEmail = request.reporterEmail.trim();
-        }
-        if (reporterEmail == null || reporterEmail.isBlank()) {
-            return ResponseEntity.ok(Map.of("ok", true, "message", "Presence ignored: no reporter identity"));
-        }
+        String reporterEmail = auth.getName();
 
         User user = userRepo.findByEmail(reporterEmail).orElse(null);
         if (user == null) {
-            return ResponseEntity.ok(Map.of("ok", true, "message", "Presence ignored: user not found"));
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Reporter not found"));
         }
 
         user.setLastLatitude(request.latitude);
@@ -77,9 +73,6 @@ public class EmergencyController {
         user.setLocationUpdatedAt(LocalDateTime.now());
         userRepo.save(user);
 
-        if (auth == null || !auth.isAuthenticated()) {
-            log.info("SOS presence update from unauth user {} at {},{}", reporterEmail, request.latitude, request.longitude);
-        }
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
@@ -89,18 +82,15 @@ public class EmergencyController {
             return ResponseEntity.badRequest().body(Map.of("message", "latitude and longitude are required"));
         }
 
-        String reporterEmail = null;
-        if (auth != null && auth.isAuthenticated()) {
-            reporterEmail = auth.getName();
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         }
-        if ((reporterEmail == null || reporterEmail.isBlank()) && request.reporterEmail != null) {
-            reporterEmail = request.reporterEmail.trim();
-        }
-        if (reporterEmail == null || reporterEmail.isBlank()) {
-            reporterEmail = "anonymous@socialsea.local";
-        }
+        String reporterEmail = auth.getName();
 
         User reporter = userRepo.findByEmail(reporterEmail).orElse(null);
+        if (reporter == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Reporter not found"));
+        }
 
         int radiusMeters = request.radiusMeters != null && request.radiusMeters > 0
                 ? request.radiusMeters
@@ -268,21 +258,28 @@ public class EmergencyController {
             @RequestParam(required = false, defaultValue = "false") boolean includeReporter,
             @RequestParam(required = false, defaultValue = "false") boolean includeNearby
     ) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+        User me = userRepo.findByEmail(auth.getName()).orElse(null);
+        if (me == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+        }
+        cleanupPreviewCache();
         String frontendBase = resolveFrontendBaseUrl(httpRequest);
 
-        // If unauthenticated or location is missing/stale, return active alerts without distance filtering.
-        User me = null;
+        // If viewer location is missing/stale, require explicit query location.
         boolean canFilterByDistance = false;
         Double queryLat = lat != null ? lat : latitude;
         Double queryLon = lon != null ? lon : longitude;
         if (queryLat != null && queryLon != null) {
             canFilterByDistance = true;
-        } else if (auth != null && auth.isAuthenticated()) {
-            me = userRepo.findByEmail(auth.getName()).orElse(null);
-            if (me != null && me.getLastLatitude() != null && me.getLastLongitude() != null && me.getLocationUpdatedAt() != null
-                    && Duration.between(me.getLocationUpdatedAt(), LocalDateTime.now()).toMinutes() <= locationStaleMinutes) {
-                canFilterByDistance = true;
-            }
+        } else if (me.getLastLatitude() != null && me.getLastLongitude() != null && me.getLocationUpdatedAt() != null
+                && Duration.between(me.getLocationUpdatedAt(), LocalDateTime.now()).toMinutes() <= locationStaleMinutes) {
+            canFilterByDistance = true;
+        }
+        if (!canFilterByDistance) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Current location is required"));
         }
 
         final User viewer = me;
@@ -348,7 +345,7 @@ public class EmergencyController {
                     .map(a -> {
                         Map<String, Object> item = new HashMap<>();
                         item.put("alertId", a.getId());
-                        item.put("reporterEmail", a.getReporterEmail());
+                        item.put("isReporter", auth.getName().equalsIgnoreCase(String.valueOf(a.getReporterEmail())));
                         item.put("active", a.isActive());
                         Double aLat = a.getCurrentLatitude() != null ? a.getCurrentLatitude() : a.getLatitude();
                         Double aLon = a.getCurrentLongitude() != null ? a.getCurrentLongitude() : a.getLongitude();
@@ -393,7 +390,9 @@ public class EmergencyController {
                 .map(a -> {
                     Map<String, Object> item = new HashMap<>();
                     item.put("alertId", a.getId());
-                    item.put("reporterEmail", a.getReporterEmail());
+                    if (auth.getName().equalsIgnoreCase(String.valueOf(a.getReporterEmail()))) {
+                        item.put("reporterEmail", a.getReporterEmail());
+                    }
                     item.put("startedAt", a.getStartedAt());
                     item.put("latitude", a.getCurrentLatitude() != null ? a.getCurrentLatitude() : a.getLatitude());
                     item.put("longitude", a.getCurrentLongitude() != null ? a.getCurrentLongitude() : a.getLongitude());
@@ -418,6 +417,11 @@ public class EmergencyController {
         if (auth == null || !auth.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         }
+        User viewer = userRepo.findByEmail(auth.getName()).orElse(null);
+        if (viewer == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+        }
+        cleanupPreviewCache();
 
         Long safeAlertId = Objects.requireNonNull(alertId, "alertId");
         Optional<EmergencyAlert> alertOpt = emergencyRepo.findById(safeAlertId);
@@ -426,6 +430,9 @@ public class EmergencyController {
         }
 
         EmergencyAlert alert = alertOpt.get();
+        if (!canViewAlert(viewer, alert)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Not allowed"));
+        }
         Double targetLat = alert.getCurrentLatitude() != null ? alert.getCurrentLatitude() : alert.getLatitude();
         Double targetLon = alert.getCurrentLongitude() != null ? alert.getCurrentLongitude() : alert.getLongitude();
         if (targetLat == null || targetLon == null) {
@@ -456,13 +463,24 @@ public class EmergencyController {
     }
 
     @GetMapping("/{alertId}/preview-frame")
-    public ResponseEntity<?> previewFrame(@PathVariable Long alertId) {
+    public ResponseEntity<?> previewFrame(@PathVariable Long alertId, Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+        User viewer = userRepo.findByEmail(auth.getName()).orElse(null);
+        if (viewer == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+        }
+        cleanupPreviewCache();
         Long safeAlertId = Objects.requireNonNull(alertId, "alertId");
         Optional<EmergencyAlert> alertOpt = emergencyRepo.findById(safeAlertId);
         if (alertOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Alert not found"));
         }
         EmergencyAlert alert = alertOpt.get();
+        if (!canViewAlert(viewer, alert)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Not allowed"));
+        }
         PreviewFrame cachedPreview = PREVIEW_CACHE.get(alert.getId());
         String frame = alert.getLastPreviewFrame() != null ? alert.getLastPreviewFrame() : (cachedPreview != null ? cachedPreview.frame : null);
         String at = alert.getLastPreviewFrameAt() != null ? alert.getLastPreviewFrameAt() : (cachedPreview != null ? cachedPreview.at : null);
@@ -521,7 +539,7 @@ public class EmergencyController {
                             ? request.previewFrameAt
                             : LocalDateTime.now().toString();
                     alert.setLastPreviewFrameAt(frameAt);
-                    PREVIEW_CACHE.put(alert.getId(), new PreviewFrame(frame, frameAt));
+                    PREVIEW_CACHE.put(alert.getId(), new PreviewFrame(frame, frameAt, System.currentTimeMillis()));
                 }
             }
         }
@@ -669,6 +687,38 @@ public class EmergencyController {
         return ResponseEntity.ok(response);
     }
 
+    private boolean canViewAlert(User viewer, EmergencyAlert alert) {
+        if (viewer == null || alert == null || viewer.getEmail() == null || viewer.getEmail().isBlank()) return false;
+        if (viewer.getEmail().equalsIgnoreCase(alert.getReporterEmail())) return true;
+        Double viewerLat = viewer.getLastLatitude();
+        Double viewerLon = viewer.getLastLongitude();
+        LocalDateTime updatedAt = viewer.getLocationUpdatedAt();
+        if (viewerLat == null || viewerLon == null || updatedAt == null) return false;
+        long minutesOld = Duration.between(updatedAt, LocalDateTime.now()).toMinutes();
+        if (minutesOld < 0 || minutesOld > locationStaleMinutes) return false;
+        Double alertLat = alert.getCurrentLatitude() != null ? alert.getCurrentLatitude() : alert.getLatitude();
+        Double alertLon = alert.getCurrentLongitude() != null ? alert.getCurrentLongitude() : alert.getLongitude();
+        if (alertLat == null || alertLon == null) return false;
+        int effectiveRadius = alert.getRadiusMeters() != null && alert.getRadiusMeters() > 0
+                ? alert.getRadiusMeters()
+                : DEFAULT_RADIUS_METERS;
+        double distance = haversineMeters(alertLat, alertLon, viewerLat, viewerLon);
+        return distance <= effectiveRadius;
+    }
+
+    private void cleanupPreviewCache() {
+        long now = System.currentTimeMillis();
+        PREVIEW_CACHE.entrySet().removeIf(entry ->
+                entry.getValue() == null || (now - entry.getValue().capturedAtMs) > PREVIEW_CACHE_TTL_MS);
+        if (PREVIEW_CACHE.size() <= MAX_PREVIEW_CACHE_ENTRIES) return;
+        PREVIEW_CACHE.entrySet().stream()
+                .sorted((a, b) -> Long.compare(a.getValue().capturedAtMs, b.getValue().capturedAtMs))
+                .limit(PREVIEW_CACHE.size() - MAX_PREVIEW_CACHE_ENTRIES)
+                .map(Map.Entry::getKey)
+                .toList()
+                .forEach(PREVIEW_CACHE::remove);
+    }
+
     private List<Map<String, Object>> buildNearbyUsers(EmergencyAlert alert, List<User> allUsers) {
         if (alert == null || allUsers == null || allUsers.isEmpty()) return List.of();
         Double lat = alert.getCurrentLatitude() != null ? alert.getCurrentLatitude() : alert.getLatitude();
@@ -753,7 +803,6 @@ public class EmergencyController {
         public Double longitude;
         public Double accuracyMeters;
         public Integer radiusMeters;
-        public String reporterEmail;
         public Boolean frontCameraEnabled;
         public Boolean backCameraEnabled;
         public Boolean audioActive;
@@ -763,7 +812,6 @@ public class EmergencyController {
     public static class PresenceRequest {
         public Double latitude;
         public Double longitude;
-        public String reporterEmail;
     }
 
     public static class HeartbeatRequest {
@@ -778,10 +826,12 @@ public class EmergencyController {
     private static class PreviewFrame {
         private final String frame;
         private final String at;
+        private final long capturedAtMs;
 
-        private PreviewFrame(String frame, String at) {
+        private PreviewFrame(String frame, String at, long capturedAtMs) {
             this.frame = frame;
             this.at = at;
+            this.capturedAtMs = capturedAtMs;
         }
     }
 }

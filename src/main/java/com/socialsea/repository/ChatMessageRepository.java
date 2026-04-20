@@ -54,4 +54,13 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
             Long senderIdReverse,
             Long receiverIdReverse
     );
+
+    @Query("""
+            select count(distinct m.sender.id)
+            from ChatMessage m
+            where m.receiver.id = :receiverId
+              and m.readAt is null
+              and (m.text is null or m.text not like '__SS_READ_RECEIPT__:%')
+            """)
+    long countUnreadConversationCountForReceiver(@Param("receiverId") Long receiverId);
 }

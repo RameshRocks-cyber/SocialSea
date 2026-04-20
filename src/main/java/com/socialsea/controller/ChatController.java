@@ -223,6 +223,15 @@ public class ChatController {
         }
     }
 
+    @GetMapping("/unread-count")
+    @Transactional(readOnly = true)
+    public long unreadConversationCount(Authentication auth) {
+        User me = currentUser(auth);
+        if (me == null) return 0;
+        safeTouch(me);
+        return chatRepo.countUnreadConversationCountForReceiver(me.getId());
+    }
+
     @GetMapping("/presence")
     public ResponseEntity<?> presenceGet(Authentication auth) {
         return presenceResponse(auth);

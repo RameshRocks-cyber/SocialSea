@@ -55,8 +55,17 @@ public class CloudinaryService {
 
             return uploadResult.get("secure_url").toString();
         } catch (Exception cloudinaryError) {
+            String cloudinaryMessage = cloudinaryError.getMessage();
+            if (cloudinaryMessage != null && cloudinaryMessage.toLowerCase().contains("cloud_name is disabled")) {
+                String guidance =
+                    "Cloudinary cloud name is disabled. Use an active Cloudinary account and update " +
+                    "CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET.";
+                if (!allowLocalFallback) {
+                    throw new RuntimeException("Upload failed. " + guidance);
+                }
+            }
             if (!allowLocalFallback) {
-                throw new RuntimeException("Upload failed. Cloudinary error: " + cloudinaryError.getMessage());
+                throw new RuntimeException("Upload failed. Cloudinary error: " + cloudinaryMessage);
             }
             try {
                 Files.createDirectories(uploadDir);
