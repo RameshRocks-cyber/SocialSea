@@ -7,13 +7,17 @@ import com.socialsea.service.CallSignalInboxService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 @RestController
@@ -37,6 +41,7 @@ public class CallSignalRestController {
 
     private final UserRepository userRepository;
     private final CallSignalInboxService inboxService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @PostMapping("/signal/{targetUserId}")
     public ResponseEntity<?> signal(
@@ -77,6 +82,17 @@ public class CallSignalRestController {
         outbound.setTimestamp(System.currentTimeMillis());
 
         inboxService.enqueue(target.getId(), outbound);
+        messagingTemplate.convertAndSend("/topic/calls/" + target.getId(), outbound);
+        String targetEmail = target.getEmail();
+        if (targetEmail != null && !targetEmail.isBlank()) {
+            String encodedEmail = URLEncoder.encode(targetEmail, StandardCharsets.UTF_8);
+            messagingTemplate.convertAndSend("/topic/calls/email/" + encodedEmail, outbound);
+            messagingTemplate.convertAndSendToUser(
+                    Objects.requireNonNull(targetEmail),
+                    "/queue/calls",
+                    Objects.requireNonNull(outbound)
+            );
+        }
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
