@@ -59,7 +59,7 @@ public class CommentController {
                 : user.getEmail();
             notificationService.notifyUser(
                 post.getUser().getEmail(),
-                actor + " commented on your post"
+                actor + " commented on your post [postId:" + post.getId() + "]"
             );
         }
 

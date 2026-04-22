@@ -7,6 +7,7 @@ import com.socialsea.repository.LikeRepository;
 import com.socialsea.repository.PostRepository;
 import com.socialsea.repository.ReportRepository;
 import com.socialsea.repository.UserRepository;
+import com.socialsea.util.MediaUrlUtils;
 import com.socialsea.util.CsvUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
@@ -31,7 +32,11 @@ public class AdminDashboardService {
     public AdminStatsDto getStats() {
         AdminStatsDto dto = new AdminStatsDto();
         dto.users = userRepo.count();
-        dto.posts = anonRepo.countByApprovedTrueAndRejectedFalse();
+        dto.posts = postRepo.count();
+        dto.videos = postRepo.findAll().stream()
+                .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
+                .filter(p -> p.isReel() || MediaUrlUtils.isLikelyVideo(p.getMediaUrl()))
+                .count();
         dto.likes = likeRepo.count();
         dto.pendingAnonymous = anonRepo.countByApprovedFalseAndRejectedFalse();
         dto.unresolvedReports = reportRepo.countByResolvedFalse();
@@ -39,6 +44,7 @@ public class AdminDashboardService {
         // Backward-compatible aliases
         dto.totalUsers = dto.users;
         dto.totalPosts = dto.posts;
+        dto.totalVideos = dto.videos;
         dto.pendingAnonymousPosts = dto.pendingAnonymous;
         dto.reports = dto.unresolvedReports;
         return dto;

@@ -50,7 +50,7 @@ public class LikeController {
             : user.getEmail();
         notificationService.notifyUser(
             post.getUser().getEmail(),
-            actor + " liked your post"
+            actor + " liked your post [postId:" + post.getId() + "]"
         );
 
         return "Liked";

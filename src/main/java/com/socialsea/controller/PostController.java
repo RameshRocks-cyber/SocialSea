@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,6 +20,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Objects;
@@ -26,6 +30,7 @@ import java.util.Objects;
 @RestController
 @RequestMapping("/api/posts")
 public class PostController {
+    private static final DateTimeFormatter ISO_OFFSET = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
     private final PostRepository postRepo;
     private final UserRepository userRepo;
@@ -42,6 +47,24 @@ public class PostController {
         this.userRepo = userRepo;
         this.cloudinaryService = cloudinaryService;
         this.storyRepo = storyRepo;
+    }
+
+    @GetMapping({"/create-options", "/upload-options"})
+    public ResponseEntity<?> createOptions(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+
+        User user = userRepo.findByEmail(auth.getName()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("message", "Session expired. Please login again."));
+        }
+
+        return ResponseEntity.ok(Map.of(
+            "longVideosEnabled", user.isLongVideosEnabled(),
+            "showLongVideoOption", user.isLongVideosEnabled()
+        ));
     }
 
     @PostMapping("/upload")
@@ -92,12 +115,12 @@ public class PostController {
                 if (storyExpiresHours != null) {
                     try {
                         long hours = Long.parseLong(storyExpiresHours);
-                        story.setExpiresAt(java.time.LocalDateTime.now().plusHours(Math.max(1, hours)));
+                        story.setExpiresAt(LocalDateTime.now().plusHours(Math.max(1, hours)));
                     } catch (Exception ignored) {
-                        story.setExpiresAt(java.time.LocalDateTime.now().plusHours(24));
+                        story.setExpiresAt(LocalDateTime.now().plusHours(24));
                     }
                 } else {
-                    story.setExpiresAt(java.time.LocalDateTime.now().plusHours(24));
+                    story.setExpiresAt(LocalDateTime.now().plusHours(24));
                 }
 
                 Story savedStory = storyRepo.save(story);
@@ -109,8 +132,8 @@ public class PostController {
                     "caption", savedStory.getCaption(),
                     "storyText", savedStory.getStoryText(),
                     "privacy", savedStory.getPrivacy(),
-                    "createdAt", String.valueOf(savedStory.getCreatedAt()),
-                    "expiresAt", String.valueOf(savedStory.getExpiresAt())
+                    "createdAt", formatIsoOffset(savedStory.getCreatedAt()),
+                    "expiresAt", formatIsoOffset(savedStory.getExpiresAt())
                 ));
             }
 
@@ -180,5 +203,10 @@ public class PostController {
     private boolean isVideo(MultipartFile file) {
         String contentType = file.getContentType();
         return contentType != null && contentType.startsWith("video");
+    }
+
+    private String formatIsoOffset(LocalDateTime value) {
+        if (value == null) return null;
+        return value.atZone(ZoneId.systemDefault()).format(ISO_OFFSET);
     }
 }

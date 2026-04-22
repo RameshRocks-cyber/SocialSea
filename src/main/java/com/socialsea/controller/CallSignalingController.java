@@ -12,8 +12,6 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import java.util.Set;
 
@@ -67,16 +65,15 @@ public class CallSignalingController {
         outbound.setTimestamp(System.currentTimeMillis());
 
         inboxService.enqueue(target.getId(), outbound);
-        messagingTemplate.convertAndSend("/topic/calls/" + target.getId(), outbound);
         String targetEmail = target.getEmail();
         if (targetEmail != null && !targetEmail.isBlank()) {
-            String encodedEmail = URLEncoder.encode(targetEmail, StandardCharsets.UTF_8);
-            messagingTemplate.convertAndSend("/topic/calls/email/" + encodedEmail, outbound);
             messagingTemplate.convertAndSendToUser(
                     Objects.requireNonNull(targetEmail),
                     "/queue/calls",
                     Objects.requireNonNull(outbound)
             );
+        } else {
+            messagingTemplate.convertAndSend("/topic/calls/" + target.getId(), outbound);
         }
     }
 

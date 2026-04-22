@@ -13,8 +13,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -82,26 +80,30 @@ public class CallSignalRestController {
         outbound.setTimestamp(System.currentTimeMillis());
 
         inboxService.enqueue(target.getId(), outbound);
-        messagingTemplate.convertAndSend("/topic/calls/" + target.getId(), outbound);
         String targetEmail = target.getEmail();
         if (targetEmail != null && !targetEmail.isBlank()) {
-            String encodedEmail = URLEncoder.encode(targetEmail, StandardCharsets.UTF_8);
-            messagingTemplate.convertAndSend("/topic/calls/email/" + encodedEmail, outbound);
             messagingTemplate.convertAndSendToUser(
                     Objects.requireNonNull(targetEmail),
                     "/queue/calls",
                     Objects.requireNonNull(outbound)
             );
+        } else {
+            messagingTemplate.convertAndSend("/topic/calls/" + target.getId(), outbound);
         }
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
     @GetMapping("/inbox")
-    public ResponseEntity<?> inbox(Authentication auth) {
+    public ResponseEntity<?> inbox(
+            @RequestParam(name = "includeTyping", defaultValue = "true") boolean includeTyping,
+            Authentication auth
+    ) {
         try {
             User me = currentUser(auth);
             if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
-            List<CallSignalDto> list = inboxService.drain(me.getId());
+            List<CallSignalDto> list = includeTyping
+                    ? inboxService.drain(me.getId())
+                    : inboxService.drainNonTyping(me.getId());
             return ResponseEntity.ok(list);
         } catch (Exception ex) {
             log.error("Failed to load call inbox.", ex);

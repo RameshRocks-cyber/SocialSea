@@ -1,9 +1,9 @@
 package com.socialsea.controller;
 
-import com.socialsea.dto.FeedItemDto;
 import com.socialsea.model.*;
 import com.socialsea.repository.*;
 import com.socialsea.service.ProfileService;
+import com.socialsea.util.MediaUrlUtils;
 import com.socialsea.util.UrlUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -67,12 +67,16 @@ public class ProfileController {
         long followers = followRepo.countByFollowing(user);
         long following = followRepo.countByFollower(user);
         long postsCount = 0;
+        long videosCount = 0;
         if (canViewContent) {
-            postsCount = postRepo.findByUser(user)
+            List<Post> visiblePosts = postRepo.findByUser(user)
                     .stream()
                     .filter(Post::isApproved)
+                    .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
                     .filter(p -> !isStoryPost(p.getMediaUrl()))
-                    .count();
+                    .toList();
+            postsCount = visiblePosts.size();
+            videosCount = visiblePosts.stream().filter(this::isVideoPost).count();
         }
 
         Map<String, Object> profile = new HashMap<>();
@@ -88,7 +92,13 @@ public class ProfileController {
         profile.put("followers", followers);
         profile.put("following", following);
         profile.put("postsCount", postsCount);
+        profile.put("postCount", postsCount);
+        profile.put("totalPosts", postsCount);
+        profile.put("videosCount", videosCount);
+        profile.put("videoCount", videosCount);
+        profile.put("totalVideos", videosCount);
         profile.put("privateAccount", user.isPrivateAccount());
+        profile.put("longVideosEnabled", user.isLongVideosEnabled());
         profile.put("canViewContent", canViewContent);
         profile.put("followStatus", followStatus);
         profile.put("isFollowing", "FOLLOWING".equalsIgnoreCase(followStatus));
@@ -105,10 +115,12 @@ public class ProfileController {
         User user = resolveAuthenticatedUser(auth)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        List<Post> posts = postRepo.findByUser(user)
+        List<Map<String, Object>> posts = postRepo.findByUser(user)
                 .stream()
                 .filter(Post::isApproved)
+                .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
                 .filter(p -> !isStoryPost(p.getMediaUrl()))
+                .map(this::toShortFeedPostPayload)
                 .toList();
         return ResponseEntity.ok(posts);
     }
@@ -126,11 +138,14 @@ public class ProfileController {
 
         long followers = followRepo.countByFollowing(user);
         long following = followRepo.countByFollower(user);
-        long postsCount = postRepo.findByUser(user)
+        List<Post> visiblePosts = postRepo.findByUser(user)
                 .stream()
                 .filter(Post::isApproved)
+                .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
                 .filter(p -> !isStoryPost(p.getMediaUrl()))
-                .count();
+                .toList();
+        long postsCount = visiblePosts.size();
+        long videosCount = visiblePosts.stream().filter(this::isVideoPost).count();
 
         Map<String, Object> profile = new HashMap<>();
         profile.put("id", user.getId());
@@ -145,8 +160,14 @@ public class ProfileController {
         profile.put("followers", followers);
         profile.put("following", following);
         profile.put("postsCount", postsCount);
+        profile.put("postCount", postsCount);
+        profile.put("totalPosts", postsCount);
+        profile.put("videosCount", videosCount);
+        profile.put("videoCount", videosCount);
+        profile.put("totalVideos", videosCount);
         profile.put("privateAccount", user.isPrivateAccount());
         profile.put("trafficAlertsEnabled", user.isTrafficAlertsEnabled());
+        profile.put("longVideosEnabled", user.isLongVideosEnabled());
         profile.put("preferredLanguage", user.getPreferredLanguage());
         profile.put("notificationVoice", user.getNotificationVoice());
         profile.put("ambulanceDriverApproved", user.isAmbulanceDriverApproved());
@@ -187,6 +208,39 @@ public class ProfileController {
         user.setTrafficAlertsEnabled(next);
         userRepo.save(user);
         return ResponseEntity.ok(Map.of("trafficAlertsEnabled", user.isTrafficAlertsEnabled()));
+    }
+
+    @GetMapping("/me/long-videos")
+    public ResponseEntity<?> myLongVideosSetting(Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+        User user = resolveAuthenticatedUser(auth)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return ResponseEntity.ok(Map.of("longVideosEnabled", user.isLongVideosEnabled()));
+    }
+
+    @PostMapping("/me/long-videos")
+    public ResponseEntity<?> updateLongVideosSetting(@RequestBody(required = false) Map<String, Object> body, Authentication auth) {
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+        User user = resolveAuthenticatedUser(auth)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Object raw = body != null ? (body.get("enabled") != null
+                ? body.get("enabled")
+                : (body.get("longVideosEnabled") != null
+                    ? body.get("longVideosEnabled")
+                    : body.get("longVideoEnabled"))) : null;
+
+        boolean next = raw instanceof Boolean
+                ? (Boolean) raw
+                : Boolean.parseBoolean(String.valueOf(raw));
+
+        user.setLongVideosEnabled(next);
+        userRepo.save(user);
+        return ResponseEntity.ok(Map.of("longVideosEnabled", user.isLongVideosEnabled()));
     }
 
     @GetMapping("/me/language")
@@ -391,11 +445,12 @@ public class ProfileController {
         User user = resolveAuthenticatedUser(auth)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        List<FeedItemDto> posts = postRepo.findByUserIdOrderByCreatedAtDesc(user.getId())
+        List<Map<String, Object>> posts = postRepo.findByUserIdOrderByCreatedAtDesc(user.getId())
                 .stream()
+                .filter(Post::isApproved)
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
                 .filter(p -> !isStoryPost(p.getMediaUrl()))
-                .map(FeedItemDto::fromEntity)
+                .map(this::toShortFeedPostPayload)
                 .toList();
 
         return ResponseEntity.ok(posts);
@@ -454,11 +509,12 @@ public class ProfileController {
         }
 
         long userId = target.getId();
-        List<FeedItemDto> posts = postRepo.findByUserIdOrderByCreatedAtDesc(userId)
+        List<Map<String, Object>> posts = postRepo.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
+                .filter(Post::isApproved)
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
                 .filter(p -> !isStoryPost(p.getMediaUrl()))
-                .map(FeedItemDto::fromEntity)
+                .map(this::toShortFeedPostPayload)
                 .toList();
         return ResponseEntity.ok(posts);
     }
@@ -473,6 +529,37 @@ public class ProfileController {
             }
         }
         return false;
+    }
+
+    private Map<String, Object> toShortFeedPostPayload(Post post) {
+        boolean video = isVideoPost(post);
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("id", post.getId());
+        payload.put("mediaUrl", post.getMediaUrl());
+        payload.put("contentUrl", post.getMediaUrl());
+        // Ensure image posts are also included in short-video feed style UIs.
+        payload.put("reel", true);
+        payload.put("originalReel", post.isReel());
+        payload.put("type", video ? "VIDEO" : "IMAGE");
+        payload.put("isVideo", video);
+        payload.put("video", video);
+        payload.put("approved", post.isApproved());
+        payload.put("createdAt", post.getCreatedAt());
+        payload.put("user", post.getUser());
+        if (post.getUser() != null) {
+            payload.put("userId", post.getUser().getId());
+            String displayName = (post.getUser().getName() != null && !post.getUser().getName().isBlank())
+                    ? post.getUser().getName()
+                    : post.getUser().getEmail();
+            payload.put("username", displayName);
+            payload.put("profilePic", post.getUser().getProfilePic());
+        }
+        return payload;
+    }
+
+    private boolean isVideoPost(Post post) {
+        if (post == null) return false;
+        return post.isReel() || MediaUrlUtils.isLikelyVideo(post.getMediaUrl());
     }
 
     @GetMapping("/{identifier}/followers")

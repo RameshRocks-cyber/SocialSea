@@ -20,6 +20,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +37,7 @@ import java.net.URI;
         "http://43.205.213.14:5173"
 })
 public class StoryController {
+    private static final DateTimeFormatter ISO_OFFSET = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
     private final StoryService storyService;
     private final UserRepository userRepo;
@@ -76,7 +79,9 @@ public class StoryController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Session expired"));
         }
         List<Story> stories = storyRepo.findByUserOrderByCreatedAtDesc(viewer);
-        List<StoryDto> result = stories.stream().map(storyService::toDto).toList();
+        List<StoryDto> result = stories.stream()
+                .map(story -> storyService.toDtoWithStats(story, viewer))
+                .toList();
         return ResponseEntity.ok(result);
     }
 
@@ -139,8 +144,8 @@ public class StoryController {
         payload.put("caption", saved.getCaption());
         payload.put("storyText", saved.getStoryText());
         payload.put("privacy", saved.getPrivacy());
-        payload.put("createdAt", saved.getCreatedAt() != null ? saved.getCreatedAt().toString() : null);
-        payload.put("expiresAt", saved.getExpiresAt() != null ? saved.getExpiresAt().toString() : null);
+        payload.put("createdAt", formatIsoOffset(saved.getCreatedAt()));
+        payload.put("expiresAt", formatIsoOffset(saved.getExpiresAt()));
         return ResponseEntity.ok(payload);
     }
 
@@ -172,5 +177,10 @@ public class StoryController {
             target = "/" + target;
         }
         return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(target)).build();
+    }
+
+    private String formatIsoOffset(LocalDateTime value) {
+        if (value == null) return null;
+        return value.atZone(ZoneId.systemDefault()).format(ISO_OFFSET);
     }
 }

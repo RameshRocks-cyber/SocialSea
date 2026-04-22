@@ -6,6 +6,7 @@ import com.socialsea.repository.ChatMessageRepository;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.CloudinaryService;
 import com.socialsea.service.PresenceService;
+import com.socialsea.util.MediaUrlUtils;
 import com.socialsea.util.UrlUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -153,6 +154,7 @@ public class ChatController {
     public ResponseEntity<?> messages(
             @PathVariable Long otherUserId,
             Authentication auth,
+            HttpServletRequest request,
             @RequestParam(name = "limit", defaultValue = "100") int limit
     ) {
         User me = currentUser(auth);
@@ -180,8 +182,15 @@ public class ChatController {
             item.put("senderId", m.getSender().getId());
             item.put("receiverId", m.getReceiver().getId());
             item.put("text", m.getText());
-            item.put("audioUrl", m.getAudioUrl());
-            item.put("mediaUrl", m.getMediaUrl());
+            String audioUrl = UrlUtils.toAbsoluteUrl(request, m.getAudioUrl());
+            String mediaUrl = UrlUtils.toAbsoluteUrl(request, m.getMediaUrl());
+            String thumbnailUrl = MediaUrlUtils.thumbnailUrl(mediaUrl, m.getMediaType());
+            item.put("audioUrl", audioUrl);
+            item.put("mediaUrl", mediaUrl);
+            item.put("thumbnailUrl", thumbnailUrl);
+            item.put("thumbnail", thumbnailUrl);
+            item.put("thumbUrl", thumbnailUrl);
+            item.put("posterUrl", thumbnailUrl);
             item.put("mediaType", m.getMediaType());
             item.put("fileName", m.getFileName());
             Instant createdAt = toInstant(m.getCreatedAt());
@@ -287,7 +296,8 @@ public class ChatController {
     public ResponseEntity<?> send(
             @PathVariable Long otherUserId,
             @RequestBody Map<String, String> body,
-            Authentication auth
+            Authentication auth,
+            HttpServletRequest request
     ) {
         User me = currentUser(auth);
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
@@ -318,7 +328,7 @@ public class ChatController {
         message.setReadAt(null);
         ChatMessage saved = chatRepo.save(message);
 
-        Map<String, Object> receiverPayload = Objects.requireNonNull(toChatPayload(saved, me, false), "payload");
+        Map<String, Object> receiverPayload = Objects.requireNonNull(toChatPayload(saved, me, false, request), "payload");
         messagingTemplate.convertAndSend("/topic/chat/" + receiver.getId(), receiverPayload);
         String receiverEmail = receiver.getEmail();
         if (receiverEmail != null && !receiverEmail.isBlank()) {
@@ -331,14 +341,15 @@ public class ChatController {
             );
         }
 
-        return ResponseEntity.ok(toChatPayload(saved, me, true));
+        return ResponseEntity.ok(toChatPayload(saved, me, true, request));
     }
 
     @PostMapping(path = "/{otherUserId}/send-audio", consumes = {"multipart/form-data"})
     public ResponseEntity<?> sendAudio(
             @PathVariable Long otherUserId,
             @RequestPart("audio") MultipartFile audio,
-            Authentication auth
+            Authentication auth,
+            HttpServletRequest request
     ) {
         User me = currentUser(auth);
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
@@ -366,7 +377,7 @@ public class ChatController {
         message.setReadAt(null);
         ChatMessage saved = chatRepo.save(message);
 
-        Map<String, Object> receiverPayload = Objects.requireNonNull(toChatPayload(saved, me, false), "payload");
+        Map<String, Object> receiverPayload = Objects.requireNonNull(toChatPayload(saved, me, false, request), "payload");
         messagingTemplate.convertAndSend("/topic/chat/" + receiver.getId(), receiverPayload);
         String receiverEmail = receiver.getEmail();
         if (receiverEmail != null && !receiverEmail.isBlank()) {
@@ -379,14 +390,15 @@ public class ChatController {
             );
         }
 
-        return ResponseEntity.ok(toChatPayload(saved, me, true));
+        return ResponseEntity.ok(toChatPayload(saved, me, true, request));
     }
 
     @PostMapping(path = "/{otherUserId}/send-media", consumes = {"multipart/form-data"})
     public ResponseEntity<?> sendMedia(
             @PathVariable Long otherUserId,
             @RequestPart("file") MultipartFile file,
-            Authentication auth
+            Authentication auth,
+            HttpServletRequest request
     ) {
         User me = currentUser(auth);
         if (me == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
@@ -422,7 +434,7 @@ public class ChatController {
         message.setReadAt(null);
         ChatMessage saved = chatRepo.save(message);
 
-        Map<String, Object> receiverPayload = Objects.requireNonNull(toChatPayload(saved, me, false), "payload");
+        Map<String, Object> receiverPayload = Objects.requireNonNull(toChatPayload(saved, me, false, request), "payload");
         messagingTemplate.convertAndSend("/topic/chat/" + receiver.getId(), receiverPayload);
         String receiverEmail = receiver.getEmail();
         if (receiverEmail != null && !receiverEmail.isBlank()) {
@@ -435,7 +447,7 @@ public class ChatController {
             );
         }
 
-        return ResponseEntity.ok(toChatPayload(saved, me, true));
+        return ResponseEntity.ok(toChatPayload(saved, me, true, request));
     }
 
     private String detectMediaType(String contentType) {
@@ -457,7 +469,7 @@ public class ChatController {
         return raw;
     }
 
-    private Map<String, Object> toChatPayload(ChatMessage saved, User sender, boolean mine) {
+    private Map<String, Object> toChatPayload(ChatMessage saved, User sender, boolean mine, HttpServletRequest request) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("id", saved.getId());
         payload.put("senderId", sender.getId());
@@ -465,8 +477,15 @@ public class ChatController {
         payload.put("senderName", displayName(sender));
         payload.put("senderEmail", sender.getEmail());
         payload.put("text", saved.getText());
-        payload.put("audioUrl", saved.getAudioUrl());
-        payload.put("mediaUrl", saved.getMediaUrl());
+        String audioUrl = UrlUtils.toAbsoluteUrl(request, saved.getAudioUrl());
+        String mediaUrl = UrlUtils.toAbsoluteUrl(request, saved.getMediaUrl());
+        String thumbnailUrl = MediaUrlUtils.thumbnailUrl(mediaUrl, saved.getMediaType());
+        payload.put("audioUrl", audioUrl);
+        payload.put("mediaUrl", mediaUrl);
+        payload.put("thumbnailUrl", thumbnailUrl);
+        payload.put("thumbnail", thumbnailUrl);
+        payload.put("thumbUrl", thumbnailUrl);
+        payload.put("posterUrl", thumbnailUrl);
         payload.put("mediaType", saved.getMediaType());
         payload.put("fileName", saved.getFileName());
         Instant createdAt = toInstant(saved.getCreatedAt());

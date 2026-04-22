@@ -31,6 +31,8 @@ public class NotificationController {
     private static final Pattern URL_PATTERN = Pattern.compile("https?://\\S+");
     private static final Pattern SOS_ALERT_ID_PATTERN =
         Pattern.compile("/sos/(?:live|navigate)/([0-9]+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern POST_ID_MARKER_PATTERN =
+        Pattern.compile("\\[postId\\s*:\\s*(\\d+)]", Pattern.CASE_INSENSITIVE);
 
     public NotificationController(NotificationRepository repo, UserRepository userRepo) {
         this.repo = repo;
@@ -118,7 +120,8 @@ public class NotificationController {
 
         for (Notification n : items) {
             String raw = n.getMessage();
-            String kind = deriveKind(raw);
+            String messageWithoutMarkers = stripPostMarkers(raw);
+            String kind = deriveKind(messageWithoutMarkers);
             String type = String.valueOf(n.getType());
             if ("EMERGENCY".equalsIgnoreCase(type)) {
                 kind = "emergency";
@@ -126,12 +129,12 @@ public class NotificationController {
             if ("TRAFFIC".equalsIgnoreCase(type)) {
                 kind = "traffic";
             }
-            String actorEmail = extractFirstEmail(raw);
+            String actorEmail = extractFirstEmail(messageWithoutMarkers);
             Optional<User> actorOpt = actorEmail == null ? Optional.empty() : userRepo.findByEmail(actorEmail);
             String actorName = actorOpt
                     .map(u -> (u.getName() != null && !u.getName().isBlank()) ? u.getName() : u.getEmail())
                     .orElse(actorEmail);
-            String normalizedMessage = normalizeSenderName(raw);
+            String normalizedMessage = normalizeSenderName(messageWithoutMarkers);
 
             // Collapse noisy repeated follow alerts from the same actor.
             if ("follow".equals(kind)) {
@@ -156,6 +159,11 @@ public class NotificationController {
             row.put("actorName", actorName);
             row.put("actorProfilePic", actorOpt.map(User::getProfilePic).orElse(null));
             row.put("actorIdentifier", (actorEmail != null && !actorEmail.isBlank()) ? actorEmail : actorName);
+            String postId = extractPostId(raw);
+            if (("like".equals(kind) || "comment".equals(kind)) && postId != null) {
+                row.put("postId", postId);
+                row.put("postUrl", "/feed?post=" + postId);
+            }
             if ("emergency".equals(kind)) {
                 String alertId = extractAlertId(raw);
                 if (alertId != null) {
@@ -224,6 +232,22 @@ public class NotificationController {
         return null;
     }
 
+    private String extractPostId(String message) {
+        if (message == null || message.isBlank()) return null;
+        Matcher matcher = POST_ID_MARKER_PATTERN.matcher(message);
+        if (matcher.find()) {
+            String id = matcher.group(1);
+            return (id != null && !id.isBlank()) ? id.trim() : null;
+        }
+        return null;
+    }
+
+    private String stripPostMarkers(String message) {
+        if (message == null || message.isBlank()) return message;
+        String stripped = POST_ID_MARKER_PATTERN.matcher(message).replaceAll(" ");
+        return stripped.replaceAll("\\s{2,}", " ").trim();
+    }
+
     private String trimUrl(String value) {
         if (value == null) return null;
         return value.replaceAll("[),.;]+$", "");
@@ -241,7 +265,7 @@ public class NotificationController {
     }
 
     private String buildNotificationThreadKey(Notification notification) {
-        String message = notification != null ? notification.getMessage() : null;
+        String message = stripPostMarkers(notification != null ? notification.getMessage() : null);
         String type = notification != null && notification.getType() != null ? notification.getType() : "SYSTEM";
         String kind = deriveKind(message);
         if ("EMERGENCY".equalsIgnoreCase(type)) {

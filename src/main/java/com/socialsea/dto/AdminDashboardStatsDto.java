@@ -3,6 +3,7 @@ package com.socialsea.dto;
 public class AdminDashboardStatsDto {
     private long totalUsers;
     private long totalPosts;
+    private long totalVideos;
     private long pendingAnonymousPosts;
     private long approvedAnonymousPosts;
     private long rejectedAnonymousPosts;
@@ -22,6 +23,14 @@ public class AdminDashboardStatsDto {
 
     public void setTotalPosts(long totalPosts) {
         this.totalPosts = totalPosts;
+    }
+
+    public long getTotalVideos() {
+        return totalVideos;
+    }
+
+    public void setTotalVideos(long totalVideos) {
+        this.totalVideos = totalVideos;
     }
 
     public long getPendingAnonymousPosts() { return pendingAnonymousPosts; }

@@ -12,6 +12,8 @@ import com.socialsea.repository.StoryViewRepository;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -19,6 +21,7 @@ import java.util.Set;
 
 @Service
 public class StoryService {
+    private static final DateTimeFormatter ISO_OFFSET = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
 
     private final StoryRepository storyRepo;
     private final FollowRepository followRepo;
@@ -56,24 +59,7 @@ public class StoryService {
                 allow = followingIds.contains(ownerId);
             }
             if (!allow) continue;
-            StoryDto dto = toDto(story);
-            if (owner != null) {
-                dto.setUserId(ownerId);
-                dto.setUsername(owner.getEmail());
-            }
-            if (storyLikeRepo != null) {
-                dto.setLikeCount(storyLikeRepo.countByStory(story));
-                if (viewer != null) {
-                    dto.setLikedByMe(storyLikeRepo.existsByUserAndStory(viewer, story));
-                }
-            }
-            if (storyCommentRepo != null) {
-                dto.setCommentCount(storyCommentRepo.countByStory(story));
-            }
-            if (storyViewRepo != null) {
-                dto.setViewCount(storyViewRepo.countByStory(story));
-            }
-            result.add(dto);
+            result.add(toDtoWithStats(story, viewer));
         }
         return result;
     }
@@ -120,8 +106,35 @@ public class StoryService {
         dto.setStoryStyle(story.getStoryStyle());
         dto.setStoryTextStyle(story.getStoryTextStyle());
         dto.setPrivacy(story.getPrivacy());
-        dto.setCreatedAt(story.getCreatedAt() != null ? story.getCreatedAt().toString() : null);
-        dto.setExpiresAt(story.getExpiresAt() != null ? story.getExpiresAt().toString() : null);
+        dto.setCreatedAt(formatIsoOffset(story.getCreatedAt()));
+        dto.setExpiresAt(formatIsoOffset(story.getExpiresAt()));
         return dto;
+    }
+
+    public StoryDto toDtoWithStats(Story story, User viewer) {
+        StoryDto dto = toDto(story);
+        User owner = story.getUser();
+        if (owner != null) {
+            dto.setUserId(owner.getId());
+            dto.setUsername(owner.getEmail());
+        }
+        if (storyLikeRepo != null) {
+            dto.setLikeCount(storyLikeRepo.countByStory(story));
+            if (viewer != null) {
+                dto.setLikedByMe(storyLikeRepo.existsByUserAndStory(viewer, story));
+            }
+        }
+        if (storyCommentRepo != null) {
+            dto.setCommentCount(storyCommentRepo.countByStory(story));
+        }
+        if (storyViewRepo != null) {
+            dto.setViewCount(storyViewRepo.countByStory(story));
+        }
+        return dto;
+    }
+
+    private String formatIsoOffset(LocalDateTime value) {
+        if (value == null) return null;
+        return value.atZone(ZoneId.systemDefault()).format(ISO_OFFSET);
     }
 }

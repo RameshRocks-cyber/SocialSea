@@ -67,6 +67,7 @@ public class AdminInitializer {
 
     private void ensureUserLocationColumns(JdbcTemplate jdbcTemplate) {
         try {
+            jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS long_videos_enabled BOOLEAN DEFAULT FALSE");
             jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_latitude DOUBLE PRECISION");
             jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS last_longitude DOUBLE PRECISION");
             jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS location_updated_at TIMESTAMP");

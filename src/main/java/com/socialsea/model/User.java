@@ -53,6 +53,9 @@ public class User implements UserDetails {
     @Column(columnDefinition = "boolean default false")
     private boolean trafficAlertsEnabled = false;
 
+    @Column(columnDefinition = "boolean default false")
+    private boolean longVideosEnabled = false;
+
     @Column(length = 16)
     private String preferredLanguage = "en";
 
@@ -192,6 +195,14 @@ public class User implements UserDetails {
 
     public void setTrafficAlertsEnabled(boolean trafficAlertsEnabled) {
         this.trafficAlertsEnabled = trafficAlertsEnabled;
+    }
+
+    public boolean isLongVideosEnabled() {
+        return longVideosEnabled;
+    }
+
+    public void setLongVideosEnabled(boolean longVideosEnabled) {
+        this.longVideosEnabled = longVideosEnabled;
     }
 
     public String getPreferredLanguage() {
