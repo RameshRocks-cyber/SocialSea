@@ -23,6 +23,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.time.LocalDateTime;
+import java.util.Comparator;
 
 @RestController
 @RequestMapping({"/api/feed", "/feed"})
@@ -64,12 +67,53 @@ public class FeedController {
         List<FeedItemDto> normalPosts = postRepo.findAll()
                 .stream()
                 .filter(p -> !isStoryPost(p.getMediaUrl(), storyMediaUrls))
+                .filter(p -> !p.isReel())
                 .filter(p -> includeUnapproved || p.isApproved())
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
                 .filter(p -> canViewPost(viewer, allowedPrivateIds, p.getUser()))
                 .map(FeedItemDto::fromEntity)
                 .toList();
-        return ResponseEntity.ok(normalPosts);
+
+        List<FeedItemDto> merged = new ArrayList<>(normalPosts);
+        merged.sort(Comparator.comparing(this::safeCreatedAt).reversed());
+        return ResponseEntity.ok(merged);
+    }
+
+    @GetMapping("/videos")
+    public ResponseEntity<?> videos(Authentication auth) {
+        User viewer = (auth != null && auth.isAuthenticated())
+                ? userRepo.findByEmail(auth.getName()).orElse(null)
+                : null;
+        Set<String> storyMediaUrls = storyRepo.findAll()
+                .stream()
+                .map(Story::getMediaUrl)
+                .filter(url -> url != null && !url.isBlank())
+                .collect(Collectors.toSet());
+
+        Set<Long> allowedPrivateIds = new HashSet<>();
+        if (viewer != null) {
+            allowedPrivateIds.add(viewer.getId());
+            followRepo.findByFollower(viewer).forEach(f -> {
+                if (f.getFollowing() != null && f.getFollowing().getId() != null) {
+                    allowedPrivateIds.add(f.getFollowing().getId());
+                }
+            });
+        }
+
+        List<FeedItemDto> localVideos = postRepo.findAll()
+                .stream()
+                .filter(p -> !isStoryPost(p.getMediaUrl(), storyMediaUrls))
+                .filter(p -> !p.isReel())
+                .filter(p -> includeUnapproved || p.isApproved())
+                .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
+                .filter(p -> canViewPost(viewer, allowedPrivateIds, p.getUser()))
+                .map(FeedItemDto::fromEntity)
+                .filter(FeedItemDto::isVideo)
+                .toList();
+
+        List<FeedItemDto> merged = new ArrayList<>(localVideos);
+        merged.sort(Comparator.comparing(this::safeCreatedAt).reversed());
+        return ResponseEntity.ok(merged);
     }
 
     @GetMapping("/{postId}")
@@ -88,6 +132,9 @@ public class FeedController {
         }
 
         Post post = postOpt.get();
+        if (post.isReel()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Post not found"));
+        }
         String mediaUrl = post.getMediaUrl();
         if (mediaUrl == null || mediaUrl.isBlank()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Post not found"));
@@ -138,6 +185,10 @@ public class FeedController {
     private boolean isStoryPost(String mediaUrl, Set<String> storyMediaUrls) {
         if (mediaUrl == null || mediaUrl.isBlank()) return false;
         return storyMediaUrls.contains(mediaUrl);
+    }
+
+    private LocalDateTime safeCreatedAt(FeedItemDto item) {
+        return item.getCreatedAt() == null ? LocalDateTime.MIN : item.getCreatedAt();
     }
 }
 

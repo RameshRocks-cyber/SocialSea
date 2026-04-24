@@ -14,6 +14,7 @@ public class FeedItemDto {
     private String content;
     private String contentUrl;
     private String thumbnailUrl;
+    private String posterUrl;
     private String description;
     private LocalDateTime createdAt;
     private boolean isAnonymous;
@@ -36,10 +37,11 @@ public class FeedItemDto {
         dto.contentUrl = post.getMediaUrl();
         boolean video = post.isReel() || MediaUrlUtils.isLikelyVideo(dto.contentUrl);
         dto.thumbnailUrl = MediaUrlUtils.thumbnailUrl(dto.contentUrl, video ? "video" : "image");
+        dto.posterUrl = dto.thumbnailUrl;
         dto.createdAt = post.getCreatedAt();
         dto.isAnonymous = false;
         dto.type = video ? "VIDEO" : "IMAGE";
-        dto.reel = true;
+        dto.reel = post.isReel();
         dto.originalReel = post.isReel();
         dto.isVideo = video;
         if (post.getUser() != null) {
@@ -68,6 +70,7 @@ public class FeedItemDto {
         boolean video = "VIDEO".equals(normalizedType) || MediaUrlUtils.isLikelyVideo(dto.contentUrl);
         dto.type = video ? "VIDEO" : "IMAGE";
         dto.thumbnailUrl = MediaUrlUtils.thumbnailUrl(dto.contentUrl, video ? "video" : "image");
+        dto.posterUrl = dto.thumbnailUrl;
         dto.reel = video;
         dto.originalReel = video;
         dto.isVideo = video;
@@ -88,6 +91,8 @@ public class FeedItemDto {
     public String getThumbnailUrl() { return thumbnailUrl; }
     public String getThumbnail() { return thumbnailUrl; }
     public String getThumbUrl() { return thumbnailUrl; }
+    public String getPosterUrl() { return posterUrl == null || posterUrl.isBlank() ? thumbnailUrl : posterUrl; }
+    public String getPoster() { return getPosterUrl(); }
     public String getDescription() { return description; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public boolean isAnonymous() { return isAnonymous; }

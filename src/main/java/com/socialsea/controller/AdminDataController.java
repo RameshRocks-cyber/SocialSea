@@ -8,6 +8,7 @@ import com.socialsea.repository.EmergencyAlertRepository;
 import com.socialsea.repository.PostRepository;
 import com.socialsea.repository.ReportRepository;
 import com.socialsea.repository.UserRepository;
+import com.socialsea.util.MediaUrlUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -146,12 +147,15 @@ public class AdminDataController {
 
     private Map<String, Object> postView(Post p) {
         Map<String, Object> item = new HashMap<>();
+        boolean video = p.isReel() || MediaUrlUtils.isLikelyVideo(p.getMediaUrl());
         item.put("id", p.getId());
         item.put("description", "");
         item.put("contentUrl", p.getMediaUrl());
         item.put("mediaUrl", p.getMediaUrl());
-        item.put("type", p.isReel() ? "VIDEO" : "IMAGE");
+        item.put("type", video ? "VIDEO" : "IMAGE");
         item.put("reel", p.isReel());
+        item.put("originalReel", p.isReel());
+        item.put("isVideo", video);
         item.put("approved", p.isApproved());
         item.put("createdAt", p.getCreatedAt());
         if (p.getUser() != null) {

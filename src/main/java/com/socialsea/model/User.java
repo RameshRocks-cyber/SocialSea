@@ -38,6 +38,7 @@ public class User implements UserDetails {
     private String name;
     private String bio;
     private String profilePic;
+    private String coverPhoto;
 
     @Column(columnDefinition = "TEXT")
     private String resumeJson;
@@ -154,6 +155,14 @@ public class User implements UserDetails {
 
     public void setProfilePic(String profilePic) {
         this.profilePic = profilePic;
+    }
+
+    public String getCoverPhoto() {
+        return coverPhoto;
+    }
+
+    public void setCoverPhoto(String coverPhoto) {
+        this.coverPhoto = coverPhoto;
     }
 
     @JsonIgnore

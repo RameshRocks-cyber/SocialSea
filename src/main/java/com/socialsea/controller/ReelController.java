@@ -23,6 +23,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.ArrayList;
 
 @RestController
 @RequestMapping({"/api/reels", "/reels"})
@@ -33,7 +36,11 @@ public class ReelController {
     private final UserRepository userRepo;
     private final FollowRepository followRepo;
 
-    public ReelController(PostRepository postRepo, UserRepository userRepo, FollowRepository followRepo) {
+    public ReelController(
+            PostRepository postRepo,
+            UserRepository userRepo,
+            FollowRepository followRepo
+    ) {
         this.postRepo = postRepo;
         this.userRepo = userRepo;
         this.followRepo = followRepo;
@@ -54,15 +61,19 @@ public class ReelController {
             });
         }
 
-        // Short videos feed intentionally includes every approved media post (not only reel-flagged posts).
-        return postRepo.findAll()
+        // Keep existing local-media behavior.
+        List<Map<String, Object>> localItems = postRepo.findAll()
                 .stream()
                 .filter(Post::isApproved)
+                .filter(Post::isReel)
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
                 .filter(p -> canViewPost(viewer, allowedPrivateIds, p.getUser()))
-                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                 .map(this::toReelPayload)
                 .toList();
+
+        List<Map<String, Object>> merged = new ArrayList<>(localItems);
+        merged.sort(Comparator.comparing(this::safeCreatedAt).reversed());
+        return merged;
     }
 
     @GetMapping("/{postId}")
@@ -90,6 +101,9 @@ public class ReelController {
         if (!post.isApproved()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Post not found"));
         }
+        if (!post.isReel()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Post not found"));
+        }
         if (post.getMediaUrl() == null || post.getMediaUrl().isBlank()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Post not found"));
         }
@@ -112,8 +126,7 @@ public class ReelController {
         payload.put("id", post.getId());
         payload.put("mediaUrl", post.getMediaUrl());
         payload.put("contentUrl", post.getMediaUrl());
-        // Mark every item in /api/reels as part of short-video feed so image posts are not filtered out.
-        payload.put("reel", true);
+        payload.put("reel", post.isReel());
         payload.put("originalReel", post.isReel());
         payload.put("type", video ? "VIDEO" : "IMAGE");
         payload.put("isVideo", video);
@@ -121,6 +134,21 @@ public class ReelController {
         payload.put("createdAt", post.getCreatedAt());
         payload.put("user", post.getUser());
         return payload;
+    }
+
+    private LocalDateTime safeCreatedAt(Map<String, Object> item) {
+        Object raw = item.get("createdAt");
+        if (raw instanceof LocalDateTime dt) {
+            return dt;
+        }
+        if (raw instanceof String text) {
+            try {
+                return LocalDateTime.parse(text);
+            } catch (Exception ignored) {
+                return LocalDateTime.MIN;
+            }
+        }
+        return LocalDateTime.MIN;
     }
 }
 

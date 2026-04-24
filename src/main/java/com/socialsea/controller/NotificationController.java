@@ -2,6 +2,7 @@ package com.socialsea.controller;
 
 import com.socialsea.model.*;
 import com.socialsea.repository.*;
+import com.socialsea.util.MediaUrlUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
@@ -25,6 +26,7 @@ public class NotificationController {
 
     private final NotificationRepository repo;
     private final UserRepository userRepo;
+    private final PostRepository postRepo;
     private static final Logger log = LoggerFactory.getLogger(NotificationController.class);
     private static final Pattern EMAIL_PATTERN =
         Pattern.compile("\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b");
@@ -34,9 +36,10 @@ public class NotificationController {
     private static final Pattern POST_ID_MARKER_PATTERN =
         Pattern.compile("\\[postId\\s*:\\s*(\\d+)]", Pattern.CASE_INSENSITIVE);
 
-    public NotificationController(NotificationRepository repo, UserRepository userRepo) {
+    public NotificationController(NotificationRepository repo, UserRepository userRepo, PostRepository postRepo) {
         this.repo = repo;
         this.userRepo = userRepo;
+        this.postRepo = postRepo;
     }
 
     @GetMapping
@@ -161,8 +164,39 @@ public class NotificationController {
             row.put("actorIdentifier", (actorEmail != null && !actorEmail.isBlank()) ? actorEmail : actorName);
             String postId = extractPostId(raw);
             if (("like".equals(kind) || "comment".equals(kind)) && postId != null) {
+                boolean isReel = false;
+                boolean isVideo = false;
+                try {
+                    long postIdValue = Long.parseLong(postId);
+                    Post targetPost = postRepo.findById(postIdValue).orElse(null);
+                    if (targetPost != null) {
+                        isReel = targetPost.isReel();
+                        isVideo = isReel || MediaUrlUtils.isLikelyVideo(targetPost.getMediaUrl());
+                    }
+                } catch (NumberFormatException ignored) {
+                    // keep defaults if postId is not numeric
+                }
                 row.put("postId", postId);
-                row.put("postUrl", "/feed?post=" + postId);
+                row.put("isReel", isReel);
+                row.put("isVideo", isVideo);
+                row.put("postUrl", (isReel ? "/reels?post=" : "/feed?post=") + postId);
+                if (isReel) {
+                    String adjusted = String.valueOf(row.get("message"));
+                    if ("like".equals(kind)) {
+                        adjusted = adjusted.replaceAll("(?i)liked\\s+your\\s+post", "liked your reel");
+                    } else if ("comment".equals(kind)) {
+                        adjusted = adjusted.replaceAll("(?i)commented\\s+on\\s+your\\s+post", "commented on your reel");
+                    }
+                    row.put("message", adjusted);
+                } else if (isVideo) {
+                    String adjusted = String.valueOf(row.get("message"));
+                    if ("like".equals(kind)) {
+                        adjusted = adjusted.replaceAll("(?i)liked\\s+your\\s+post", "liked your video");
+                    } else if ("comment".equals(kind)) {
+                        adjusted = adjusted.replaceAll("(?i)commented\\s+on\\s+your\\s+post", "commented on your video");
+                    }
+                    row.put("message", adjusted);
+                }
             }
             if ("emergency".equals(kind)) {
                 String alertId = extractAlertId(raw);

@@ -86,8 +86,13 @@ public class ProfileController {
         profile.put("name", user.getName());
         profile.put("bio", canViewContent ? user.getBio() : "");
         String profilePicUrl = UrlUtils.toAbsoluteUrl(request, user.getProfilePic());
+        String coverPhotoUrl = UrlUtils.toAbsoluteUrl(request, user.getCoverPhoto());
         profile.put("profilePic", profilePicUrl);
         profile.put("profilePicUrl", profilePicUrl);
+        profile.put("coverUrl", coverPhotoUrl);
+        profile.put("coverPhoto", coverPhotoUrl);
+        profile.put("coverPhotoUrl", coverPhotoUrl);
+        profile.put("profileCoverUrl", coverPhotoUrl);
         profile.put("profileCompleted", user.isProfileCompleted());
         profile.put("followers", followers);
         profile.put("following", following);
@@ -154,8 +159,13 @@ public class ProfileController {
         profile.put("name", user.getName());
         profile.put("bio", user.getBio());
         String profilePicUrl = UrlUtils.toAbsoluteUrl(request, user.getProfilePic());
+        String coverPhotoUrl = UrlUtils.toAbsoluteUrl(request, user.getCoverPhoto());
         profile.put("profilePic", profilePicUrl);
         profile.put("profilePicUrl", profilePicUrl);
+        profile.put("coverUrl", coverPhotoUrl);
+        profile.put("coverPhoto", coverPhotoUrl);
+        profile.put("coverPhotoUrl", coverPhotoUrl);
+        profile.put("profileCoverUrl", coverPhotoUrl);
         profile.put("profileCompleted", user.isProfileCompleted());
         profile.put("followers", followers);
         profile.put("following", following);
@@ -537,8 +547,7 @@ public class ProfileController {
         payload.put("id", post.getId());
         payload.put("mediaUrl", post.getMediaUrl());
         payload.put("contentUrl", post.getMediaUrl());
-        // Ensure image posts are also included in short-video feed style UIs.
-        payload.put("reel", true);
+        payload.put("reel", post.isReel());
         payload.put("originalReel", post.isReel());
         payload.put("type", video ? "VIDEO" : "IMAGE");
         payload.put("isVideo", video);
@@ -687,6 +696,9 @@ public class ProfileController {
             @RequestParam(required = false) Long userId,
             @RequestParam String name,
             @RequestParam(required = false) MultipartFile profilePic,
+            @RequestParam(required = false) MultipartFile coverPhoto,
+            @RequestParam(required = false) MultipartFile cover,
+            @RequestParam(required = false) MultipartFile coverImage,
             @RequestParam(required = false) String bio,
             Authentication auth,
             HttpServletRequest request
@@ -704,12 +716,19 @@ public class ProfileController {
         }
 
         try {
-            Map<String, Object> updated = profileService.setupProfile(effectiveUserId, name, bio, profilePic);
+            MultipartFile effectiveCover = firstNonEmptyFile(coverPhoto, cover, coverImage);
+            Map<String, Object> updated = profileService.setupProfile(effectiveUserId, name, bio, profilePic, effectiveCover);
             Map<String, Object> response = new HashMap<>(updated);
             Object raw = updated.get("profilePic");
             String profilePicUrl = UrlUtils.toAbsoluteUrl(request, raw == null ? null : String.valueOf(raw));
             response.put("profilePic", profilePicUrl == null ? "" : profilePicUrl);
             response.put("profilePicUrl", profilePicUrl == null ? "" : profilePicUrl);
+            Object rawCover = updated.get("coverPhoto");
+            String coverPhotoUrl = UrlUtils.toAbsoluteUrl(request, rawCover == null ? null : String.valueOf(rawCover));
+            response.put("coverUrl", coverPhotoUrl == null ? "" : coverPhotoUrl);
+            response.put("coverPhoto", coverPhotoUrl == null ? "" : coverPhotoUrl);
+            response.put("coverPhotoUrl", coverPhotoUrl == null ? "" : coverPhotoUrl);
+            response.put("profileCoverUrl", coverPhotoUrl == null ? "" : coverPhotoUrl);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             Map<String, Object> availability = profileService.checkNameAvailability(name, effectiveUserId);
@@ -724,6 +743,18 @@ public class ProfileController {
                     : e.getMessage();
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", message));
         }
+    }
+
+    private MultipartFile firstNonEmptyFile(MultipartFile... files) {
+        if (files == null) {
+            return null;
+        }
+        for (MultipartFile file : files) {
+            if (file != null && !file.isEmpty()) {
+                return file;
+            }
+        }
+        return null;
     }
 }
 

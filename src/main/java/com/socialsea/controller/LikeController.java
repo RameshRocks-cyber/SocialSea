@@ -3,6 +3,7 @@ package com.socialsea.controller;
 import com.socialsea.model.*;
 import com.socialsea.repository.*;
 import com.socialsea.service.NotificationService;
+import com.socialsea.util.MediaUrlUtils;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -48,9 +49,10 @@ public class LikeController {
         String actor = (user.getName() != null && !user.getName().isBlank())
             ? user.getName()
             : user.getEmail();
+        String targetLabel = post.isReel() ? "reel" : (MediaUrlUtils.isLikelyVideo(post.getMediaUrl()) ? "video" : "post");
         notificationService.notifyUser(
             post.getUser().getEmail(),
-            actor + " liked your post [postId:" + post.getId() + "]"
+            actor + " liked your " + targetLabel + " [postId:" + post.getId() + "]"
         );
 
         return "Liked";

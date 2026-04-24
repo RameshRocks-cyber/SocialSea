@@ -22,7 +22,7 @@ public class ProfileService {
     private final CloudinaryService cloudinaryService;
     private static final Pattern NAME_ALLOWED = Pattern.compile("^[a-z0-9._]{3,20}$");
 
-    public Map<String, Object> setupProfile(Long userId, String name, String bio, MultipartFile pic) {
+    public Map<String, Object> setupProfile(Long userId, String name, String bio, MultipartFile pic, MultipartFile coverPhoto) {
         User user = userRepo.findById(Objects.requireNonNull(userId, "userId"))
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -42,6 +42,10 @@ public class ProfileService {
             String url = cloudinaryService.upload(pic);
             user.setProfilePic(url);
         }
+        if (coverPhoto != null && !coverPhoto.isEmpty()) {
+            String url = cloudinaryService.upload(coverPhoto);
+            user.setCoverPhoto(url);
+        }
 
         user.setProfileCompleted(true);
         userRepo.save(user);
@@ -51,6 +55,7 @@ public class ProfileService {
                 "name", user.getName(),
                 "bio", user.getBio() == null ? "" : user.getBio(),
                 "profilePic", user.getProfilePic() == null ? "" : user.getProfilePic(),
+                "coverPhoto", user.getCoverPhoto() == null ? "" : user.getCoverPhoto(),
                 "profileCompleted", user.isProfileCompleted()
         );
     }

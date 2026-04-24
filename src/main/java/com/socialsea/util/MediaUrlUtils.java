@@ -86,4 +86,5 @@ public final class MediaUrlUtils {
 
         return prefix + head + tail + ".jpg" + query + fragment;
     }
+
 }

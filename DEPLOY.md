@@ -17,7 +17,10 @@
 - Project path: repository root (this folder)
 - Java: 17
 - Build: `mvn -DskipTests package`
-- Run (prod): `java -Dspring.profiles.active=prod -jar target/*.jar`
+- Run (prod): build jar, then link a stable path and run:
+  - `JAR_PATH=$(ls -1 target/socialsea-*.jar | grep -v '\.original$' | head -n 1)`
+  - `ln -sfn "$JAR_PATH" socialsea.jar`
+  - `java -Dspring.profiles.active=prod -jar socialsea.jar`
 
 ### Important
 This repo historically had a second backend folder at `SocialSea-main/`.
@@ -25,6 +28,8 @@ That folder is now a Maven wrapper that compiles the backend from the repository
 
 ### Required backend env vars
 - `SPRING_PROFILES_ACTIVE=prod`
+- `APP_RUNTIME_EC2=true` (set on EC2)
+- `APP_RUNTIME_ENFORCE_PROD_ON_EC2=true`
 - `SPRING_DATASOURCE_URL`
 - `SPRING_DATASOURCE_USERNAME`
 - `SPRING_DATASOURCE_PASSWORD`

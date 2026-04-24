@@ -75,6 +75,10 @@ public class PostController {
         @RequestParam(value = "storyExpiresHours", required = false) String storyExpiresHours,
         @RequestParam(value = "storyText", required = false) String storyText,
         @RequestParam(value = "caption", required = false) String caption,
+        @RequestParam(value = "isReel", required = false) String isReel,
+        @RequestParam(value = "reel", required = false) String reel,
+        @RequestParam(value = "isLongVideo", required = false) String isLongVideo,
+        @RequestParam(value = "type", required = false) String type,
         @RequestParam(value = "storyStyle", required = false) String storyStyle,
         @RequestParam(value = "storyTextStyle", required = false) String storyTextStyle,
         Authentication auth
@@ -139,7 +143,14 @@ public class PostController {
 
             Post post = new Post();
             post.setMediaUrl(url);
-            post.setReel(isVideo(file));
+            boolean videoFile = isVideo(file);
+            boolean wantsReel = isTruthy(isReel) || isTruthy(reel) || isReelType(type);
+            boolean wantsLongVideo = isTruthy(isLongVideo) || isLongVideoType(type);
+            if ((wantsReel || wantsLongVideo) && !videoFile) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Video file required for reels/long videos"));
+            }
+            // Interpret `reel` as "short-video reel" (not "any video"). Long videos are video files with reel=false.
+            post.setReel(videoFile && wantsReel);
             post.setApproved(true);
             post.setUser(user);
             Post saved = postRepo.save(post);
@@ -203,6 +214,24 @@ public class PostController {
     private boolean isVideo(MultipartFile file) {
         String contentType = file.getContentType();
         return contentType != null && contentType.startsWith("video");
+    }
+
+    private boolean isTruthy(String value) {
+        if (value == null) return false;
+        String normalized = value.trim().toLowerCase();
+        return normalized.equals("true") || normalized.equals("1") || normalized.equals("yes") || normalized.equals("y");
+    }
+
+    private boolean isReelType(String value) {
+        if (value == null) return false;
+        String normalized = value.trim().toLowerCase();
+        return normalized.equals("reel") || normalized.equals("reels") || normalized.equals("short") || normalized.equals("short_video");
+    }
+
+    private boolean isLongVideoType(String value) {
+        if (value == null) return false;
+        String normalized = value.trim().toLowerCase();
+        return normalized.equals("long_video") || normalized.equals("long-video") || normalized.equals("long") || normalized.equals("watch");
     }
 
     private String formatIsoOffset(LocalDateTime value) {

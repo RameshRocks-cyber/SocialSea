@@ -51,6 +51,8 @@ nano .env.production
 ```
 Set at minimum:
 - `SPRING_PROFILES_ACTIVE=prod`
+- `APP_RUNTIME_EC2=true`
+- `APP_RUNTIME_ENFORCE_PROD_ON_EC2=true`
 - `SPRING_DATASOURCE_URL`
 - `SPRING_DATASOURCE_USERNAME`
 - `SPRING_DATASOURCE_PASSWORD`
@@ -64,10 +66,18 @@ Set at minimum:
 - `LIVEKIT_API_KEY`
 - `LIVEKIT_API_SECRET`
 
+Important:
+- Do not keep placeholder values like `<cloud-name>` or `<db-user>` in `.env.production`.
+- Keep `APP_UPLOAD_ALLOW_LOCAL_FALLBACK=false` in production.
+
 ## 5) Build and run backend as service
 ```bash
 cd /opt/socialsea/backend
 mvn -DskipTests clean package
+
+# Create/update a stable jar path for systemd (avoid wildcard ExecStart issues)
+JAR_PATH=$(ls -1 /opt/socialsea/backend/target/socialsea-*.jar | grep -v '\.original$' | head -n 1)
+ln -sfn "$JAR_PATH" /opt/socialsea/backend/socialsea.jar
 ```
 
 Create `/etc/systemd/system/socialsea-backend.service`:
@@ -80,7 +90,7 @@ After=network.target
 User=ubuntu
 WorkingDirectory=/opt/socialsea/backend
 EnvironmentFile=/opt/socialsea/backend/.env.production
-ExecStart=/usr/bin/java -Dspring.profiles.active=prod -jar /opt/socialsea/backend/target/*.jar
+ExecStart=/usr/bin/java -Dspring.profiles.active=prod -jar /opt/socialsea/backend/socialsea.jar
 SuccessExitStatus=143
 Restart=always
 RestartSec=5
@@ -97,6 +107,16 @@ sudo systemctl restart socialsea-backend
 sudo systemctl status socialsea-backend --no-pager
 ```
 
+Check runtime config was loaded correctly:
+```bash
+sudo journalctl -u socialsea-backend -n 200 --no-pager | grep -E "profile is active|Production runtime config validated|Missing required production configuration|HikariPool-1 - Added connection"
+```
+
+Expected:
+- profile must be `prod`
+- you should see `Production runtime config validated`
+- datasource should be your real DB host (not h2/local temp db)
+
 ## 6) Build frontend
 ```bash
 cd /opt/socialsea/frontend
@@ -108,6 +128,9 @@ Edit `.env.production` for same-domain API:
 VITE_API_BASE_URL=/api
 VITE_API_URL=/api
 ```
+
+Important:
+- Do not use `https://api.socialsea.co.in` unless you have actually created and configured that subdomain.
 
 Build and publish:
 ```bash
@@ -131,8 +154,19 @@ server {
         try_files $uri $uri/ /index.html;
     }
 
+    # Keep external /api/actuator/* while backend serves /actuator/*
+    location /api/actuator/ {
+        proxy_pass http://127.0.0.1:8080/actuator/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     location /api/ {
-        proxy_pass http://127.0.0.1:8080/;
+        # IMPORTANT: no trailing slash so /api/* reaches backend as /api/*
+        proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -141,7 +175,7 @@ server {
     }
 
     location /ws {
-        proxy_pass http://127.0.0.1:8080/ws;
+        proxy_pass http://127.0.0.1:8080;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -149,6 +183,8 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600;
+        proxy_send_timeout 3600;
     }
 }
 ```
@@ -170,6 +206,7 @@ sudo certbot --nginx -d socialsea.co.in -d www.socialsea.co.in
 ```bash
 curl -I https://socialsea.co.in
 curl -I https://socialsea.co.in/api/actuator/health
+curl -sS https://socialsea.co.in/api/actuator/health
 ```
 
 ## 10) Update deployment (next releases)
@@ -178,6 +215,8 @@ curl -I https://socialsea.co.in/api/actuator/health
 cd /opt/socialsea/backend
 git pull
 mvn -DskipTests clean package
+JAR_PATH=$(ls -1 /opt/socialsea/backend/target/socialsea-*.jar | grep -v '\.original$' | head -n 1)
+ln -sfn "$JAR_PATH" /opt/socialsea/backend/socialsea.jar
 sudo systemctl restart socialsea-backend
 
 # frontend
