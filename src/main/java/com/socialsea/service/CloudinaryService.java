@@ -2,6 +2,7 @@ package com.socialsea.service;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,7 +19,8 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-public class CloudinaryService {
+@ConditionalOnProperty(name = "app.upload.provider", havingValue = "cloudinary", matchIfMissing = true)
+public class CloudinaryService implements UploadService {
 
     private final Cloudinary cloudinary;
     private final Path uploadDir;
@@ -43,6 +45,7 @@ public class CloudinaryService {
         this.allowLocalFallback = allowLocalFallback;
     }
 
+    @Override
     public String upload(MultipartFile file) {
         validateFile(file);
         try {

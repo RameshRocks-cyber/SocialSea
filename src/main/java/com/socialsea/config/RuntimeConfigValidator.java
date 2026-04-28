@@ -26,6 +26,9 @@ public class RuntimeConfigValidator implements ApplicationRunner {
     @Value("${spring.datasource.url:}")
     private String datasourceUrl;
 
+    @Value("${app.upload.provider:cloudinary}")
+    private String uploadProvider;
+
     @Value("${cloudinary.cloud_name:}")
     private String cloudinaryCloudName;
 
@@ -34,6 +37,9 @@ public class RuntimeConfigValidator implements ApplicationRunner {
 
     @Value("${cloudinary.api_secret:}")
     private String cloudinaryApiSecret;
+
+    @Value("${app.s3.bucket:}")
+    private String s3Bucket;
 
     @Value("${app.upload.allow-local-fallback:false}")
     private boolean allowLocalFallback;
@@ -69,11 +75,24 @@ public class RuntimeConfigValidator implements ApplicationRunner {
             return;
         }
 
+        String provider = uploadProvider == null ? "" : uploadProvider.trim().toLowerCase(Locale.ROOT);
+        if (provider.isBlank()) {
+            provider = "cloudinary";
+        }
+
         List<String> missing = new ArrayList<>();
         require("SPRING_DATASOURCE_URL", datasourceUrl, missing);
-        require("CLOUDINARY_CLOUD_NAME", cloudinaryCloudName, missing);
-        require("CLOUDINARY_API_KEY", cloudinaryApiKey, missing);
-        require("CLOUDINARY_API_SECRET", cloudinaryApiSecret, missing);
+        switch (provider) {
+            case "cloudinary" -> {
+                require("CLOUDINARY_CLOUD_NAME", cloudinaryCloudName, missing);
+                require("CLOUDINARY_API_KEY", cloudinaryApiKey, missing);
+                require("CLOUDINARY_API_SECRET", cloudinaryApiSecret, missing);
+            }
+            case "s3" -> require("APP_S3_BUCKET", s3Bucket, missing);
+            default -> throw new IllegalStateException(
+                "Unknown app.upload.provider='" + provider + "'. Supported values: cloudinary, s3."
+            );
+        }
 
         if (!missing.isEmpty()) {
             throw new IllegalStateException(
@@ -91,9 +110,11 @@ public class RuntimeConfigValidator implements ApplicationRunner {
         }
 
         log.info(
-            "Production runtime config validated. datasourceHost={}, cloudinaryCloudName={}, ec2Runtime={}",
+            "Production runtime config validated. datasourceHost={}, uploadProvider={}, cloudinaryCloudName={}, s3Bucket={}, ec2Runtime={}",
             extractHost(datasourceUrl),
+            provider,
             cloudinaryCloudName,
+            s3Bucket,
             ec2Runtime
         );
     }
@@ -112,7 +133,10 @@ public class RuntimeConfigValidator implements ApplicationRunner {
         if (normalized.isEmpty()) {
             return true;
         }
-        return normalized.startsWith("<") && normalized.endsWith(">");
+        if (normalized.startsWith("<") && normalized.endsWith(">")) {
+            return true;
+        }
+        return normalized.matches(".*<[^>]+>.*");
     }
 
     private String extractHost(String jdbcUrl) {

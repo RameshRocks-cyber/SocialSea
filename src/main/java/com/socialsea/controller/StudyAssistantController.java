@@ -1,8 +1,8 @@
 package com.socialsea.controller;
 
-import com.socialsea.service.CloudinaryService;
 import com.socialsea.service.GeminiService;
 import com.socialsea.service.OpenAiRealtimeService;
+import com.socialsea.service.UploadService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,18 +27,18 @@ public class StudyAssistantController {
 
     private final OpenAiRealtimeService realtimeService;
     private final GeminiService geminiService;
-    private final CloudinaryService cloudinaryService;
+    private final UploadService uploadService;
     private final Environment environment;
 
     public StudyAssistantController(
         OpenAiRealtimeService realtimeService,
         GeminiService geminiService,
-        CloudinaryService cloudinaryService,
+        UploadService uploadService,
         Environment environment
     ) {
         this.realtimeService = realtimeService;
         this.geminiService = geminiService;
-        this.cloudinaryService = cloudinaryService;
+        this.uploadService = uploadService;
         this.environment = environment;
     }
 
@@ -119,7 +119,7 @@ public class StudyAssistantController {
         if (file == null || file.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("message", "File is required"));
         }
-        String url = cloudinaryService.upload(file);
+        String url = uploadService.upload(file);
         Map<String, Object> payload = new HashMap<>();
         payload.put("url", url);
         payload.put("name", file.getOriginalFilename());

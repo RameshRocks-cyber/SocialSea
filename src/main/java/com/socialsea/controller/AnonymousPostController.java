@@ -2,7 +2,7 @@ package com.socialsea.controller;
 
 import com.socialsea.model.AnonymousPost;
 import com.socialsea.repository.AnonymousPostRepository;
-import com.socialsea.service.CloudinaryService;
+import com.socialsea.service.UploadService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,14 +17,14 @@ import java.util.Objects;
 public class AnonymousPostController {
 
     private final AnonymousPostRepository repo;
-    private final CloudinaryService cloudinaryService;
+    private final UploadService uploadService;
 
     public AnonymousPostController(
         AnonymousPostRepository repo,
-        CloudinaryService cloudinaryService
+        UploadService uploadService
     ) {
         this.repo = repo;
-        this.cloudinaryService = cloudinaryService;
+        this.uploadService = uploadService;
     }
 
     @GetMapping("/feed")
@@ -78,7 +78,7 @@ public class AnonymousPostController {
         }
         String url;
         try {
-            url = cloudinaryService.upload(file);
+            url = uploadService.upload(file);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                 .body(Map.of("message", e.getMessage()));

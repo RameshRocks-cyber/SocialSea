@@ -3,7 +3,7 @@ package com.socialsea.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.socialsea.model.User;
 import com.socialsea.repository.UserRepository;
-import com.socialsea.service.CloudinaryService;
+import com.socialsea.service.UploadService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +28,7 @@ public class ResumeController {
 
     private final UserRepository userRepo;
     private final ObjectMapper objectMapper;
-    private final CloudinaryService cloudinaryService;
+    private final UploadService uploadService;
 
     @GetMapping("/me")
     public ResponseEntity<?> getMyResume(Authentication auth) {
@@ -90,7 +90,7 @@ public class ResumeController {
         }
 
         try {
-            String url = cloudinaryService.upload(file);
+            String url = uploadService.upload(file);
             String contentType = file.getContentType();
             String mediaType = contentType != null && contentType.startsWith("video") ? "VIDEO" : "IMAGE";
             return ResponseEntity.ok(Map.of(

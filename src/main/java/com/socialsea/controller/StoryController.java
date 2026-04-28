@@ -5,8 +5,8 @@ import com.socialsea.model.Story;
 import com.socialsea.model.User;
 import com.socialsea.repository.StoryRepository;
 import com.socialsea.repository.UserRepository;
-import com.socialsea.service.CloudinaryService;
 import com.socialsea.service.StoryService;
+import com.socialsea.service.UploadService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -41,18 +41,18 @@ public class StoryController {
 
     private final StoryService storyService;
     private final UserRepository userRepo;
-    private final CloudinaryService cloudinaryService;
+    private final UploadService uploadService;
     private final StoryRepository storyRepo;
 
     public StoryController(
             StoryService storyService,
             UserRepository userRepo,
-            CloudinaryService cloudinaryService,
+            UploadService uploadService,
             StoryRepository storyRepo
     ) {
         this.storyService = storyService;
         this.userRepo = userRepo;
-        this.cloudinaryService = cloudinaryService;
+        this.uploadService = uploadService;
         this.storyRepo = storyRepo;
     }
 
@@ -109,7 +109,7 @@ public class StoryController {
 
         String url;
         try {
-            url = cloudinaryService.upload(file);
+            url = uploadService.upload(file);
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("message", e.getMessage()));
         }

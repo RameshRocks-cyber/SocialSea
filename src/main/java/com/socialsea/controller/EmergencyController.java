@@ -4,9 +4,9 @@ import com.socialsea.model.EmergencyAlert;
 import com.socialsea.model.User;
 import com.socialsea.repository.EmergencyAlertRepository;
 import com.socialsea.repository.UserRepository;
-import com.socialsea.service.CloudinaryService;
 import com.socialsea.service.EmailService;
 import com.socialsea.service.NotificationService;
+import com.socialsea.service.UploadService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,7 +47,7 @@ public class EmergencyController {
     private final UserRepository userRepo;
     private final EmergencyAlertRepository emergencyRepo;
     private final NotificationService notificationService;
-    private final CloudinaryService cloudinaryService;
+    private final UploadService uploadService;
     private final EmailService emailService;
     @Value("${app.frontend.base-url:http://localhost:5173}")
     private String frontendBaseUrl;
@@ -671,7 +671,7 @@ public class EmergencyController {
         PREVIEW_CACHE.remove(alert.getId());
 
         if (media != null && !media.isEmpty()) {
-            String url = cloudinaryService.upload(media);
+            String url = uploadService.upload(media);
             alert.setMediaUrl(url);
         }
 

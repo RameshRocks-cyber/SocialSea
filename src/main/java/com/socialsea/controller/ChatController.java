@@ -4,8 +4,8 @@ import com.socialsea.model.ChatMessage;
 import com.socialsea.model.User;
 import com.socialsea.repository.ChatMessageRepository;
 import com.socialsea.repository.UserRepository;
-import com.socialsea.service.CloudinaryService;
 import com.socialsea.service.PresenceService;
+import com.socialsea.service.UploadService;
 import com.socialsea.util.MediaUrlUtils;
 import com.socialsea.util.UrlUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -35,7 +35,7 @@ public class ChatController {
     private final UserRepository userRepo;
     private final ChatMessageRepository chatRepo;
     private final SimpMessagingTemplate messagingTemplate;
-    private final CloudinaryService cloudinaryService;
+    private final UploadService uploadService;
     private final PresenceService presenceService;
 
     @GetMapping("/conversations")
@@ -362,7 +362,7 @@ public class ChatController {
         }
 
         User receiver = otherOpt.get();
-        String audioUrl = cloudinaryService.upload(audio);
+        String audioUrl = uploadService.upload(audio);
 
         ChatMessage message = new ChatMessage();
         message.setSender(me);
@@ -411,7 +411,7 @@ public class ChatController {
         }
 
         User receiver = otherOpt.get();
-        String mediaUrl = cloudinaryService.upload(file);
+        String mediaUrl = uploadService.upload(file);
         String mediaType = detectMediaType(file.getContentType());
         String label = switch (mediaType) {
             case "image" -> "[Image]";

@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 public class ProfileService {
 
     private final UserRepository userRepo;
-    private final CloudinaryService cloudinaryService;
+    private final UploadService uploadService;
     private static final Pattern NAME_ALLOWED = Pattern.compile("^[a-z0-9._]{3,20}$");
 
     public Map<String, Object> setupProfile(Long userId, String name, String bio, MultipartFile pic, MultipartFile coverPhoto) {
@@ -39,11 +39,11 @@ public class ProfileService {
         user.setBio(bio);
 
         if (pic != null && !pic.isEmpty()) {
-            String url = cloudinaryService.upload(pic);
+            String url = uploadService.upload(pic);
             user.setProfilePic(url);
         }
         if (coverPhoto != null && !coverPhoto.isEmpty()) {
-            String url = cloudinaryService.upload(coverPhoto);
+            String url = uploadService.upload(coverPhoto);
             user.setCoverPhoto(url);
         }
 
