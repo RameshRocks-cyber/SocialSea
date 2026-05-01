@@ -13,17 +13,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 
 import java.util.Objects;
-import java.util.Set;
 
 @Controller
 @RequiredArgsConstructor
 public class CallSignalingController {
-
-    private static final Set<String> ALLOWED_TYPES = Set.of(
-            "offer", "answer", "ice", "hangup", "reject", "busy", "ringing",
-            "livekit-invite", "livekit-accept",
-            "connected", "refreshing", "ended", "accepted", "typing"
-    );
 
     private final UserRepository userRepository;
     private final SimpMessagingTemplate messagingTemplate;
@@ -45,7 +38,7 @@ public class CallSignalingController {
         if (target == null || target.getId() == null) return;
 
         String type = normalize(payload.getType());
-        if (!ALLOWED_TYPES.contains(type)) return;
+        if (!CallSignalTypes.ALLOWED.contains(type)) return;
 
         CallSignalDto outbound = new CallSignalDto();
         outbound.setType(type);

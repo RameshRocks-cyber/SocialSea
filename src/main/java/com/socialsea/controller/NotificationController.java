@@ -35,6 +35,8 @@ public class NotificationController {
         Pattern.compile("/sos/(?:live|navigate)/([0-9]+)", Pattern.CASE_INSENSITIVE);
     private static final Pattern POST_ID_MARKER_PATTERN =
         Pattern.compile("\\[postId\\s*:\\s*(\\d+)]", Pattern.CASE_INSENSITIVE);
+    private static final Pattern STORY_ID_MARKER_PATTERN =
+        Pattern.compile("\\[storyId\\s*:\\s*(\\d+)]", Pattern.CASE_INSENSITIVE);
 
     public NotificationController(NotificationRepository repo, UserRepository userRepo, PostRepository postRepo) {
         this.repo = repo;
@@ -123,7 +125,7 @@ public class NotificationController {
 
         for (Notification n : items) {
             String raw = n.getMessage();
-            String messageWithoutMarkers = stripPostMarkers(raw);
+            String messageWithoutMarkers = stripTargetMarkers(raw);
             String kind = deriveKind(messageWithoutMarkers);
             String type = String.valueOf(n.getType());
             if ("EMERGENCY".equalsIgnoreCase(type)) {
@@ -163,6 +165,7 @@ public class NotificationController {
             row.put("actorProfilePic", actorOpt.map(User::getProfilePic).orElse(null));
             row.put("actorIdentifier", (actorEmail != null && !actorEmail.isBlank()) ? actorEmail : actorName);
             String postId = extractPostId(raw);
+            String storyId = extractStoryId(raw);
             if (("like".equals(kind) || "comment".equals(kind)) && postId != null) {
                 boolean isReel = false;
                 boolean isVideo = false;
@@ -176,10 +179,13 @@ public class NotificationController {
                 } catch (NumberFormatException ignored) {
                     // keep defaults if postId is not numeric
                 }
+                String postUrl = isReel
+                    ? "/reels?post=" + postId
+                    : (isVideo ? "/watch/" + postId : "/feed?post=" + postId);
                 row.put("postId", postId);
                 row.put("isReel", isReel);
                 row.put("isVideo", isVideo);
-                row.put("postUrl", (isReel ? "/reels?post=" : "/feed?post=") + postId);
+                row.put("postUrl", postUrl);
                 if (isReel) {
                     String adjusted = String.valueOf(row.get("message"));
                     if ("like".equals(kind)) {
@@ -197,6 +203,11 @@ public class NotificationController {
                     }
                     row.put("message", adjusted);
                 }
+                row.put("targetType", "post");
+            } else if (("like".equals(kind) || "comment".equals(kind)) && storyId != null) {
+                row.put("storyId", storyId);
+                row.put("storyUrl", "/stories?story=" + storyId);
+                row.put("targetType", "story");
             }
             if ("emergency".equals(kind)) {
                 String alertId = extractAlertId(raw);
@@ -276,9 +287,20 @@ public class NotificationController {
         return null;
     }
 
-    private String stripPostMarkers(String message) {
+    private String extractStoryId(String message) {
+        if (message == null || message.isBlank()) return null;
+        Matcher matcher = STORY_ID_MARKER_PATTERN.matcher(message);
+        if (matcher.find()) {
+            String id = matcher.group(1);
+            return (id != null && !id.isBlank()) ? id.trim() : null;
+        }
+        return null;
+    }
+
+    private String stripTargetMarkers(String message) {
         if (message == null || message.isBlank()) return message;
         String stripped = POST_ID_MARKER_PATTERN.matcher(message).replaceAll(" ");
+        stripped = STORY_ID_MARKER_PATTERN.matcher(stripped).replaceAll(" ");
         return stripped.replaceAll("\\s{2,}", " ").trim();
     }
 
@@ -299,7 +321,7 @@ public class NotificationController {
     }
 
     private String buildNotificationThreadKey(Notification notification) {
-        String message = stripPostMarkers(notification != null ? notification.getMessage() : null);
+        String message = stripTargetMarkers(notification != null ? notification.getMessage() : null);
         String type = notification != null && notification.getType() != null ? notification.getType() : "SYSTEM";
         String kind = deriveKind(message);
         if ("EMERGENCY".equalsIgnoreCase(type)) {

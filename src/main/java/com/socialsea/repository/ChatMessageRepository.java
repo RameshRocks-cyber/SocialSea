@@ -7,7 +7,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
     @EntityGraph(attributePaths = {"sender", "receiver"})
@@ -46,6 +48,32 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
             Long receiverId,
             Long senderIdReverse,
             Long receiverIdReverse
+    );
+
+    @EntityGraph(attributePaths = {"sender", "receiver"})
+    Optional<ChatMessage> findTopBySenderIdAndReceiverIdAndClientMessageIdOrderByCreatedAtDesc(
+            Long senderId,
+            Long receiverId,
+            String clientMessageId
+    );
+
+    @EntityGraph(attributePaths = {"sender", "receiver"})
+    Optional<ChatMessage> findTopBySenderIdAndReceiverIdAndMediaTypeAndFileNameAndMediaSizeBytesAndTextAndCreatedAtAfterOrderByCreatedAtDesc(
+            Long senderId,
+            Long receiverId,
+            String mediaType,
+            String fileName,
+            Long mediaSizeBytes,
+            String text,
+            LocalDateTime createdAtAfter
+    );
+
+    @EntityGraph(attributePaths = {"sender", "receiver"})
+    Optional<ChatMessage> findTopBySenderIdAndReceiverIdAndMediaFingerprintAndCreatedAtAfterOrderByCreatedAtDesc(
+            Long senderId,
+            Long receiverId,
+            String mediaFingerprint,
+            LocalDateTime createdAtAfter
     );
 
     long deleteBySenderIdAndReceiverIdOrSenderIdAndReceiverId(

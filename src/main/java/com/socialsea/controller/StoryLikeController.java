@@ -100,7 +100,7 @@ public class StoryLikeController {
                     : user.getEmail();
             notificationService.notifyUser(
                     owner.getEmail(),
-                    actor + " liked your story"
+                    actor + " liked your story [storyId:" + story.getId() + "]"
             );
         }
 

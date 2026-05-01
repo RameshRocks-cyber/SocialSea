@@ -8,5 +8,6 @@ import java.util.List;
 
 public interface StoryCommentRepository extends JpaRepository<StoryComment, Long> {
     long countByStory(Story story);
+    long deleteByStory(Story story);
     List<StoryComment> findByStoryOrderByCreatedAtDesc(Story story);
 }

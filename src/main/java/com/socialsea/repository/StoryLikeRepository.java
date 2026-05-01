@@ -11,5 +11,6 @@ public interface StoryLikeRepository extends JpaRepository<StoryLike, Long> {
     boolean existsByUserAndStory(User user, Story story);
     long countByStory(Story story);
     void deleteByUserAndStory(User user, Story story);
+    long deleteByStory(Story story);
     List<StoryLike> findByStoryOrderByIdDesc(Story story);
 }

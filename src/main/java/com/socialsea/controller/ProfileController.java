@@ -15,6 +15,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -23,6 +24,8 @@ import java.util.stream.Collectors;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.regex.Pattern;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/profile")
@@ -591,24 +594,11 @@ public class ProfileController {
                     .body(Map.of("message", "This account is private"));
         }
 
-        List<Map<String, Object>> users = followRepo.findByFollowing(target).stream()
+        List<User> users = followRepo.findByFollowing(target).stream()
                 .map(Follow::getFollower)
                 .filter(u -> u != null && u.getId() != null)
-                .map(u -> {
-                    Map<String, Object> item = new HashMap<>();
-                    item.put("id", u.getId());
-                    item.put("email", u.getEmail());
-                    item.put("name", (u.getName() != null && !u.getName().isBlank()) ? u.getName() : u.getEmail());
-                    item.put("username", (u.getName() != null && !u.getName().isBlank()) ? u.getName() : u.getEmail());
-                    String profilePicUrl = UrlUtils.toAbsoluteUrl(request, u.getProfilePic());
-                    item.put("profilePic", profilePicUrl);
-                    item.put("profilePicUrl", profilePicUrl);
-                    return item;
-                })
-                .distinct()
                 .toList();
-
-        return ResponseEntity.ok(users);
+        return ResponseEntity.ok(uniqueUserItemsById(request, users));
     }
 
     @GetMapping("/{identifier}/following")
@@ -631,24 +621,11 @@ public class ProfileController {
                     .body(Map.of("message", "This account is private"));
         }
 
-        List<Map<String, Object>> users = followRepo.findByFollower(target).stream()
+        List<User> users = followRepo.findByFollower(target).stream()
                 .map(Follow::getFollowing)
                 .filter(u -> u != null && u.getId() != null)
-                .map(u -> {
-                    Map<String, Object> item = new HashMap<>();
-                    item.put("id", u.getId());
-                    item.put("email", u.getEmail());
-                    item.put("name", (u.getName() != null && !u.getName().isBlank()) ? u.getName() : u.getEmail());
-                    item.put("username", (u.getName() != null && !u.getName().isBlank()) ? u.getName() : u.getEmail());
-                    String profilePicUrl = UrlUtils.toAbsoluteUrl(request, u.getProfilePic());
-                    item.put("profilePic", profilePicUrl);
-                    item.put("profilePicUrl", profilePicUrl);
-                    return item;
-                })
-                .distinct()
                 .toList();
-
-        return ResponseEntity.ok(users);
+        return ResponseEntity.ok(uniqueUserItemsById(request, users));
     }
 
     private boolean canViewProfileContent(User viewer, User owner) {
@@ -667,16 +644,53 @@ public class ProfileController {
     }
 
     private Optional<User> resolveUser(String identifier, Authentication auth) {
-        if ("me".equalsIgnoreCase(identifier)) {
+        String clean = normalizeIdentifier(identifier);
+
+        if ("me".equalsIgnoreCase(clean)) {
             return resolveAuthenticatedUser(auth);
         }
 
-        if (identifier != null && identifier.matches("\\d+")) {
-            return userRepo.findById(Long.parseLong(identifier));
+        if (clean.matches("\\d+")) {
+            return userRepo.findById(Long.parseLong(clean));
         }
 
-        return userRepo.findByEmailIgnoreCase(identifier)
-                .or(() -> userRepo.findByNameIgnoreCase(identifier));
+        return userRepo.findByEmailIgnoreCase(clean)
+                .or(() -> userRepo.findByNameIgnoreCase(clean));
+    }
+
+    private String normalizeIdentifier(String identifier) {
+        if (identifier == null) return "";
+        String clean = identifier.trim();
+        try {
+            clean = URLDecoder.decode(clean, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException ignored) {
+            // Keep raw identifier when URL decoding fails.
+        }
+
+        while (!clean.isEmpty() && (clean.startsWith("[") || clean.startsWith("\"") || clean.startsWith("'"))) {
+            clean = clean.substring(1).trim();
+        }
+        while (!clean.isEmpty() && (clean.endsWith("]") || clean.endsWith("\"") || clean.endsWith("'") || clean.endsWith(","))) {
+            clean = clean.substring(0, clean.length() - 1).trim();
+        }
+        return clean;
+    }
+
+    private List<Map<String, Object>> uniqueUserItemsById(HttpServletRequest request, List<User> users) {
+        Map<Long, Map<String, Object>> unique = new LinkedHashMap<>();
+        for (User user : users) {
+            if (user == null || user.getId() == null) continue;
+            Map<String, Object> item = new HashMap<>();
+            item.put("id", user.getId());
+            item.put("email", user.getEmail());
+            item.put("name", (user.getName() != null && !user.getName().isBlank()) ? user.getName() : user.getEmail());
+            item.put("username", (user.getName() != null && !user.getName().isBlank()) ? user.getName() : user.getEmail());
+            String profilePicUrl = UrlUtils.toAbsoluteUrl(request, user.getProfilePic());
+            item.put("profilePic", profilePicUrl);
+            item.put("profilePicUrl", profilePicUrl);
+            unique.putIfAbsent(user.getId(), item);
+        }
+        return List.copyOf(unique.values());
     }
 
     private Optional<User> resolveAuthenticatedUser(Authentication auth) {

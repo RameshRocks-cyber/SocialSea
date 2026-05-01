@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 @RestController
 @RequestMapping("/api/calls")
@@ -30,11 +29,6 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class CallSignalRestController {
 
-    private static final Set<String> ALLOWED_TYPES = Set.of(
-            "offer", "answer", "ice", "hangup", "reject", "busy", "ringing",
-            "livekit-invite", "livekit-accept",
-            "connected", "refreshing", "ended", "accepted", "typing"
-    );
     private static final Logger log = LoggerFactory.getLogger(CallSignalRestController.class);
 
     private final UserRepository userRepository;
@@ -58,7 +52,7 @@ public class CallSignalRestController {
         if (target == null) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
 
         String type = normalize(payload.getType());
-        if (!ALLOWED_TYPES.contains(type)) {
+        if (!CallSignalTypes.ALLOWED.contains(type)) {
             return ResponseEntity.badRequest().body(Map.of("message", "invalid signal type"));
         }
 

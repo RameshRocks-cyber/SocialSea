@@ -15,9 +15,12 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/api/follow")
@@ -192,12 +195,11 @@ public class FollowController {
     ) {
         requireAuth(auth);
         User user = resolveUser(identifier, auth);
-        return followRepo.findByFollowing(user).stream()
+        List<User> users = followRepo.findByFollowing(user).stream()
                 .map(Follow::getFollower)
                 .filter(Objects::nonNull)
-                .map(u -> toUserItem(request, u))
-                .distinct()
                 .toList();
+        return uniqueUserItemsById(request, users);
     }
 
     @GetMapping("/{identifier}/following/users")
@@ -208,12 +210,11 @@ public class FollowController {
     ) {
         requireAuth(auth);
         User user = resolveUser(identifier, auth);
-        return followRepo.findByFollower(user).stream()
+        List<User> users = followRepo.findByFollower(user).stream()
                 .map(Follow::getFollowing)
                 .filter(Objects::nonNull)
-                .map(u -> toUserItem(request, u))
-                .distinct()
                 .toList();
+        return uniqueUserItemsById(request, users);
     }
 
     private User requireAuth(Authentication auth) {
@@ -224,8 +225,8 @@ public class FollowController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login required"));
     }
     private User resolveUser(String identifier, Authentication auth) {
-        if (identifier != null) {
-            String clean = identifier.trim();
+        String clean = normalizeIdentifier(identifier);
+        if (!clean.isBlank()) {
             if (clean.equalsIgnoreCase("me") || clean.equalsIgnoreCase("self")) {
                 if (auth == null || !auth.isAuthenticated()) {
                     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login required");
@@ -234,13 +235,40 @@ public class FollowController {
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
             }
         }
-        if (identifier != null && identifier.matches("\\d+")) {
-            return userRepo.findById(Long.parseLong(identifier))
+        if (clean.matches("\\d+")) {
+            return userRepo.findById(Long.parseLong(clean))
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         }
-        return userRepo.findByEmailIgnoreCase(identifier)
-                .or(() -> userRepo.findByNameIgnoreCase(identifier))
+        return userRepo.findByEmailIgnoreCase(clean)
+                .or(() -> userRepo.findByNameIgnoreCase(clean))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    }
+
+    private String normalizeIdentifier(String identifier) {
+        if (identifier == null) return "";
+        String clean = identifier.trim();
+        try {
+            clean = URLDecoder.decode(clean, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException ignored) {
+            // Keep raw identifier when URL decoding fails.
+        }
+
+        while (!clean.isEmpty() && (clean.startsWith("[") || clean.startsWith("\"") || clean.startsWith("'"))) {
+            clean = clean.substring(1).trim();
+        }
+        while (!clean.isEmpty() && (clean.endsWith("]") || clean.endsWith("\"") || clean.endsWith("'") || clean.endsWith(","))) {
+            clean = clean.substring(0, clean.length() - 1).trim();
+        }
+        return clean;
+    }
+
+    private List<Map<String, Object>> uniqueUserItemsById(HttpServletRequest request, List<User> users) {
+        Map<Long, Map<String, Object>> unique = new LinkedHashMap<>();
+        for (User user : users) {
+            if (user == null || user.getId() == null) continue;
+            unique.putIfAbsent(user.getId(), toUserItem(request, user));
+        }
+        return List.copyOf(unique.values());
     }
 
     private Map<String, Object> toUserItem(HttpServletRequest request, User user) {
@@ -263,4 +291,3 @@ public class FollowController {
         return item;
     }
 }
-

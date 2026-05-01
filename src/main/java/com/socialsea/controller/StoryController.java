@@ -3,10 +3,14 @@ package com.socialsea.controller;
 import com.socialsea.dto.StoryDto;
 import com.socialsea.model.Story;
 import com.socialsea.model.User;
+import com.socialsea.repository.StoryCommentRepository;
+import com.socialsea.repository.StoryLikeRepository;
 import com.socialsea.repository.StoryRepository;
+import com.socialsea.repository.StoryViewRepository;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.StoryService;
 import com.socialsea.service.UploadService;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -18,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -43,17 +48,26 @@ public class StoryController {
     private final UserRepository userRepo;
     private final UploadService uploadService;
     private final StoryRepository storyRepo;
+    private final StoryLikeRepository storyLikeRepo;
+    private final StoryCommentRepository storyCommentRepo;
+    private final StoryViewRepository storyViewRepo;
 
     public StoryController(
             StoryService storyService,
             UserRepository userRepo,
             UploadService uploadService,
-            StoryRepository storyRepo
+            StoryRepository storyRepo,
+            StoryLikeRepository storyLikeRepo,
+            StoryCommentRepository storyCommentRepo,
+            StoryViewRepository storyViewRepo
     ) {
         this.storyService = storyService;
         this.userRepo = userRepo;
         this.uploadService = uploadService;
         this.storyRepo = storyRepo;
+        this.storyLikeRepo = storyLikeRepo;
+        this.storyCommentRepo = storyCommentRepo;
+        this.storyViewRepo = storyViewRepo;
     }
 
     @GetMapping("/feed")
@@ -177,6 +191,41 @@ public class StoryController {
             target = "/" + target;
         }
         return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(target)).build();
+    }
+
+    @DeleteMapping("/{id}")
+    @Transactional
+    public ResponseEntity<?> deleteStory(@PathVariable("id") Long id, Authentication auth) {
+        if (id == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "Missing story id"));
+        }
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+        User viewer = userRepo.findByEmail(auth.getName()).orElse(null);
+        if (viewer == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Session expired"));
+        }
+
+        Story story = storyRepo.findById(id).orElse(null);
+        if (story == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Story not found"));
+        }
+        User owner = story.getUser();
+        if (owner == null || owner.getId() == null || !owner.getId().equals(viewer.getId())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Not allowed"));
+        }
+
+        storyCommentRepo.deleteByStory(story);
+        storyLikeRepo.deleteByStory(story);
+        storyViewRepo.deleteByStory(story);
+        storyRepo.delete(story);
+        return ResponseEntity.ok(Map.of("ok", true, "deletedId", id));
+    }
+
+    @PostMapping("/{id}/delete")
+    public ResponseEntity<?> deleteStoryViaPost(@PathVariable("id") Long id, Authentication auth) {
+        return deleteStory(id, auth);
     }
 
     private String formatIsoOffset(LocalDateTime value) {

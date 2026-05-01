@@ -58,14 +58,20 @@ public class EmergencyController {
             return ResponseEntity.badRequest().body(Map.of("message", "latitude and longitude are required"));
         }
 
-        if (auth == null || !auth.isAuthenticated()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        String reporterEmail = null;
+        if (auth != null && auth.isAuthenticated()) {
+            reporterEmail = auth.getName();
         }
-        String reporterEmail = auth.getName();
+        if ((reporterEmail == null || reporterEmail.isBlank()) && request.reporterEmail != null) {
+            reporterEmail = request.reporterEmail.trim();
+        }
+        if (reporterEmail == null || reporterEmail.isBlank()) {
+            return ResponseEntity.ok(Map.of("ok", true, "message", "Presence ignored: no reporter identity"));
+        }
 
         User user = userRepo.findByEmail(reporterEmail).orElse(null);
         if (user == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Reporter not found"));
+            return ResponseEntity.ok(Map.of("ok", true, "message", "Presence ignored: user not found"));
         }
 
         user.setLastLatitude(request.latitude);
@@ -73,6 +79,9 @@ public class EmergencyController {
         user.setLocationUpdatedAt(LocalDateTime.now());
         userRepo.save(user);
 
+        if (auth == null || !auth.isAuthenticated()) {
+            log.info("SOS presence update from unauth user {} at {},{}", reporterEmail, request.latitude, request.longitude);
+        }
         return ResponseEntity.ok(Map.of("ok", true));
     }
 
@@ -82,15 +91,18 @@ public class EmergencyController {
             return ResponseEntity.badRequest().body(Map.of("message", "latitude and longitude are required"));
         }
 
-        if (auth == null || !auth.isAuthenticated()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        String reporterEmail = null;
+        if (auth != null && auth.isAuthenticated()) {
+            reporterEmail = auth.getName();
         }
-        String reporterEmail = auth.getName();
+        if ((reporterEmail == null || reporterEmail.isBlank()) && request.reporterEmail != null) {
+            reporterEmail = request.reporterEmail.trim();
+        }
+        if (reporterEmail == null || reporterEmail.isBlank()) {
+            reporterEmail = "anonymous@socialsea.local";
+        }
 
         User reporter = userRepo.findByEmail(reporterEmail).orElse(null);
-        if (reporter == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Reporter not found"));
-        }
 
         int radiusMeters = request.radiusMeters != null && request.radiusMeters > 0
                 ? request.radiusMeters
@@ -258,28 +270,22 @@ public class EmergencyController {
             @RequestParam(required = false, defaultValue = "false") boolean includeReporter,
             @RequestParam(required = false, defaultValue = "false") boolean includeNearby
     ) {
-        if (auth == null || !auth.isAuthenticated()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
-        }
-        User me = userRepo.findByEmail(auth.getName()).orElse(null);
-        if (me == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
-        }
         cleanupPreviewCache();
         String frontendBase = resolveFrontendBaseUrl(httpRequest);
 
-        // If viewer location is missing/stale, require explicit query location.
+        // If unauthenticated or location is missing/stale, return active alerts without distance filtering.
+        User me = null;
         boolean canFilterByDistance = false;
         Double queryLat = lat != null ? lat : latitude;
         Double queryLon = lon != null ? lon : longitude;
         if (queryLat != null && queryLon != null) {
             canFilterByDistance = true;
-        } else if (me.getLastLatitude() != null && me.getLastLongitude() != null && me.getLocationUpdatedAt() != null
-                && Duration.between(me.getLocationUpdatedAt(), LocalDateTime.now()).toMinutes() <= locationStaleMinutes) {
-            canFilterByDistance = true;
-        }
-        if (!canFilterByDistance) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Current location is required"));
+        } else if (auth != null && auth.isAuthenticated()) {
+            me = userRepo.findByEmail(auth.getName()).orElse(null);
+            if (me != null && me.getLastLatitude() != null && me.getLastLongitude() != null && me.getLocationUpdatedAt() != null
+                    && Duration.between(me.getLocationUpdatedAt(), LocalDateTime.now()).toMinutes() <= locationStaleMinutes) {
+                canFilterByDistance = true;
+            }
         }
 
         final User viewer = me;
@@ -345,7 +351,7 @@ public class EmergencyController {
                     .map(a -> {
                         Map<String, Object> item = new HashMap<>();
                         item.put("alertId", a.getId());
-                        item.put("isReporter", auth.getName().equalsIgnoreCase(String.valueOf(a.getReporterEmail())));
+                        item.put("reporterEmail", a.getReporterEmail());
                         item.put("active", a.isActive());
                         Double aLat = a.getCurrentLatitude() != null ? a.getCurrentLatitude() : a.getLatitude();
                         Double aLon = a.getCurrentLongitude() != null ? a.getCurrentLongitude() : a.getLongitude();
@@ -390,9 +396,7 @@ public class EmergencyController {
                 .map(a -> {
                     Map<String, Object> item = new HashMap<>();
                     item.put("alertId", a.getId());
-                    if (auth.getName().equalsIgnoreCase(String.valueOf(a.getReporterEmail()))) {
-                        item.put("reporterEmail", a.getReporterEmail());
-                    }
+                    item.put("reporterEmail", a.getReporterEmail());
                     item.put("startedAt", a.getStartedAt());
                     item.put("latitude", a.getCurrentLatitude() != null ? a.getCurrentLatitude() : a.getLatitude());
                     item.put("longitude", a.getCurrentLongitude() != null ? a.getCurrentLongitude() : a.getLongitude());
@@ -803,6 +807,7 @@ public class EmergencyController {
         public Double longitude;
         public Double accuracyMeters;
         public Integer radiusMeters;
+        public String reporterEmail;
         public Boolean frontCameraEnabled;
         public Boolean backCameraEnabled;
         public Boolean audioActive;
@@ -812,6 +817,7 @@ public class EmergencyController {
     public static class PresenceRequest {
         public Double latitude;
         public Double longitude;
+        public String reporterEmail;
     }
 
     public static class HeartbeatRequest {

@@ -97,7 +97,7 @@ public class StoryCommentController {
                     : user.getEmail();
             notificationService.notifyUser(
                     owner.getEmail(),
-                    actor + " commented on your story"
+                    actor + " commented on your story [storyId:" + story.getId() + "]"
             );
         }
 

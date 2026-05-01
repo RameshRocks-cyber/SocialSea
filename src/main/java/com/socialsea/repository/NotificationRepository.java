@@ -21,6 +21,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     @Modifying
     @Transactional
-    @Query("UPDATE Notification n SET n.read = true WHERE n.recipient = :recipient AND n.read = false")
+    @Query("UPDATE Notification n SET n.read = true WHERE lower(n.recipient) = lower(:recipient) AND n.read = false")
     void markAllAsRead(String recipient);
 }

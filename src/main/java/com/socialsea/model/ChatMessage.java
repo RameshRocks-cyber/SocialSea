@@ -35,6 +35,15 @@ public class ChatMessage {
     @Column(length = 255)
     private String fileName;
 
+    @Column(length = 120)
+    private String clientMessageId;
+
+    @Column
+    private Long mediaSizeBytes;
+
+    @Column(length = 64)
+    private String mediaFingerprint;
+
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -102,6 +111,30 @@ public class ChatMessage {
 
     public void setFileName(String fileName) {
         this.fileName = fileName;
+    }
+
+    public String getClientMessageId() {
+        return clientMessageId;
+    }
+
+    public void setClientMessageId(String clientMessageId) {
+        this.clientMessageId = clientMessageId;
+    }
+
+    public Long getMediaSizeBytes() {
+        return mediaSizeBytes;
+    }
+
+    public void setMediaSizeBytes(Long mediaSizeBytes) {
+        this.mediaSizeBytes = mediaSizeBytes;
+    }
+
+    public String getMediaFingerprint() {
+        return mediaFingerprint;
+    }
+
+    public void setMediaFingerprint(String mediaFingerprint) {
+        this.mediaFingerprint = mediaFingerprint;
     }
 
     public LocalDateTime getCreatedAt() {
