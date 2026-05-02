@@ -5,6 +5,8 @@ import com.socialsea.repository.*;
 import com.socialsea.util.MediaUrlUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -37,6 +39,8 @@ public class NotificationController {
         Pattern.compile("\\[postId\\s*:\\s*(\\d+)]", Pattern.CASE_INSENSITIVE);
     private static final Pattern STORY_ID_MARKER_PATTERN =
         Pattern.compile("\\[storyId\\s*:\\s*(\\d+)]", Pattern.CASE_INSENSITIVE);
+    private static final int DEFAULT_PAGE_SIZE = 50;
+    private static final int MAX_PAGE_SIZE = 120;
 
     public NotificationController(NotificationRepository repo, UserRepository userRepo, PostRepository postRepo) {
         this.repo = repo;
@@ -45,10 +49,24 @@ public class NotificationController {
     }
 
     @GetMapping
-    public List<Map<String, Object>> list(Authentication auth) {
+    public List<Map<String, Object>> list(
+        Authentication auth,
+        @RequestParam(name = "page", defaultValue = "0") int page,
+        @RequestParam(name = "limit", required = false) Integer limit,
+        @RequestParam(name = "size", required = false) Integer size
+    ) {
         if (auth == null || !auth.isAuthenticated()) return List.of();
         try {
-            return buildNotificationPayload(auth.getName());
+            int safePage = Math.max(0, page);
+            int requestedSize = size != null ? size : (limit != null ? limit : DEFAULT_PAGE_SIZE);
+            int safeSize = resolvePageSize(requestedSize);
+            List<Notification> items = repo
+                .findByRecipientIgnoreCase(
+                    auth.getName(),
+                    PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "createdAt"))
+                )
+                .getContent();
+            return buildNotificationPayload(items);
         } catch (Exception ex) {
             log.error("Failed to load notifications for {}", auth.getName(), ex);
             return List.of();
@@ -59,7 +77,7 @@ public class NotificationController {
     public long unread(Authentication auth) {
         if (auth == null || !auth.isAuthenticated()) return 0;
         try {
-            List<Notification> all = repo.findByRecipientIgnoreCaseOrderByCreatedAtDesc(auth.getName());
+            List<Notification> all = repo.findByRecipientIgnoreCaseAndReadFalseOrderByCreatedAtDesc(auth.getName());
             Set<String> unreadThreads = new LinkedHashSet<>();
             for (Notification n : all) {
                 if (n == null || n.isRead()) continue;
@@ -118,8 +136,12 @@ public class NotificationController {
         return sb.toString();
     }
 
-    private List<Map<String, Object>> buildNotificationPayload(String recipientEmail) {
-        List<Notification> items = repo.findByRecipientIgnoreCaseOrderByCreatedAtDesc(recipientEmail);
+    private int resolvePageSize(int requestedSize) {
+        if (requestedSize <= 0) return DEFAULT_PAGE_SIZE;
+        return Math.min(MAX_PAGE_SIZE, requestedSize);
+    }
+
+    private List<Map<String, Object>> buildNotificationPayload(List<Notification> items) {
         List<Map<String, Object>> out = new ArrayList<>();
         Set<String> seenFollowActors = new LinkedHashSet<>();
 

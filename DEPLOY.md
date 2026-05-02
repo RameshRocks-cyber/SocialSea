@@ -35,8 +35,8 @@ That folder is now a Maven wrapper that compiles the backend from the repository
 - `SPRING_DATASOURCE_PASSWORD`
 - `JWT_SECRET`
 - Uploads:
-  - Cloudinary: `APP_UPLOAD_PROVIDER=cloudinary` + `CLOUDINARY_CLOUD_NAME` + `CLOUDINARY_API_KEY` + `CLOUDINARY_API_SECRET`
-  - OR S3: `APP_UPLOAD_PROVIDER=s3` + `APP_S3_BUCKET` (+ `APP_S3_PREFIX`) (+ `APP_S3_REGION` if needed)
+  - S3 (recommended/default): `APP_UPLOAD_PROVIDER=s3` + `APP_S3_BUCKET` (+ `APP_S3_PREFIX`) (+ `APP_S3_REGION` if needed)
+  - OR Cloudinary: `APP_UPLOAD_PROVIDER=cloudinary` + `CLOUDINARY_CLOUD_NAME` + `CLOUDINARY_API_KEY` + `CLOUDINARY_API_SECRET`
 - `APP_FRONTEND_BASE_URL=https://socialsea.netlify.app` (or your custom frontend domain)
 - `LIVEKIT_URL=wss://socialsea-mb50m9kr.livekit.cloud`
 - `LIVEKIT_API_KEY`

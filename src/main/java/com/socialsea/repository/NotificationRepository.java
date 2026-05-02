@@ -1,6 +1,8 @@
 package com.socialsea.repository;
 
 import com.socialsea.model.Notification;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -18,6 +20,8 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 
     List<Notification> findByRecipientOrderByCreatedAtDesc(String name);
     List<Notification> findByRecipientIgnoreCaseOrderByCreatedAtDesc(String name);
+    Page<Notification> findByRecipientIgnoreCase(String name, Pageable pageable);
+    List<Notification> findByRecipientIgnoreCaseAndReadFalseOrderByCreatedAtDesc(String name);
 
     @Modifying
     @Transactional

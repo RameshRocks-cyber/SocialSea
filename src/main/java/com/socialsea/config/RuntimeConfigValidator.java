@@ -26,7 +26,7 @@ public class RuntimeConfigValidator implements ApplicationRunner {
     @Value("${spring.datasource.url:}")
     private String datasourceUrl;
 
-    @Value("${app.upload.provider:cloudinary}")
+    @Value("${app.upload.provider:s3}")
     private String uploadProvider;
 
     @Value("${cloudinary.cloud_name:}")
@@ -77,7 +77,7 @@ public class RuntimeConfigValidator implements ApplicationRunner {
 
         String provider = uploadProvider == null ? "" : uploadProvider.trim().toLowerCase(Locale.ROOT);
         if (provider.isBlank()) {
-            provider = "cloudinary";
+            provider = "s3";
         }
 
         List<String> missing = new ArrayList<>();
