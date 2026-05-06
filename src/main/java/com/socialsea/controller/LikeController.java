@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/likes")
 @CrossOrigin(origins = {"https://socialsea.netlify.app",
     "https://socialsea.co.in",
-    "https://www.socialsea.co.in", "http://localhost:5173", "http://43.205.213.14:5173"})
+    "https://www.socialsea.co.in", "http://localhost:5173", "http://127.0.0.1:5173", "http://43.205.229.211:5173"})
 public class LikeController {
 
     private final LikeRepository likeRepo;

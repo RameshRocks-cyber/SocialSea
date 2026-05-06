@@ -2,12 +2,13 @@ package com.socialsea.controller;
 
 import com.socialsea.model.Post;
 import com.socialsea.model.Role;
+import com.socialsea.model.Story;
 import com.socialsea.model.User;
 import com.socialsea.repository.PostRepository;
 import com.socialsea.repository.StoryRepository;
-import com.socialsea.model.Story;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.UploadService;
+import com.socialsea.service.VideoEditingService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -23,30 +24,37 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Objects;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/posts")
 public class PostController {
     private static final DateTimeFormatter ISO_OFFSET = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
+    private static final int MAX_TITLE_LEN = 240;
+    private static final int MAX_DESC_LEN = 3000;
+    private static final int MAX_SETTINGS_LEN = 150000;
 
     private final PostRepository postRepo;
     private final UserRepository userRepo;
     private final UploadService uploadService;
     private final StoryRepository storyRepo;
+    private final VideoEditingService videoEditingService;
 
     public PostController(
         PostRepository postRepo,
         UserRepository userRepo,
         UploadService uploadService,
-        StoryRepository storyRepo
+        StoryRepository storyRepo,
+        VideoEditingService videoEditingService
     ) {
         this.postRepo = postRepo;
         this.userRepo = userRepo;
         this.uploadService = uploadService;
         this.storyRepo = storyRepo;
+        this.videoEditingService = videoEditingService;
     }
 
     @GetMapping({"/create-options", "/upload-options"})
@@ -75,6 +83,9 @@ public class PostController {
         @RequestParam(value = "storyExpiresHours", required = false) String storyExpiresHours,
         @RequestParam(value = "storyText", required = false) String storyText,
         @RequestParam(value = "caption", required = false) String caption,
+        @RequestParam(value = "title", required = false) String title,
+        @RequestParam(value = "videoSettings", required = false) String videoSettings,
+        @RequestParam(value = "coverImage", required = false) MultipartFile coverImage,
         @RequestParam(value = "isReel", required = false) String isReel,
         @RequestParam(value = "reel", required = false) String reel,
         @RequestParam(value = "isLongVideo", required = false) String isLongVideo,
@@ -97,19 +108,23 @@ public class PostController {
                 .body(Map.of("message", "Session expired. Please login again."));
         }
 
-        String url;
-        try {
-            url = uploadService.upload(file);
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                .body(Map.of("message", e.getMessage()));
-        }
+        boolean wantsStory = isTruthy(isStory);
+        try (VideoEditingService.ProcessingResult videoResult = (!wantsStory && isVideo(file))
+            ? videoEditingService.prepareForUpload(file, videoSettings)
+            : null) {
 
-        try {
-            boolean wantsStory = isStory != null && isStory.equalsIgnoreCase("true");
+            MultipartFile mediaUploadFile = videoResult != null ? videoResult.getUploadFile() : file;
+            MultipartFile generatedCoverFile = videoResult != null ? videoResult.getGeneratedCoverImage() : null;
+            String normalizedSettings = videoResult != null
+                ? videoResult.getNormalizedVideoSettings()
+                : clip(clean(videoSettings), MAX_SETTINGS_LEN);
+            boolean editsApplied = videoResult != null && videoResult.isEditsApplied();
+
+            String mediaUrl = uploadService.upload(mediaUploadFile);
+
             if (wantsStory) {
                 Story story = new Story();
-                story.setMediaUrl(url);
+                story.setMediaUrl(mediaUrl);
                 story.setCaption(caption != null ? caption : "");
                 story.setStoryText(storyText != null ? storyText : "");
                 story.setStoryStyle(storyStyle != null ? storyStyle : "");
@@ -141,28 +156,60 @@ public class PostController {
                 ));
             }
 
-            Post post = new Post();
-            post.setMediaUrl(url);
-            boolean videoFile = isVideo(file);
+            boolean videoFile = isVideo(mediaUploadFile);
             boolean wantsReel = isTruthy(isReel) || isTruthy(reel) || isReelType(type);
             boolean wantsLongVideo = isTruthy(isLongVideo) || isLongVideoType(type);
             if ((wantsReel || wantsLongVideo) && !videoFile) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Video file required for reels/long videos"));
+                return ResponseEntity.badRequest().body(Map.of("message", "Video file required for clips/long videos"));
             }
-            // Interpret `reel` as "short-video reel" (not "any video"). Long videos are video files with reel=false.
+
+            String coverImageUrl = null;
+            MultipartFile chosenCover = firstNonEmptyFile(coverImage, generatedCoverFile);
+            if (chosenCover != null && !chosenCover.isEmpty()) {
+                coverImageUrl = uploadService.upload(chosenCover);
+            }
+
+            String safeTitle = clip(clean(title), MAX_TITLE_LEN);
+            String safeDescription = clip(clean(caption), MAX_DESC_LEN);
+            String safeSettings = clip(clean(normalizedSettings), MAX_SETTINGS_LEN);
+
+            Post post = new Post();
+            post.setMediaUrl(mediaUrl);
             post.setReel(videoFile && wantsReel);
             post.setApproved(true);
             post.setUser(user);
+            post.setTitle(safeTitle);
+            post.setDescription(safeDescription);
+            post.setVideoSettings(safeSettings);
+            post.setCoverImageUrl(coverImageUrl);
+
             Post saved = postRepo.save(post);
 
-            return ResponseEntity.ok(Map.of(
-                "id", saved.getId(),
-                "mediaUrl", saved.getMediaUrl(),
-                "reel", saved.isReel(),
-                "approved", saved.isApproved(),
-                "createdAt", String.valueOf(saved.getCreatedAt()),
-                "userId", saved.getUser() != null ? saved.getUser().getId() : null
-            ));
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("id", saved.getId());
+            payload.put("mediaUrl", saved.getMediaUrl());
+            payload.put("contentUrl", saved.getMediaUrl());
+            payload.put("coverImageUrl", saved.getCoverImageUrl());
+            payload.put("coverImage", saved.getCoverImageUrl());
+            payload.put("reel", saved.isReel());
+            payload.put("approved", saved.isApproved());
+            payload.put("title", saved.getTitle());
+            payload.put("description", saved.getDescription());
+            payload.put("videoSettings", saved.getVideoSettings());
+            payload.put("createdAt", String.valueOf(saved.getCreatedAt()));
+            payload.put("userId", saved.getUser() != null ? saved.getUser().getId() : null);
+            payload.put("isVideo", videoFile);
+            payload.put("video", videoFile);
+            payload.put("editsApplied", editsApplied);
+            return ResponseEntity.ok(payload);
+        } catch (IllegalStateException e) {
+            String message = clean(e.getMessage());
+            if (message == null) message = "Video processing failed";
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", message));
+        } catch (RuntimeException e) {
+            String message = clean(e.getMessage());
+            if (message == null) message = "Upload failed";
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("message", message));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("message", "Post save failed: " + e.getMessage()));
@@ -213,7 +260,15 @@ public class PostController {
 
     private boolean isVideo(MultipartFile file) {
         String contentType = file.getContentType();
-        return contentType != null && contentType.startsWith("video");
+        return contentType != null && contentType.toLowerCase().startsWith("video");
+    }
+
+    private MultipartFile firstNonEmptyFile(MultipartFile... files) {
+        if (files == null) return null;
+        for (MultipartFile file : files) {
+            if (file != null && !file.isEmpty()) return file;
+        }
+        return null;
     }
 
     private boolean isTruthy(String value) {
@@ -234,8 +289,21 @@ public class PostController {
         return normalized.equals("long_video") || normalized.equals("long-video") || normalized.equals("long") || normalized.equals("watch");
     }
 
+    private String clean(String raw) {
+        if (raw == null) return null;
+        String out = raw.trim();
+        return out.isEmpty() ? null : out;
+    }
+
+    private String clip(String raw, int maxLen) {
+        if (raw == null) return null;
+        if (raw.length() <= maxLen) return raw;
+        return raw.substring(0, maxLen);
+    }
+
     private String formatIsoOffset(LocalDateTime value) {
         if (value == null) return null;
         return value.atZone(ZoneId.systemDefault()).format(ISO_OFFSET);
     }
 }
+

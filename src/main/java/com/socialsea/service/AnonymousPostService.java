@@ -31,7 +31,7 @@ public class AnonymousPostService {
 
         try {
             var uploadResult = cloudinary.uploader().upload(
-                file.getBytes(),
+                file.getInputStream(),
                 Map.of("resource_type", "video")
             );
 

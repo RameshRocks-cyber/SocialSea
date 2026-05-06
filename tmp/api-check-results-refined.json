@@ -1,0 +1,1674 @@
+﻿[
+    {
+        "method":  "GET",
+        "path":  "/",
+        "testUrl":  "http://localhost:8080/",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/admin/reports/pending",
+        "testUrl":  "http://localhost:8080/admin/reports/pending",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/admin/reports/resolve/{id}",
+        "testUrl":  "http://localhost:8080/admin/reports/resolve/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/anonymous/feed",
+        "testUrl":  "http://localhost:8080/anonymous/feed",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/accessibility/sign-to-text",
+        "testUrl":  "http://localhost:8080/api/accessibility/sign-to-text",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/ambulance/requests",
+        "testUrl":  "http://localhost:8080/api/admin/ambulance/requests",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/ambulance/requests/{id}/approve",
+        "testUrl":  "http://localhost:8080/api/admin/ambulance/requests/1/approve",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/ambulance/requests/{id}/reject",
+        "testUrl":  "http://localhost:8080/api/admin/ambulance/requests/1/reject",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/anonymous/approve/{id}",
+        "testUrl":  "http://localhost:8080/api/admin/anonymous/approve/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "PUT",
+        "path":  "/api/admin/anonymous/approve/{id}",
+        "testUrl":  "http://localhost:8080/api/admin/anonymous/approve/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/anonymous/approved",
+        "testUrl":  "http://localhost:8080/api/admin/anonymous/approved",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/anonymous/moderation/approve/{id}",
+        "testUrl":  "http://localhost:8080/api/admin/anonymous/moderation/approve/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/anonymous/moderation/pending",
+        "testUrl":  "http://localhost:8080/api/admin/anonymous/moderation/pending",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/anonymous/moderation/reject/{id}",
+        "testUrl":  "http://localhost:8080/api/admin/anonymous/moderation/reject/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/anonymous/pending",
+        "testUrl":  "http://localhost:8080/api/admin/anonymous/pending",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/anonymous/reject/{id}",
+        "testUrl":  "http://localhost:8080/api/admin/anonymous/reject/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "PUT",
+        "path":  "/api/admin/anonymous/reject/{id}",
+        "testUrl":  "http://localhost:8080/api/admin/anonymous/reject/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/anonymous/rejected",
+        "testUrl":  "http://localhost:8080/api/admin/anonymous/rejected",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/dashboard",
+        "testUrl":  "http://localhost:8080/api/admin/dashboard",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/dashboard/charts",
+        "testUrl":  "http://localhost:8080/api/admin/dashboard/charts",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/dashboard/export/posts",
+        "testUrl":  "http://localhost:8080/api/admin/dashboard/export/posts",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/dashboard/export/users",
+        "testUrl":  "http://localhost:8080/api/admin/dashboard/export/users",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/dashboard/legacy",
+        "testUrl":  "http://localhost:8080/api/admin/dashboard/legacy",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/dashboard/stats",
+        "testUrl":  "http://localhost:8080/api/admin/dashboard/stats",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/dashboard/users-chart",
+        "testUrl":  "http://localhost:8080/api/admin/dashboard/users-chart",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/live-recordings",
+        "testUrl":  "http://localhost:8080/api/admin/live-recordings",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/notifications",
+        "testUrl":  "http://localhost:8080/api/admin/notifications",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/notifications/read-all",
+        "testUrl":  "http://localhost:8080/api/admin/notifications/read-all",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/notifications/unread-count",
+        "testUrl":  "http://localhost:8080/api/admin/notifications/unread-count",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/notifications/{id}/read",
+        "testUrl":  "http://localhost:8080/api/admin/notifications/1/read",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/posts",
+        "testUrl":  "http://localhost:8080/api/admin/posts",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/reports",
+        "testUrl":  "http://localhost:8080/api/admin/reports",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/sos-nearby",
+        "testUrl":  "http://localhost:8080/api/admin/sos-nearby",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/users",
+        "testUrl":  "http://localhost:8080/api/admin/users",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/users/{id}/ban",
+        "testUrl":  "http://localhost:8080/api/admin/users/1/ban",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/users/{id}/block",
+        "testUrl":  "http://localhost:8080/api/admin/users/1/block",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/users/{id}/unban",
+        "testUrl":  "http://localhost:8080/api/admin/users/1/unban",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/users/{id}/unblock",
+        "testUrl":  "http://localhost:8080/api/admin/users/1/unblock",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/ambulance/alert",
+        "testUrl":  "http://localhost:8080/api/ambulance/alert",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/ambulance/me",
+        "testUrl":  "http://localhost:8080/api/ambulance/me",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/ambulance/request",
+        "testUrl":  "http://localhost:8080/api/ambulance/request",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/ambulance/resolve",
+        "testUrl":  "http://localhost:8080/api/ambulance/resolve",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/ambulance/trip/start",
+        "testUrl":  "http://localhost:8080/api/ambulance/trip/start",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/anonymous/feed",
+        "testUrl":  "http://localhost:8080/api/anonymous/feed",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/anonymous/upload",
+        "testUrl":  "http://localhost:8080/api/anonymous/upload",
+        "status":  -1,
+        "category":  "Other",
+        "detail":  "A parameter cannot be found that matches parameter name \u0027Form\u0027."
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/anonymous/{id}/like",
+        "testUrl":  "http://localhost:8080/api/anonymous/1/like",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/anonymous/{id}/view",
+        "testUrl":  "http://localhost:8080/api/anonymous/1/view",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/auth/admin/login",
+        "testUrl":  "http://localhost:8080/api/auth/admin/login",
+        "status":  500,
+        "category":  "ServerError",
+        "detail":  "{\"timestamp\":\"2026-05-05T11:07:17.130+00:00\",\"status\":500,\"error\":\"Internal Server Error\",\"path\":\"/api/auth/admin/login\"}"
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/auth/login",
+        "testUrl":  "http://localhost:8080/api/auth/login",
+        "status":  400,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/auth/refresh",
+        "testUrl":  "http://localhost:8080/api/auth/refresh",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/auth/register",
+        "testUrl":  "http://localhost:8080/api/auth/register",
+        "status":  400,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/auth/reset-password",
+        "testUrl":  "http://localhost:8080/api/auth/reset-password",
+        "status":  400,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/auth/resetPassword",
+        "testUrl":  "http://localhost:8080/api/auth/resetPassword",
+        "status":  400,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/auth/send-otp",
+        "testUrl":  "http://localhost:8080/api/auth/send-otp",
+        "status":  400,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/auth/verify-otp",
+        "testUrl":  "http://localhost:8080/api/auth/verify-otp",
+        "status":  400,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/calls/inbox",
+        "testUrl":  "http://localhost:8080/api/calls/inbox",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/calls/signal/{targetUserId}",
+        "testUrl":  "http://localhost:8080/api/calls/signal/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/chat/conversations",
+        "testUrl":  "http://localhost:8080/api/chat/conversations",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/chat/presence",
+        "testUrl":  "http://localhost:8080/api/chat/presence",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/chat/presence",
+        "testUrl":  "http://localhost:8080/api/chat/presence",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/chat/unread-count",
+        "testUrl":  "http://localhost:8080/api/chat/unread-count",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/chat/{otherUserId}",
+        "testUrl":  "http://localhost:8080/api/chat/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/chat/{otherUserId}/mark-read",
+        "testUrl":  "http://localhost:8080/api/chat/1/mark-read",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/chat/{otherUserId}/messages",
+        "testUrl":  "http://localhost:8080/api/chat/1/messages",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/chat/{otherUserId}/send",
+        "testUrl":  "http://localhost:8080/api/chat/1/send",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/chat/{otherUserId}/send-audio",
+        "testUrl":  "http://localhost:8080/api/chat/1/send-audio",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/chat/{otherUserId}/send-media",
+        "testUrl":  "http://localhost:8080/api/chat/1/send-media",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/clips",
+        "testUrl":  "http://localhost:8080/api/clips",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/clips/{postId}",
+        "testUrl":  "http://localhost:8080/api/clips/1",
+        "status":  404,
+        "category":  "NotFound",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/comments/{postId}",
+        "testUrl":  "http://localhost:8080/api/comments/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/comments/{postId}",
+        "testUrl":  "http://localhost:8080/api/comments/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/emergency/active",
+        "testUrl":  "http://localhost:8080/api/emergency/active",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/emergency/my-recordings",
+        "testUrl":  "http://localhost:8080/api/emergency/my-recordings",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/emergency/my-recordings/{alertId}",
+        "testUrl":  "http://localhost:8080/api/emergency/my-recordings/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/emergency/presence",
+        "testUrl":  "http://localhost:8080/api/emergency/presence",
+        "status":  400,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/emergency/trigger",
+        "testUrl":  "http://localhost:8080/api/emergency/trigger",
+        "status":  400,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/emergency/{alertId}",
+        "testUrl":  "http://localhost:8080/api/emergency/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/emergency/{alertId}/assist",
+        "testUrl":  "http://localhost:8080/api/emergency/1/assist",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/emergency/{alertId}/heartbeat",
+        "testUrl":  "http://localhost:8080/api/emergency/1/heartbeat",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/emergency/{alertId}/preview-frame",
+        "testUrl":  "http://localhost:8080/api/emergency/1/preview-frame",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/emergency/{alertId}/stop",
+        "testUrl":  "http://localhost:8080/api/emergency/1/stop",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/feed",
+        "testUrl":  "http://localhost:8080/api/feed",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/feed/anonymous",
+        "testUrl":  "http://localhost:8080/api/feed/anonymous",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/feed/videos",
+        "testUrl":  "http://localhost:8080/api/feed/videos",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/feed/{postId}",
+        "testUrl":  "http://localhost:8080/api/feed/1",
+        "status":  404,
+        "category":  "NotFound",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/follow/pending-requests",
+        "testUrl":  "http://localhost:8080/api/follow/pending-requests",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/follow/requests",
+        "testUrl":  "http://localhost:8080/api/follow/requests",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/follow/requests/{identifier}",
+        "testUrl":  "http://localhost:8080/api/follow/requests/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/follow/requests/{id}/accept",
+        "testUrl":  "http://localhost:8080/api/follow/requests/1/accept",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/follow/requests/{id}/reject",
+        "testUrl":  "http://localhost:8080/api/follow/requests/1/reject",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/follow/{identifier}",
+        "testUrl":  "http://localhost:8080/api/follow/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/follow/{identifier}",
+        "testUrl":  "http://localhost:8080/api/follow/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/follow/{identifier}/followers",
+        "testUrl":  "http://localhost:8080/api/follow/1/followers",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/follow/{identifier}/followers/users",
+        "testUrl":  "http://localhost:8080/api/follow/1/followers/users",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/follow/{identifier}/following",
+        "testUrl":  "http://localhost:8080/api/follow/1/following",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/follow/{identifier}/following/users",
+        "testUrl":  "http://localhost:8080/api/follow/1/following/users",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/jobs",
+        "testUrl":  "http://localhost:8080/api/jobs",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/jobs",
+        "testUrl":  "http://localhost:8080/api/jobs",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/jobs/mine",
+        "testUrl":  "http://localhost:8080/api/jobs/mine",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/jobs/{id}",
+        "testUrl":  "http://localhost:8080/api/jobs/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "PUT",
+        "path":  "/api/jobs/{id}",
+        "testUrl":  "http://localhost:8080/api/jobs/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/likes/{postId}",
+        "testUrl":  "http://localhost:8080/api/likes/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/likes/{postId}/count",
+        "testUrl":  "http://localhost:8080/api/likes/1/count",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/live-broadcast/active",
+        "testUrl":  "http://localhost:8080/api/live-broadcast/active",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/live-broadcast/start",
+        "testUrl":  "http://localhost:8080/api/live-broadcast/start",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/live-broadcast/stop",
+        "testUrl":  "http://localhost:8080/api/live-broadcast/stop",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/livekit/token",
+        "testUrl":  "http://localhost:8080/api/livekit/token",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/notifications",
+        "testUrl":  "http://localhost:8080/api/notifications",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "PATCH",
+        "path":  "/api/notifications",
+        "testUrl":  "http://localhost:8080/api/notifications",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/notifications/mark-all-read",
+        "testUrl":  "http://localhost:8080/api/notifications/mark-all-read",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/notifications/read-all",
+        "testUrl":  "http://localhost:8080/api/notifications/read-all",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/notifications/unread-count",
+        "testUrl":  "http://localhost:8080/api/notifications/unread-count",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/notifications/{id}/read",
+        "testUrl":  "http://localhost:8080/api/notifications/1/read",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/posts/create-options",
+        "testUrl":  "http://localhost:8080/api/posts/create-options",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/posts/upload",
+        "testUrl":  "http://localhost:8080/api/posts/upload",
+        "status":  -1,
+        "category":  "Other",
+        "detail":  "A parameter cannot be found that matches parameter name \u0027Form\u0027."
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/posts/upload-options",
+        "testUrl":  "http://localhost:8080/api/posts/upload-options",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/posts/{id}",
+        "testUrl":  "http://localhost:8080/api/posts/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/posts/{id}/delete",
+        "testUrl":  "http://localhost:8080/api/posts/1/delete",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/live-recordings",
+        "testUrl":  "http://localhost:8080/api/profile/live-recordings",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/profile/live-recordings/{alertId}",
+        "testUrl":  "http://localhost:8080/api/profile/live-recordings/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/me",
+        "testUrl":  "http://localhost:8080/api/profile/me",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/me/language",
+        "testUrl":  "http://localhost:8080/api/profile/me/language",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/profile/me/language",
+        "testUrl":  "http://localhost:8080/api/profile/me/language",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/me/live-recordings",
+        "testUrl":  "http://localhost:8080/api/profile/me/live-recordings",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/profile/me/live-recordings/{alertId}",
+        "testUrl":  "http://localhost:8080/api/profile/me/live-recordings/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/me/long-videos",
+        "testUrl":  "http://localhost:8080/api/profile/me/long-videos",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/profile/me/long-videos",
+        "testUrl":  "http://localhost:8080/api/profile/me/long-videos",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/me/notification-voice",
+        "testUrl":  "http://localhost:8080/api/profile/me/notification-voice",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/profile/me/notification-voice",
+        "testUrl":  "http://localhost:8080/api/profile/me/notification-voice",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/me/posts",
+        "testUrl":  "http://localhost:8080/api/profile/me/posts",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/profile/me/posts/cleanup-stories",
+        "testUrl":  "http://localhost:8080/api/profile/me/posts/cleanup-stories",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/profile/me/privacy",
+        "testUrl":  "http://localhost:8080/api/profile/me/privacy",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/profile/me/traffic-alerts",
+        "testUrl":  "http://localhost:8080/api/profile/me/traffic-alerts",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/name/check",
+        "testUrl":  "http://localhost:8080/api/profile/name/check",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/posts",
+        "testUrl":  "http://localhost:8080/api/profile/posts",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/search",
+        "testUrl":  "http://localhost:8080/api/profile/search",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/profile/setup",
+        "testUrl":  "http://localhost:8080/api/profile/setup?name=1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/{identifier}",
+        "testUrl":  "http://localhost:8080/api/profile/1",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/{identifier}/followers",
+        "testUrl":  "http://localhost:8080/api/profile/1/followers",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/{identifier}/following",
+        "testUrl":  "http://localhost:8080/api/profile/1/following",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/{identifier}/posts",
+        "testUrl":  "http://localhost:8080/api/profile/1/posts",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/public/study-assistant/gemini",
+        "testUrl":  "http://localhost:8080/api/public/study-assistant/gemini",
+        "status":  400,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/public/study-assistant/gemini/status",
+        "testUrl":  "http://localhost:8080/api/public/study-assistant/gemini/status",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/public/study-assistant/realtime-token",
+        "testUrl":  "http://localhost:8080/api/public/study-assistant/realtime-token",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/public/study-assistant/set-gemini-key",
+        "testUrl":  "http://localhost:8080/api/public/study-assistant/set-gemini-key",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/public/study-assistant/set-key",
+        "testUrl":  "http://localhost:8080/api/public/study-assistant/set-key",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/public/study-assistant/upload",
+        "testUrl":  "http://localhost:8080/api/public/study-assistant/upload",
+        "status":  -1,
+        "category":  "Other",
+        "detail":  "A parameter cannot be found that matches parameter name \u0027Form\u0027."
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/reels",
+        "testUrl":  "http://localhost:8080/api/reels",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/reels/{postId}",
+        "testUrl":  "http://localhost:8080/api/reels/1",
+        "status":  404,
+        "category":  "NotFound",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/report",
+        "testUrl":  "http://localhost:8080/api/report?postId=1\u0026reason=1\u0026type=1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/resume/me",
+        "testUrl":  "http://localhost:8080/api/resume/me",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "PUT",
+        "path":  "/api/resume/me",
+        "testUrl":  "http://localhost:8080/api/resume/me",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/resume/media",
+        "testUrl":  "http://localhost:8080/api/resume/media",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/saved",
+        "testUrl":  "http://localhost:8080/api/saved",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/saved/{postId}",
+        "testUrl":  "http://localhost:8080/api/saved/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/security/sessions",
+        "testUrl":  "http://localhost:8080/api/security/sessions",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/security/sessions/logout",
+        "testUrl":  "http://localhost:8080/api/security/sessions/logout",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/security/sessions/revoke-others",
+        "testUrl":  "http://localhost:8080/api/security/sessions/revoke-others",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/security/sessions/revoke/{sessionId}",
+        "testUrl":  "http://localhost:8080/api/security/sessions/revoke/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/stories/feed",
+        "testUrl":  "http://localhost:8080/api/stories/feed",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/stories/media/{id}",
+        "testUrl":  "http://localhost:8080/api/stories/media/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/stories/mine",
+        "testUrl":  "http://localhost:8080/api/stories/mine",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/stories/upload",
+        "testUrl":  "http://localhost:8080/api/stories/upload",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/stories/{id}",
+        "testUrl":  "http://localhost:8080/api/stories/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/stories/{id}/comment",
+        "testUrl":  "http://localhost:8080/api/stories/1/comment",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/stories/{id}/comments",
+        "testUrl":  "http://localhost:8080/api/stories/1/comments",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/stories/{id}/delete",
+        "testUrl":  "http://localhost:8080/api/stories/1/delete",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/stories/{id}/like",
+        "testUrl":  "http://localhost:8080/api/stories/1/like",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/stories/{id}/like",
+        "testUrl":  "http://localhost:8080/api/stories/1/like",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/stories/{id}/likes",
+        "testUrl":  "http://localhost:8080/api/stories/1/likes",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/stories/{id}/view",
+        "testUrl":  "http://localhost:8080/api/stories/1/view",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/stories/{id}/views",
+        "testUrl":  "http://localhost:8080/api/stories/1/views",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/study/assistant/gemini",
+        "testUrl":  "http://localhost:8080/api/study/assistant/gemini",
+        "status":  400,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/study/assistant/gemini/status",
+        "testUrl":  "http://localhost:8080/api/study/assistant/gemini/status",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/study/assistant/realtime-token",
+        "testUrl":  "http://localhost:8080/api/study/assistant/realtime-token",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/study/assistant/set-gemini-key",
+        "testUrl":  "http://localhost:8080/api/study/assistant/set-gemini-key",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/study/assistant/set-key",
+        "testUrl":  "http://localhost:8080/api/study/assistant/set-key",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/study/assistant/upload",
+        "testUrl":  "http://localhost:8080/api/study/assistant/upload",
+        "status":  -1,
+        "category":  "Other",
+        "detail":  "A parameter cannot be found that matches parameter name \u0027Form\u0027."
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/vault/lock",
+        "testUrl":  "http://localhost:8080/api/vault/lock",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/vault/lock",
+        "testUrl":  "http://localhost:8080/api/vault/lock",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/vault/lock",
+        "testUrl":  "http://localhost:8080/api/vault/lock",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/auth/login",
+        "testUrl":  "http://localhost:8080/auth/login",
+        "status":  400,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/auth/reset-password",
+        "testUrl":  "http://localhost:8080/auth/reset-password",
+        "status":  400,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/auth/resetPassword",
+        "testUrl":  "http://localhost:8080/auth/resetPassword",
+        "status":  400,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/auth/send-otp",
+        "testUrl":  "http://localhost:8080/auth/send-otp",
+        "status":  400,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/auth/verify-otp",
+        "testUrl":  "http://localhost:8080/auth/verify-otp",
+        "status":  400,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/clips",
+        "testUrl":  "http://localhost:8080/clips",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/clips/{postId}",
+        "testUrl":  "http://localhost:8080/clips/1",
+        "status":  404,
+        "category":  "NotFound",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/emergency/active",
+        "testUrl":  "http://localhost:8080/emergency/active",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/emergency/my-recordings",
+        "testUrl":  "http://localhost:8080/emergency/my-recordings",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/emergency/my-recordings/{alertId}",
+        "testUrl":  "http://localhost:8080/emergency/my-recordings/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/emergency/presence",
+        "testUrl":  "http://localhost:8080/emergency/presence",
+        "status":  400,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/emergency/trigger",
+        "testUrl":  "http://localhost:8080/emergency/trigger",
+        "status":  400,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/emergency/{alertId}",
+        "testUrl":  "http://localhost:8080/emergency/1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/emergency/{alertId}/assist",
+        "testUrl":  "http://localhost:8080/emergency/1/assist",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/emergency/{alertId}/heartbeat",
+        "testUrl":  "http://localhost:8080/emergency/1/heartbeat",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/emergency/{alertId}/preview-frame",
+        "testUrl":  "http://localhost:8080/emergency/1/preview-frame",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/emergency/{alertId}/stop",
+        "testUrl":  "http://localhost:8080/emergency/1/stop",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/feed",
+        "testUrl":  "http://localhost:8080/feed",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/feed/anonymous",
+        "testUrl":  "http://localhost:8080/feed/anonymous",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/feed/videos",
+        "testUrl":  "http://localhost:8080/feed/videos",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/feed/{postId}",
+        "testUrl":  "http://localhost:8080/feed/1",
+        "status":  404,
+        "category":  "NotFound",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/health",
+        "testUrl":  "http://localhost:8080/health",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/mail-test",
+        "testUrl":  "http://localhost:8080/mail-test",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/mail/send",
+        "testUrl":  "http://localhost:8080/mail/send",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/public/anonymous/feed",
+        "testUrl":  "http://localhost:8080/public/anonymous/feed",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "POST",
+        "path":  "/public/report/{postId}",
+        "testUrl":  "http://localhost:8080/public/report/1?reason=1",
+        "status":  401,
+        "category":  "Auth/Validation",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/reels",
+        "testUrl":  "http://localhost:8080/reels",
+        "status":  200,
+        "category":  "OK",
+        "detail":  ""
+    },
+    {
+        "method":  "GET",
+        "path":  "/reels/{postId}",
+        "testUrl":  "http://localhost:8080/reels/1",
+        "status":  404,
+        "category":  "NotFound",
+        "detail":  ""
+    }
+]

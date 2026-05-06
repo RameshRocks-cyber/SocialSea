@@ -40,3 +40,27 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_chat_messages_sender_receiver_client_messag
 
 CREATE INDEX IF NOT EXISTS idx_chat_messages_sender_receiver_media_fingerprint_created_at
     ON chat_messages(sender_id, receiver_id, media_fingerprint, created_at DESC);
+
+ALTER TABLE IF EXISTS post
+    ADD COLUMN IF NOT EXISTS title TEXT;
+
+ALTER TABLE IF EXISTS post
+    ADD COLUMN IF NOT EXISTS description TEXT;
+
+ALTER TABLE IF EXISTS post
+    ADD COLUMN IF NOT EXISTS video_settings TEXT;
+
+ALTER TABLE IF EXISTS post
+    ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
+
+ALTER TABLE IF EXISTS posts
+    ADD COLUMN IF NOT EXISTS title TEXT;
+
+ALTER TABLE IF EXISTS posts
+    ADD COLUMN IF NOT EXISTS description TEXT;
+
+ALTER TABLE IF EXISTS posts
+    ADD COLUMN IF NOT EXISTS video_settings TEXT;
+
+ALTER TABLE IF EXISTS posts
+    ADD COLUMN IF NOT EXISTS cover_image_url TEXT;

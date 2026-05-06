@@ -41,7 +41,7 @@ public class S3UploadService implements UploadService {
         @Value("${app.upload.dir:uploads}") String uploadDir,
         @Value("${app.upload.allowed-types:image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/x-matroska,video/matroska,audio/mpeg,audio/wav,audio/mp4,application/pdf}") String allowedTypes,
         @Value("${app.upload.allowed-extensions:png,jpg,jpeg,webp,gif,mp4,webm,mkv,mp3,wav,m4a,pdf}") String allowedExtensions,
-        @Value("${app.upload.max-bytes:209715200}") long maxBytes,
+        @Value("${app.upload.max-bytes:1073741824}") long maxBytes,
         @Value("${app.upload.allow-local-fallback:false}") boolean allowLocalFallback
     ) {
         this.bucket = bucket == null ? "" : bucket.trim();

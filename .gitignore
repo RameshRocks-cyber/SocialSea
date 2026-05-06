@@ -53,3 +53,8 @@ _m2/
 !.env.example
 !.env.local.example
 
+# Local ffmpeg binaries/caches and scratch artifacts
+tools/ffmpeg/
+.tmp_usechat_origin.js
+tmp_upload_response.json
+

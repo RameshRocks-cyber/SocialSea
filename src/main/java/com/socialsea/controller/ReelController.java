@@ -28,8 +28,8 @@ import java.util.Comparator;
 import java.util.ArrayList;
 
 @RestController
-@RequestMapping({"/api/reels", "/reels"})
-@CrossOrigin(origins = {"https://socialsea.netlify.app", "https://socialsea.co.in", "https://www.socialsea.co.in", "http://localhost:5173", "http://127.0.0.1:5173", "http://43.205.213.14:5173"})
+@RequestMapping({"/api/clips", "/clips", "/api/reels", "/reels"})
+@CrossOrigin(origins = {"https://socialsea.netlify.app", "https://socialsea.co.in", "https://www.socialsea.co.in", "http://localhost:5173", "http://127.0.0.1:5173", "http://43.205.229.211:5173"})
 public class ReelController {
 
     private final PostRepository postRepo;
@@ -126,6 +126,12 @@ public class ReelController {
         payload.put("id", post.getId());
         payload.put("mediaUrl", post.getMediaUrl());
         payload.put("contentUrl", post.getMediaUrl());
+        payload.put("description", post.getDescription());
+        payload.put("content", post.getDescription());
+        payload.put("title", post.getTitle());
+        payload.put("videoSettings", post.getVideoSettings());
+        payload.put("coverImageUrl", post.getCoverImageUrl());
+        payload.put("coverImage", post.getCoverImageUrl());
         payload.put("reel", post.isReel());
         payload.put("originalReel", post.isReel());
         payload.put("type", video ? "VIDEO" : "IMAGE");

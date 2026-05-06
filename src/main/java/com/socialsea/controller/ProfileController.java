@@ -31,7 +31,7 @@ import java.nio.charset.StandardCharsets;
 @RequestMapping("/api/profile")
 @CrossOrigin(origins = {"https://socialsea.netlify.app",
     "https://socialsea.co.in",
-    "https://www.socialsea.co.in", "http://localhost:5173", "http://43.205.213.14:5173"})
+    "https://www.socialsea.co.in", "http://localhost:5173", "http://127.0.0.1:5173", "http://43.205.229.211:5173"})
 @RequiredArgsConstructor
 public class ProfileController {
 
@@ -550,6 +550,12 @@ public class ProfileController {
         payload.put("id", post.getId());
         payload.put("mediaUrl", post.getMediaUrl());
         payload.put("contentUrl", post.getMediaUrl());
+        payload.put("description", post.getDescription());
+        payload.put("content", post.getDescription());
+        payload.put("title", post.getTitle());
+        payload.put("videoSettings", post.getVideoSettings());
+        payload.put("coverImageUrl", post.getCoverImageUrl());
+        payload.put("coverImage", post.getCoverImageUrl());
         payload.put("reel", post.isReel());
         payload.put("originalReel", post.isReel());
         payload.put("type", video ? "VIDEO" : "IMAGE");

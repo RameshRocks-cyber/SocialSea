@@ -15,7 +15,10 @@ public class FeedItemDto {
     private String contentUrl;
     private String thumbnailUrl;
     private String posterUrl;
+    private String coverImageUrl;
     private String description;
+    private String title;
+    private String videoSettings;
     private LocalDateTime createdAt;
     private boolean isAnonymous;
     private String type;
@@ -33,11 +36,15 @@ public class FeedItemDto {
     public static FeedItemDto fromPost(Post post) {
         FeedItemDto dto = new FeedItemDto();
         dto.id = post.getId();
-        dto.content = null;
+        dto.content = post.getDescription();
         dto.contentUrl = post.getMediaUrl();
         boolean video = post.isReel() || MediaUrlUtils.isLikelyVideo(dto.contentUrl);
         dto.thumbnailUrl = MediaUrlUtils.thumbnailUrl(dto.contentUrl, video ? "video" : "image");
-        dto.posterUrl = dto.thumbnailUrl;
+        dto.coverImageUrl = post.getCoverImageUrl();
+        dto.posterUrl = (dto.coverImageUrl != null && !dto.coverImageUrl.isBlank()) ? dto.coverImageUrl : dto.thumbnailUrl;
+        dto.description = post.getDescription();
+        dto.title = post.getTitle();
+        dto.videoSettings = post.getVideoSettings();
         dto.createdAt = post.getCreatedAt();
         dto.isAnonymous = false;
         dto.type = video ? "VIDEO" : "IMAGE";
@@ -93,7 +100,11 @@ public class FeedItemDto {
     public String getThumbUrl() { return thumbnailUrl; }
     public String getPosterUrl() { return posterUrl == null || posterUrl.isBlank() ? thumbnailUrl : posterUrl; }
     public String getPoster() { return getPosterUrl(); }
+    public String getCoverImageUrl() { return coverImageUrl; }
+    public String getCoverImage() { return coverImageUrl; }
     public String getDescription() { return description; }
+    public String getTitle() { return title; }
+    public String getVideoSettings() { return videoSettings; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public boolean isAnonymous() { return isAnonymous; }
     public String getType() { return type; }

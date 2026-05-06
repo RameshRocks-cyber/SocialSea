@@ -95,8 +95,10 @@ public class SecurityConfig {
 
                     // PUBLIC CONTENT
                     "/api/posts/**",
+                    "/api/clips/**",
                     "/api/reels/**",
                     "/api/feed/**",
+                    "/clips/**",
                     "/reels/**",
                     "/feed/**",
                     "/api/profile/**",

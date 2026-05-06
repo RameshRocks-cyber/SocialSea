@@ -1,0 +1,1047 @@
+﻿[
+    {
+        "method":  "GET",
+        "path":  "/",
+        "status":  200
+    },
+    {
+        "method":  "GET",
+        "path":  "/admin/reports/pending",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/admin/reports/resolve/{id}",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/anonymous/feed",
+        "status":  200
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/accessibility/sign-to-text",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/ambulance/requests",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/ambulance/requests/{id}/approve",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/ambulance/requests/{id}/reject",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/anonymous/approve/{id}",
+        "status":  401
+    },
+    {
+        "method":  "PUT",
+        "path":  "/api/admin/anonymous/approve/{id}",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/anonymous/approved",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/anonymous/moderation/approve/{id}",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/anonymous/moderation/pending",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/anonymous/moderation/reject/{id}",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/anonymous/pending",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/anonymous/reject/{id}",
+        "status":  401
+    },
+    {
+        "method":  "PUT",
+        "path":  "/api/admin/anonymous/reject/{id}",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/anonymous/rejected",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/dashboard",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/dashboard/charts",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/dashboard/export/posts",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/dashboard/export/users",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/dashboard/legacy",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/dashboard/stats",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/dashboard/users-chart",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/live-recordings",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/notifications",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/notifications/read-all",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/notifications/unread-count",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/notifications/{id}/read",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/posts",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/reports",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/sos-nearby",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/admin/users",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/users/{id}/ban",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/users/{id}/block",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/users/{id}/unban",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/admin/users/{id}/unblock",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/ambulance/alert",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/ambulance/me",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/ambulance/request",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/ambulance/resolve",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/ambulance/trip/start",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/anonymous/feed",
+        "status":  200
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/anonymous/upload",
+        "status":  200
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/anonymous/{id}/like",
+        "status":  200
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/anonymous/{id}/view",
+        "status":  200
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/auth/admin/login",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/auth/login",
+        "status":  400
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/auth/refresh",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/auth/register",
+        "status":  400
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/auth/reset-password",
+        "status":  400
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/auth/resetPassword",
+        "status":  400
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/auth/send-otp",
+        "status":  400
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/auth/verify-otp",
+        "status":  400
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/calls/inbox",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/calls/signal/{targetUserId}",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/chat/conversations",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/chat/presence",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/chat/presence",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/chat/unread-count",
+        "status":  401
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/chat/{otherUserId}",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/chat/{otherUserId}/mark-read",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/chat/{otherUserId}/messages",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/chat/{otherUserId}/send",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/chat/{otherUserId}/send-audio",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/chat/{otherUserId}/send-media",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/clips",
+        "status":  200
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/clips/{postId}",
+        "status":  404
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/comments/{postId}",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/comments/{postId}",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/emergency/active",
+        "status":  200
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/emergency/my-recordings",
+        "status":  401
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/emergency/my-recordings/{alertId}",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/emergency/presence",
+        "status":  400
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/emergency/trigger",
+        "status":  400
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/emergency/{alertId}",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/emergency/{alertId}/assist",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/emergency/{alertId}/heartbeat",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/emergency/{alertId}/preview-frame",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/emergency/{alertId}/stop",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/feed",
+        "status":  200
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/feed/anonymous",
+        "status":  200
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/feed/videos",
+        "status":  200
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/feed/{postId}",
+        "status":  404
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/follow/pending-requests",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/follow/requests",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/follow/requests/{identifier}",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/follow/requests/{id}/accept",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/follow/requests/{id}/reject",
+        "status":  401
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/follow/{identifier}",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/follow/{identifier}",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/follow/{identifier}/followers",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/follow/{identifier}/followers/users",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/follow/{identifier}/following",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/follow/{identifier}/following/users",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/jobs",
+        "status":  200
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/jobs",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/jobs/mine",
+        "status":  401
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/jobs/{id}",
+        "status":  401
+    },
+    {
+        "method":  "PUT",
+        "path":  "/api/jobs/{id}",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/likes/{postId}",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/likes/{postId}/count",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/live-broadcast/active",
+        "status":  200
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/live-broadcast/start",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/live-broadcast/stop",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/livekit/token",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/notifications",
+        "status":  401
+    },
+    {
+        "method":  "PATCH",
+        "path":  "/api/notifications",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/notifications/mark-all-read",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/notifications/read-all",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/notifications/unread-count",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/notifications/{id}/read",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/posts/create-options",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/posts/upload",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/posts/upload-options",
+        "status":  401
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/posts/{id}",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/posts/{id}/delete",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/live-recordings",
+        "status":  401
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/profile/live-recordings/{alertId}",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/me",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/me/language",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/profile/me/language",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/me/live-recordings",
+        "status":  401
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/profile/me/live-recordings/{alertId}",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/me/long-videos",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/profile/me/long-videos",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/me/notification-voice",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/profile/me/notification-voice",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/me/posts",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/profile/me/posts/cleanup-stories",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/profile/me/privacy",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/profile/me/traffic-alerts",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/name/check",
+        "status":  200
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/posts",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/search",
+        "status":  200
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/profile/setup",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/{identifier}",
+        "status":  200
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/{identifier}/followers",
+        "status":  200
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/{identifier}/following",
+        "status":  200
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/profile/{identifier}/posts",
+        "status":  200
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/public/study-assistant/gemini",
+        "status":  400
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/public/study-assistant/gemini/status",
+        "status":  200
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/public/study-assistant/realtime-token",
+        "status":  200
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/public/study-assistant/set-gemini-key",
+        "status":  200
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/public/study-assistant/set-key",
+        "status":  200
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/public/study-assistant/upload",
+        "status":  200
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/reels",
+        "status":  200
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/reels/{postId}",
+        "status":  404
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/report",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/resume/me",
+        "status":  401
+    },
+    {
+        "method":  "PUT",
+        "path":  "/api/resume/me",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/resume/media",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/saved",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/saved/{postId}",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/security/sessions",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/security/sessions/logout",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/security/sessions/revoke-others",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/security/sessions/revoke/{sessionId}",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/stories/feed",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/stories/media/{id}",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/stories/mine",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/stories/upload",
+        "status":  401
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/stories/{id}",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/stories/{id}/comment",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/stories/{id}/comments",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/stories/{id}/delete",
+        "status":  401
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/stories/{id}/like",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/stories/{id}/like",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/stories/{id}/likes",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/stories/{id}/view",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/stories/{id}/views",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/study/assistant/gemini",
+        "status":  400
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/study/assistant/gemini/status",
+        "status":  200
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/study/assistant/realtime-token",
+        "status":  200
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/study/assistant/set-gemini-key",
+        "status":  200
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/study/assistant/set-key",
+        "status":  200
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/study/assistant/upload",
+        "status":  200
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/api/vault/lock",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/api/vault/lock",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/api/vault/lock",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/auth/login",
+        "status":  400
+    },
+    {
+        "method":  "POST",
+        "path":  "/auth/reset-password",
+        "status":  400
+    },
+    {
+        "method":  "POST",
+        "path":  "/auth/resetPassword",
+        "status":  400
+    },
+    {
+        "method":  "POST",
+        "path":  "/auth/send-otp",
+        "status":  400
+    },
+    {
+        "method":  "POST",
+        "path":  "/auth/verify-otp",
+        "status":  400
+    },
+    {
+        "method":  "GET",
+        "path":  "/clips",
+        "status":  200
+    },
+    {
+        "method":  "GET",
+        "path":  "/clips/{postId}",
+        "status":  404
+    },
+    {
+        "method":  "GET",
+        "path":  "/emergency/active",
+        "status":  200
+    },
+    {
+        "method":  "GET",
+        "path":  "/emergency/my-recordings",
+        "status":  401
+    },
+    {
+        "method":  "DELETE",
+        "path":  "/emergency/my-recordings/{alertId}",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/emergency/presence",
+        "status":  400
+    },
+    {
+        "method":  "POST",
+        "path":  "/emergency/trigger",
+        "status":  400
+    },
+    {
+        "method":  "GET",
+        "path":  "/emergency/{alertId}",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/emergency/{alertId}/assist",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/emergency/{alertId}/heartbeat",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/emergency/{alertId}/preview-frame",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/emergency/{alertId}/stop",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/feed",
+        "status":  200
+    },
+    {
+        "method":  "GET",
+        "path":  "/feed/anonymous",
+        "status":  200
+    },
+    {
+        "method":  "GET",
+        "path":  "/feed/videos",
+        "status":  200
+    },
+    {
+        "method":  "GET",
+        "path":  "/feed/{postId}",
+        "status":  404
+    },
+    {
+        "method":  "GET",
+        "path":  "/health",
+        "status":  200
+    },
+    {
+        "method":  "GET",
+        "path":  "/mail-test",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/mail/send",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/public/anonymous/feed",
+        "status":  401
+    },
+    {
+        "method":  "POST",
+        "path":  "/public/report/{postId}",
+        "status":  401
+    },
+    {
+        "method":  "GET",
+        "path":  "/reels",
+        "status":  200
+    },
+    {
+        "method":  "GET",
+        "path":  "/reels/{postId}",
+        "status":  404
+    }
+]

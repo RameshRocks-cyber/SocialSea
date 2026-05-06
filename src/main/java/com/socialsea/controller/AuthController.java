@@ -28,7 +28,7 @@ import java.util.Locale;
 @RequestMapping("/api/auth")
 @CrossOrigin(origins = {"https://socialsea.netlify.app",
     "https://socialsea.co.in",
-    "https://www.socialsea.co.in", "http://localhost:5173", "http://43.205.213.14:5173"})
+    "https://www.socialsea.co.in", "http://localhost:5173", "http://127.0.0.1:5173", "http://43.205.229.211:5173"})
 public class AuthController {
 
     @Autowired
@@ -422,21 +422,30 @@ public class AuthController {
 
     @PostMapping("/admin/login")
     public ResponseEntity<?> adminLogin(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        if (request == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Email and password are required"));
+        }
+        String email = normalize(request.getEmail());
+        String password = normalize(request.getPassword());
+        if (email == null || password == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Email and password are required"));
+        }
+        User admin = userRepository.findByEmailIgnoreCase(email).orElse(null);
+        if (admin == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid credentials"));
+        }
 
-        User admin = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new RuntimeException("Admin not found"));
-
-        if (admin.getPassword() == null || !passwordEncoder.matches(request.getPassword(), admin.getPassword())) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid password");
+        if (admin.getPassword() == null || !passwordEncoder.matches(password, admin.getPassword())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid credentials"));
         }
 
         if (admin.getRole() != Role.ADMIN && admin.getRole() != Role.SUPER_ADMIN) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Not an admin");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Not an admin"));
         }
 
         try {
             var session = loginSessionService.startSession(admin, httpRequest, null, null);
-            String tokenSubject = resolveTokenSubject(admin, request.getEmail());
+            String tokenSubject = resolveTokenSubject(admin, email);
             String accessToken = jwtUtil.generateAccessToken(tokenSubject, session.getSessionId());
             String refreshToken = jwtUtil.generateRefreshToken(tokenSubject, session.getSessionId());
 

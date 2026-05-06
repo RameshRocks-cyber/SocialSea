@@ -19,7 +19,7 @@ This setup hosts both frontend and backend on one EC2 instance:
 ## 2) Install dependencies (Java 17 required)
 ```bash
 sudo apt update
-sudo apt install -y git nginx certbot python3-certbot-nginx openjdk-17-jdk maven
+sudo apt install -y git nginx certbot python3-certbot-nginx openjdk-17-jdk maven ffmpeg
 
 # Node 20
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
@@ -60,6 +60,16 @@ Set at minimum:
 - Uploads:
   - S3 (recommended/default): `APP_UPLOAD_PROVIDER=s3` + `APP_S3_BUCKET` (+ `APP_S3_PREFIX`) (+ `APP_S3_REGION` if needed)
   - OR Cloudinary: `APP_UPLOAD_PROVIDER=cloudinary` + `CLOUDINARY_CLOUD_NAME` + `CLOUDINARY_API_KEY` + `CLOUDINARY_API_SECRET`
+  - Backend upload limits (example 2GB):
+    - `SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE=2GB`
+    - `SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE=2GB`
+    - `APP_UPLOAD_MAX_BYTES=2147483648`
+  - Video editing:
+    - `APP_VIDEO_EDITING_ENABLED=true`
+    - `APP_VIDEO_EDITING_FFMPEG_BIN=ffmpeg`
+    - `APP_VIDEO_EDITING_FFPROBE_BIN=ffprobe`
+    - Optional: `APP_VIDEO_EDITING_TIMEOUT_SECONDS=240`
+    - Optional: `APP_VIDEO_EDITING_DRAWTEXT_FONT_FILE=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf`
 - `APP_FRONTEND_BASE_URL=https://socialsea.co.in`
 - `APP_SECURITY_ALLOWED_ORIGINS=https://socialsea.co.in,https://www.socialsea.co.in`
 - `LIVEKIT_URL`
@@ -69,6 +79,7 @@ Set at minimum:
 Important:
 - Do not keep placeholder values like `<cloud-name>` or `<db-user>` in `.env.production`.
 - Keep `APP_UPLOAD_ALLOW_LOCAL_FALLBACK=false` in production.
+- Ensure `ffmpeg` and `ffprobe` are installed and available in PATH (`ffmpeg -version`, `ffprobe -version`).
 
 ## 5) Build and run backend as service
 ```bash
@@ -148,7 +159,7 @@ server {
 
     root /var/www/socialsea;
     index index.html;
-    client_max_body_size 220M;
+    client_max_body_size 2G;
 
     location / {
         try_files $uri $uri/ /index.html;

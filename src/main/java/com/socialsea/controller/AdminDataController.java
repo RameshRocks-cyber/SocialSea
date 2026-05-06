@@ -37,7 +37,7 @@ import java.util.Objects;
     "https://www.socialsea.co.in",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "http://43.205.213.14:5173"
+    "http://43.205.229.211:5173"
 })
 public class AdminDataController {
     private static final int DEFAULT_SOS_RADIUS_METERS = 5000;

@@ -202,7 +202,7 @@ public class NotificationController {
                     // keep defaults if postId is not numeric
                 }
                 String postUrl = isReel
-                    ? "/reels?post=" + postId
+                    ? "/clips?post=" + postId
                     : (isVideo ? "/watch/" + postId : "/feed?post=" + postId);
                 row.put("postId", postId);
                 row.put("isReel", isReel);
@@ -211,9 +211,9 @@ public class NotificationController {
                 if (isReel) {
                     String adjusted = String.valueOf(row.get("message"));
                     if ("like".equals(kind)) {
-                        adjusted = adjusted.replaceAll("(?i)liked\\s+your\\s+post", "liked your reel");
+                        adjusted = adjusted.replaceAll("(?i)liked\\s+your\\s+post", "liked your clip");
                     } else if ("comment".equals(kind)) {
-                        adjusted = adjusted.replaceAll("(?i)commented\\s+on\\s+your\\s+post", "commented on your reel");
+                        adjusted = adjusted.replaceAll("(?i)commented\\s+on\\s+your\\s+post", "commented on your clip");
                     }
                     row.put("message", adjusted);
                 } else if (isVideo) {

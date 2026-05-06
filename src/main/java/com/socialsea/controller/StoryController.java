@@ -39,7 +39,8 @@ import java.net.URI;
         "https://socialsea.co.in",
         "https://www.socialsea.co.in",
         "http://localhost:5173",
-        "http://43.205.213.14:5173"
+        "http://127.0.0.1:5173",
+        "http://43.205.229.211:5173"
 })
 public class StoryController {
     private static final DateTimeFormatter ISO_OFFSET = DateTimeFormatter.ISO_OFFSET_DATE_TIME;
