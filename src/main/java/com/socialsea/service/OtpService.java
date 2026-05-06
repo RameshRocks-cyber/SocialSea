@@ -6,7 +6,6 @@ import com.socialsea.repository.EmailOtpRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -30,9 +29,6 @@ public class OtpService {
     @Autowired
     private Environment environment;
 
-    @Value("${app.otp.allow-email-failure:false}")
-    private boolean allowEmailFailure;
-
     @Transactional
     public OtpSendResult sendOtp(String email) {
         String code = createOrUpdateOtpRecord(email);
@@ -44,14 +40,10 @@ public class OtpService {
             return new OtpSendResult(code, false, null);
         } catch (RuntimeException ex) {
             log.warn("OTP email send skipped/failure for {}: {}", email, ex.getMessage());
-            // Do not block login when email provider is temporarily down.
-            // `allowEmailFailure` is kept for compatibility but sendOtp now always continues.
-            if (allowEmailFailure || !isProdProfile()) {
-                log.info("Fallback OTP for {} is {}", email, code);
-                return new OtpSendResult(code, true, ex.getMessage());
-            } else {
-                throw ex;
-            }
+            // Keep API responses controlled: surface delivery failure to the caller
+            // instead of bubbling runtime exceptions as HTTP 500.
+            log.info("Fallback OTP for {} is {}", email, code);
+            return new OtpSendResult(code, true, ex.getMessage());
         }
     }
 
@@ -91,19 +83,6 @@ public class OtpService {
         try {
             for (String profile : environment.getActiveProfiles()) {
                 if ("dev".equalsIgnoreCase(profile)) {
-                    return true;
-                }
-            }
-        } catch (Exception ignored) {
-            // fall through
-        }
-        return false;
-    }
-
-    private boolean isProdProfile() {
-        try {
-            for (String profile : environment.getActiveProfiles()) {
-                if ("prod".equalsIgnoreCase(profile)) {
                     return true;
                 }
             }

@@ -35,7 +35,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private Bucket createBucketForPath(String path) {
-        if ("/auth/send-otp".equals(path) || "/api/auth/send-otp".equals(path)) {
+        if (
+            "/auth/send-otp".equals(path) ||
+            "/api/auth/send-otp".equals(path) ||
+            "/auth/forgot-password".equals(path) ||
+            "/api/auth/forgot-password".equals(path) ||
+            "/auth/forgotPassword".equals(path) ||
+            "/api/auth/forgotPassword".equals(path)
+        ) {
             return createBucket(5, Duration.ofMinutes(10));
         }
         if ("/api/auth/admin/login".equals(path)) {
@@ -47,7 +54,12 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if ("/api/auth/verify-otp".equals(path)) {
             return createBucket(10, Duration.ofMinutes(10));
         }
-        if ("/api/auth/reset-password".equals(path) || "/api/auth/resetPassword".equals(path)) {
+        if (
+            "/api/auth/reset-password".equals(path) ||
+            "/api/auth/resetPassword".equals(path) ||
+            "/auth/reset-password".equals(path) ||
+            "/auth/resetPassword".equals(path)
+        ) {
             return createBucket(5, Duration.ofMinutes(10));
         }
         if (path.startsWith("/api/admin") || path.startsWith("/admin")) {

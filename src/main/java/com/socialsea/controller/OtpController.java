@@ -41,7 +41,7 @@ public class OtpController {
         this.authService = authService;
     }
 
-    @PostMapping("/send-otp")
+    @PostMapping({"/send-otp", "/forgot-password", "/forgotPassword"})
     public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> body) {
         String identifier = resolveIdentifier(body);
         if (identifier == null) {
@@ -49,9 +49,28 @@ public class OtpController {
         }
         String normalizedPhone = normalizePhone(identifier);
         boolean isPhoneIdentifier = normalizedPhone != null && !identifier.contains("@");
-        String otpKey = isPhoneIdentifier ? normalizedPhone : identifier.toLowerCase(Locale.ROOT);
+        String otpKey = isPhoneIdentifier ? normalizedPhone : resolveEmailOtpTarget(identifier);
+        if (!isPhoneIdentifier && otpKey == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "message", "Account not found",
+                    "channel", "email",
+                    "deliveryFailed", true,
+                    "failureReason", "No email found for this account"
+            ));
+        }
 
-        OtpSendResult result = isPhoneIdentifier ? otpService.sendOtpToPhone(otpKey) : otpService.sendOtp(otpKey);
+        OtpSendResult result;
+        try {
+            result = isPhoneIdentifier ? otpService.sendOtpToPhone(otpKey) : otpService.sendOtp(otpKey);
+        } catch (RuntimeException ex) {
+            String reason = normalize(ex.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of(
+                    "message", isPhoneIdentifier ? "SMS provider unavailable" : "Email provider unavailable",
+                    "channel", isPhoneIdentifier ? "sms" : "email",
+                    "deliveryFailed", true,
+                    "failureReason", reason != null ? reason : "OTP delivery provider error"
+            ));
+        }
         boolean deliveryFailed = result.isDeliveryFailed();
 
         if (exposeDebugOtp || (deliveryFailed && returnFallbackOtpOnDeliveryFailure)) {
@@ -143,6 +162,46 @@ public class OtpController {
         if (identifier == null) identifier = resolveEmail(body.get("mobileNumber"), null);
         if (identifier == null) identifier = resolveEmail(body.get("phone"), null);
         return identifier;
+    }
+
+    private String normalize(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isBlank() ? null : trimmed;
+    }
+
+    private Optional<User> findUserByIdentifier(String identifier) {
+        if (identifier == null || identifier.isBlank()) {
+            return Optional.empty();
+        }
+        Optional<User> byEmail = userRepository.findByEmailIgnoreCase(identifier);
+        if (byEmail.isPresent()) {
+            return byEmail;
+        }
+        String normalizedPhone = normalizePhone(identifier);
+        if (normalizedPhone != null) {
+            Optional<User> byPhone = userRepository.findByPhoneNumber(normalizedPhone);
+            if (byPhone.isPresent()) {
+                return byPhone;
+            }
+        }
+        return userRepository.findByNameIgnoreCase(identifier);
+    }
+
+    private String resolveEmailOtpTarget(String identifier) {
+        String normalized = normalize(identifier);
+        if (normalized == null) {
+            return null;
+        }
+        if (normalized.contains("@")) {
+            return normalized.toLowerCase(Locale.ROOT);
+        }
+        User user = findUserByIdentifier(normalized).orElse(null);
+        if (user == null) {
+            return null;
+        }
+        String email = normalize(user.getEmail());
+        return email == null ? null : email.toLowerCase(Locale.ROOT);
     }
 
     private String normalizePhone(String value) {
