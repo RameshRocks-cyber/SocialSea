@@ -1,0 +1,273 @@
+{
+  "url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/compare/main...codex/find-bugs-in-sos",
+  "html_url": "https://github.com/RameshRocks-cyber/socialsea-client/compare/main...codex/find-bugs-in-sos",
+  "permalink_url": "https://github.com/RameshRocks-cyber/socialsea-client/compare/RameshRocks-cyber:e137b44...RameshRocks-cyber:a092f2e",
+  "diff_url": "https://github.com/RameshRocks-cyber/socialsea-client/compare/main...codex/find-bugs-in-sos.diff",
+  "patch_url": "https://github.com/RameshRocks-cyber/socialsea-client/compare/main...codex/find-bugs-in-sos.patch",
+  "base_commit": {
+    "sha": "e137b44c345b36d71a4d1a446d03b2051891a1e3",
+    "node_id": "C_kwDOQ4PlctoAKGUxMzdiNDRjMzQ1YjM2ZDcxYTRkMWE0NDZkMDNiMjA1MTg5MWExZTM",
+    "commit": {
+      "author": {
+        "name": "Ramesh Nanda",
+        "email": "rameshnanda485@gmail.com",
+        "date": "2026-05-06T07:52:19Z"
+      },
+      "committer": {
+        "name": "Ramesh Nanda",
+        "email": "rameshnanda485@gmail.com",
+        "date": "2026-05-06T07:52:19Z"
+      },
+      "message": "fix(auth): stabilize forgot-password OTP route fallback",
+      "tree": {
+        "sha": "ebd1309ac40c9e9334d18d2697e1df499a4603a2",
+        "url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/git/trees/ebd1309ac40c9e9334d18d2697e1df499a4603a2"
+      },
+      "url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/git/commits/e137b44c345b36d71a4d1a446d03b2051891a1e3",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/commits/e137b44c345b36d71a4d1a446d03b2051891a1e3",
+    "html_url": "https://github.com/RameshRocks-cyber/socialsea-client/commit/e137b44c345b36d71a4d1a446d03b2051891a1e3",
+    "comments_url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/commits/e137b44c345b36d71a4d1a446d03b2051891a1e3/comments",
+    "author": {
+      "login": "RameshRocks-cyber",
+      "id": 197883351,
+      "node_id": "U_kgDOC8t11w",
+      "avatar_url": "https://avatars.githubusercontent.com/u/197883351?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/RameshRocks-cyber",
+      "html_url": "https://github.com/RameshRocks-cyber",
+      "followers_url": "https://api.github.com/users/RameshRocks-cyber/followers",
+      "following_url": "https://api.github.com/users/RameshRocks-cyber/following{/other_user}",
+      "gists_url": "https://api.github.com/users/RameshRocks-cyber/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/RameshRocks-cyber/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/RameshRocks-cyber/subscriptions",
+      "organizations_url": "https://api.github.com/users/RameshRocks-cyber/orgs",
+      "repos_url": "https://api.github.com/users/RameshRocks-cyber/repos",
+      "events_url": "https://api.github.com/users/RameshRocks-cyber/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/RameshRocks-cyber/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "RameshRocks-cyber",
+      "id": 197883351,
+      "node_id": "U_kgDOC8t11w",
+      "avatar_url": "https://avatars.githubusercontent.com/u/197883351?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/RameshRocks-cyber",
+      "html_url": "https://github.com/RameshRocks-cyber",
+      "followers_url": "https://api.github.com/users/RameshRocks-cyber/followers",
+      "following_url": "https://api.github.com/users/RameshRocks-cyber/following{/other_user}",
+      "gists_url": "https://api.github.com/users/RameshRocks-cyber/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/RameshRocks-cyber/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/RameshRocks-cyber/subscriptions",
+      "organizations_url": "https://api.github.com/users/RameshRocks-cyber/orgs",
+      "repos_url": "https://api.github.com/users/RameshRocks-cyber/repos",
+      "events_url": "https://api.github.com/users/RameshRocks-cyber/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/RameshRocks-cyber/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "1caa2d79c9f3040405e60632f0b45c51077aa4ab",
+        "url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/commits/1caa2d79c9f3040405e60632f0b45c51077aa4ab",
+        "html_url": "https://github.com/RameshRocks-cyber/socialsea-client/commit/1caa2d79c9f3040405e60632f0b45c51077aa4ab"
+      }
+    ]
+  },
+  "merge_base_commit": {
+    "sha": "a0c07b023d4b5a0ffa949edb882c0b5dac814d4b",
+    "node_id": "C_kwDOQ4PlctoAKGEwYzA3YjAyM2Q0YjVhMGZmYTk0OWVkYjg4MmMwYjVkYWM4MTRkNGI",
+    "commit": {
+      "author": {
+        "name": "Ramesh",
+        "email": "rameshnanda485@gmail.com",
+        "date": "2026-03-13T13:17:51Z"
+      },
+      "committer": {
+        "name": "Ramesh",
+        "email": "rameshnanda485@gmail.com",
+        "date": "2026-03-13T13:17:51Z"
+      },
+      "message": "cc",
+      "tree": {
+        "sha": "1e541945b265a0c21ea613bcb56fcc4d5c363bad",
+        "url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/git/trees/1e541945b265a0c21ea613bcb56fcc4d5c363bad"
+      },
+      "url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/git/commits/a0c07b023d4b5a0ffa949edb882c0b5dac814d4b",
+      "comment_count": 0,
+      "verification": {
+        "verified": false,
+        "reason": "unsigned",
+        "signature": null,
+        "payload": null,
+        "verified_at": null
+      }
+    },
+    "url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/commits/a0c07b023d4b5a0ffa949edb882c0b5dac814d4b",
+    "html_url": "https://github.com/RameshRocks-cyber/socialsea-client/commit/a0c07b023d4b5a0ffa949edb882c0b5dac814d4b",
+    "comments_url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/commits/a0c07b023d4b5a0ffa949edb882c0b5dac814d4b/comments",
+    "author": {
+      "login": "RameshRocks-cyber",
+      "id": 197883351,
+      "node_id": "U_kgDOC8t11w",
+      "avatar_url": "https://avatars.githubusercontent.com/u/197883351?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/RameshRocks-cyber",
+      "html_url": "https://github.com/RameshRocks-cyber",
+      "followers_url": "https://api.github.com/users/RameshRocks-cyber/followers",
+      "following_url": "https://api.github.com/users/RameshRocks-cyber/following{/other_user}",
+      "gists_url": "https://api.github.com/users/RameshRocks-cyber/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/RameshRocks-cyber/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/RameshRocks-cyber/subscriptions",
+      "organizations_url": "https://api.github.com/users/RameshRocks-cyber/orgs",
+      "repos_url": "https://api.github.com/users/RameshRocks-cyber/repos",
+      "events_url": "https://api.github.com/users/RameshRocks-cyber/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/RameshRocks-cyber/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "committer": {
+      "login": "RameshRocks-cyber",
+      "id": 197883351,
+      "node_id": "U_kgDOC8t11w",
+      "avatar_url": "https://avatars.githubusercontent.com/u/197883351?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/RameshRocks-cyber",
+      "html_url": "https://github.com/RameshRocks-cyber",
+      "followers_url": "https://api.github.com/users/RameshRocks-cyber/followers",
+      "following_url": "https://api.github.com/users/RameshRocks-cyber/following{/other_user}",
+      "gists_url": "https://api.github.com/users/RameshRocks-cyber/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/RameshRocks-cyber/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/RameshRocks-cyber/subscriptions",
+      "organizations_url": "https://api.github.com/users/RameshRocks-cyber/orgs",
+      "repos_url": "https://api.github.com/users/RameshRocks-cyber/repos",
+      "events_url": "https://api.github.com/users/RameshRocks-cyber/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/RameshRocks-cyber/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "parents": [
+      {
+        "sha": "dadb1bbf2939b60d13c9ba434c1d67189e6b9ab8",
+        "url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/commits/dadb1bbf2939b60d13c9ba434c1d67189e6b9ab8",
+        "html_url": "https://github.com/RameshRocks-cyber/socialsea-client/commit/dadb1bbf2939b60d13c9ba434c1d67189e6b9ab8"
+      }
+    ]
+  },
+  "status": "diverged",
+  "ahead_by": 1,
+  "behind_by": 58,
+  "total_commits": 1,
+  "commits": [
+    {
+      "sha": "a092f2ef9cfe3156aaaf73fff57968f57242ad0f",
+      "node_id": "C_kwDOQ4PlctoAKGEwOTJmMmVmOWNmZTMxNTZhYWFmNzNmZmY1Nzk2OGY1NzI0MmFkMGY",
+      "commit": {
+        "author": {
+          "name": "RameshRocks-cyber",
+          "email": "rameshnanda485@gmail.com",
+          "date": "2026-03-14T06:58:12Z"
+        },
+        "committer": {
+          "name": "RameshRocks-cyber",
+          "email": "rameshnanda485@gmail.com",
+          "date": "2026-03-14T06:58:12Z"
+        },
+        "message": "Fix SOS navigation for non-numeric alert IDs",
+        "tree": {
+          "sha": "6929a5a838952bd37654dded5c5988a4bc6645dc",
+          "url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/git/trees/6929a5a838952bd37654dded5c5988a4bc6645dc"
+        },
+        "url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/git/commits/a092f2ef9cfe3156aaaf73fff57968f57242ad0f",
+        "comment_count": 0,
+        "verification": {
+          "verified": false,
+          "reason": "unsigned",
+          "signature": null,
+          "payload": null,
+          "verified_at": null
+        }
+      },
+      "url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/commits/a092f2ef9cfe3156aaaf73fff57968f57242ad0f",
+      "html_url": "https://github.com/RameshRocks-cyber/socialsea-client/commit/a092f2ef9cfe3156aaaf73fff57968f57242ad0f",
+      "comments_url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/commits/a092f2ef9cfe3156aaaf73fff57968f57242ad0f/comments",
+      "author": {
+        "login": "RameshRocks-cyber",
+        "id": 197883351,
+        "node_id": "U_kgDOC8t11w",
+        "avatar_url": "https://avatars.githubusercontent.com/u/197883351?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/RameshRocks-cyber",
+        "html_url": "https://github.com/RameshRocks-cyber",
+        "followers_url": "https://api.github.com/users/RameshRocks-cyber/followers",
+        "following_url": "https://api.github.com/users/RameshRocks-cyber/following{/other_user}",
+        "gists_url": "https://api.github.com/users/RameshRocks-cyber/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/RameshRocks-cyber/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/RameshRocks-cyber/subscriptions",
+        "organizations_url": "https://api.github.com/users/RameshRocks-cyber/orgs",
+        "repos_url": "https://api.github.com/users/RameshRocks-cyber/repos",
+        "events_url": "https://api.github.com/users/RameshRocks-cyber/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/RameshRocks-cyber/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "committer": {
+        "login": "RameshRocks-cyber",
+        "id": 197883351,
+        "node_id": "U_kgDOC8t11w",
+        "avatar_url": "https://avatars.githubusercontent.com/u/197883351?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/RameshRocks-cyber",
+        "html_url": "https://github.com/RameshRocks-cyber",
+        "followers_url": "https://api.github.com/users/RameshRocks-cyber/followers",
+        "following_url": "https://api.github.com/users/RameshRocks-cyber/following{/other_user}",
+        "gists_url": "https://api.github.com/users/RameshRocks-cyber/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/RameshRocks-cyber/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/RameshRocks-cyber/subscriptions",
+        "organizations_url": "https://api.github.com/users/RameshRocks-cyber/orgs",
+        "repos_url": "https://api.github.com/users/RameshRocks-cyber/repos",
+        "events_url": "https://api.github.com/users/RameshRocks-cyber/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/RameshRocks-cyber/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "parents": [
+        {
+          "sha": "a0c07b023d4b5a0ffa949edb882c0b5dac814d4b",
+          "url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/commits/a0c07b023d4b5a0ffa949edb882c0b5dac814d4b",
+          "html_url": "https://github.com/RameshRocks-cyber/socialsea-client/commit/a0c07b023d4b5a0ffa949edb882c0b5dac814d4b"
+        }
+      ]
+    }
+  ],
+  "files": [
+    {
+      "sha": "82854a1f6c890a4eccbaf8dabc11d1fe65d51c3c",
+      "filename": "src/pages/SOSNavigate.jsx",
+      "status": "modified",
+      "additions": 3,
+      "deletions": 3,
+      "changes": 6,
+      "blob_url": "https://github.com/RameshRocks-cyber/socialsea-client/blob/a092f2ef9cfe3156aaaf73fff57968f57242ad0f/src%2Fpages%2FSOSNavigate.jsx",
+      "raw_url": "https://github.com/RameshRocks-cyber/socialsea-client/raw/a092f2ef9cfe3156aaaf73fff57968f57242ad0f/src%2Fpages%2FSOSNavigate.jsx",
+      "contents_url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/contents/src%2Fpages%2FSOSNavigate.jsx?ref=a092f2ef9cfe3156aaaf73fff57968f57242ad0f",
+      "patch": "@@ -108,9 +108,9 @@ export default function SOSNavigate() {\n     const load = async () => {\n       setLoading(true);\n       setError(\"\");\n-      const isNumericAlertId = /^\\d+$/.test(String(alertId || \"\").trim());\n+      const normalizedAlertId = String(alertId || \"\").trim();\n       try {\n-        if (!isNumericAlertId) {\n+        if (!normalizedAlertId) {\n           const fallback = fallbackFromSearchAndCache();\n           if (!active) return;\n           if (fallback) {\n@@ -121,7 +121,7 @@ export default function SOSNavigate() {\n           return;\n         }\n \n-        const res = await api.get(`/api/emergency/${alertId}/assist`);\n+        const res = await api.get(`/api/emergency/${encodeURIComponent(normalizedAlertId)}/assist`);\n         if (!active) return;\n         const data = res?.data || null;\n         if (!data) {"
+    }
+  ]
+}

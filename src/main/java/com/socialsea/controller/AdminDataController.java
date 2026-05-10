@@ -8,16 +8,19 @@ import com.socialsea.repository.EmergencyAlertRepository;
 import com.socialsea.repository.PostRepository;
 import com.socialsea.repository.ReportRepository;
 import com.socialsea.repository.UserRepository;
+import com.socialsea.service.NotificationService;
 import com.socialsea.util.MediaUrlUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -48,6 +51,7 @@ public class AdminDataController {
     private final PostRepository postRepo;
     private final ReportRepository reportRepo;
     private final EmergencyAlertRepository emergencyRepo;
+    private final NotificationService notificationService;
 
     @GetMapping("/users")
     public List<Map<String, Object>> users() {
@@ -75,6 +79,52 @@ public class AdminDataController {
     @PostMapping("/users/{id}/unblock")
     public ResponseEntity<?> unblockUser(@PathVariable Long id) {
         return setUserBanState(id, false);
+    }
+
+    @PostMapping("/users/{id}/notice")
+    public ResponseEntity<?> issueUserNotice(
+            @PathVariable Long id,
+            @RequestBody(required = false) Map<String, Object> body,
+            Authentication auth
+    ) {
+        Long safeId = Objects.requireNonNull(id, "id");
+        Optional<User> userOpt = userRepo.findById(safeId);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+        }
+
+        User user = userOpt.get();
+        String recipient = String.valueOf(user.getEmail() != null ? user.getEmail() : "").trim();
+        if (recipient.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "User email is missing"));
+        }
+
+        String severity = normalizeNoticeSeverity(body != null ? body.get("severity") : null);
+        String message = resolveNoticeMessage(body != null ? body.get("message") : null, severity);
+        String issuedBy = auth != null && auth.getName() != null && !auth.getName().isBlank()
+                ? auth.getName().trim()
+                : "admin";
+        String title = "yellow".equals(severity) ? "Yellow Notice" : "Red Notice";
+        String type = "yellow".equals(severity) ? "MODERATION_YELLOW" : "MODERATION_RED";
+        String finalMessage = message + " (Issued by " + issuedBy + ")";
+
+        try {
+            notificationService.notifyUserInApp(recipient, title, finalMessage, type);
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("message", "Failed to send notice"));
+        }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("ok", true);
+        response.put("userId", user.getId());
+        response.put("recipient", recipient);
+        response.put("severity", severity);
+        response.put("title", title);
+        response.put("message", message);
+        response.put("issuedBy", issuedBy);
+        response.put("createdAt", LocalDateTime.now());
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/posts")
@@ -143,6 +193,26 @@ public class AdminDataController {
                 "banned", saved.isBanned(),
                 "message", banned ? "User blocked successfully" : "User unblocked successfully"
         ));
+    }
+
+    private String normalizeNoticeSeverity(Object rawSeverity) {
+        String normalized = String.valueOf(rawSeverity != null ? rawSeverity : "")
+                .trim()
+                .toLowerCase();
+        return "yellow".equals(normalized) ? "yellow" : "red";
+    }
+
+    private String resolveNoticeMessage(Object rawMessage, String severity) {
+        String message = String.valueOf(rawMessage != null ? rawMessage : "").trim();
+        if (message.isBlank()) {
+            return "yellow".equals(severity)
+                    ? "Policy warning issued."
+                    : "Critical violation recorded.";
+        }
+        if (message.length() > 600) {
+            return message.substring(0, 600);
+        }
+        return message;
     }
 
     private Map<String, Object> postView(Post p) {

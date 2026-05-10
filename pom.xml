@@ -182,6 +182,18 @@
             <version>0.10.1</version>
         </dependency>
 
+        <!-- Web Push (mobile/browser notification shade delivery) -->
+        <dependency>
+            <groupId>nl.martijndwars</groupId>
+            <artifactId>web-push</artifactId>
+            <version>5.1.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bitbucket.b_c</groupId>
+            <artifactId>jose4j</artifactId>
+            <version>0.9.6</version>
+        </dependency>
+
     </dependencies>
 
     <build>

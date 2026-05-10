@@ -1,0 +1,20 @@
+HTTP/1.1 200 OK
+Age: 0
+Cache-Control: no-cache,no-store,max-age=0,must-revalidate
+Cache-Status: "Netlify Edge"; fwd=miss
+Content-Type: application/json
+Date: Wed, 06 May 2026 07:48:31 GMT
+Expires: 0
+Netlify-Vary: query
+Permissions-Policy: camera=(self), microphone=(self), geolocation=(self)
+Pragma: no-cache
+Referrer-Policy: no-referrer
+Server: Netlify
+Strict-Transport-Security: max-age=31536000 ; includeSubDomains ; preload
+Vary: Origin,Access-Control-Request-Method,Access-Control-Request-Headers
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+X-Nf-Request-Id: 01KQY451JFATWJ36MTRCY76MW3
+X-Xss-Protection: 0
+Transfer-Encoding: chunked
+

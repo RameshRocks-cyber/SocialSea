@@ -3,14 +3,17 @@ package com.socialsea.controller;
 import com.socialsea.dto.FeedItemDto;
 import com.socialsea.model.Post;
 import com.socialsea.model.User;
-import com.socialsea.model.Story;
 import com.socialsea.repository.FollowRepository;
 import com.socialsea.repository.PostRepository;
 import com.socialsea.repository.StoryRepository;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.AnonymousPostService;
+import com.socialsea.util.MediaUrlUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.CacheControl;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -23,9 +26,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Objects;
 import java.util.stream.Collectors;
-import java.util.ArrayList;
 import java.time.LocalDateTime;
-import java.util.Comparator;
+import java.time.Duration;
 
 @RestController
 @RequestMapping({"/api/feed", "/feed"})
@@ -34,6 +36,7 @@ import java.util.Comparator;
     "https://www.socialsea.co.in", "http://localhost:5173", "http://127.0.0.1:5173", "http://43.205.229.211:5173"})
 @RequiredArgsConstructor
 public class FeedController {
+    private static final int HARD_MAX_ITEMS = 600;
 
     private final AnonymousPostService anonymousPostService;
     private final PostRepository postRepo;
@@ -44,76 +47,84 @@ public class FeedController {
     @Value("${app.feed.include-unapproved:false}")
     private boolean includeUnapproved;
 
+    @Value("${app.feed.max-items:240}")
+    private int maxFeedItems;
+
+    @Value("${app.feed.max-video-items:180}")
+    private int maxVideoItems;
+
+    @Value("${app.feed.cache-seconds:20}")
+    private int feedCacheSeconds;
+
+    @Value("${app.feed.by-id-cache-seconds:45}")
+    private int feedByIdCacheSeconds;
+
+    @Value("${app.feed.anonymous-cache-seconds:60}")
+    private int anonymousFeedCacheSeconds;
+
     @GetMapping
-    public ResponseEntity<?> feed(Authentication auth) {
+    public ResponseEntity<?> feed(
+            @RequestParam(value = "size", required = false) Integer size,
+            @RequestParam(value = "limit", required = false) Integer limit,
+            Authentication auth
+    ) {
         User viewer = (auth != null && auth.isAuthenticated())
                 ? userRepo.findByEmail(auth.getName()).orElse(null)
                 : null;
-        Set<String> storyMediaUrls = storyRepo.findAll()
-                .stream()
-                .map(Story::getMediaUrl)
-                .filter(url -> url != null && !url.isBlank())
-                .collect(Collectors.toSet());
-        Set<Long> allowedPrivateIds = new HashSet<>();
-        if (viewer != null) {
-            allowedPrivateIds.add(viewer.getId());
-            followRepo.findByFollower(viewer).forEach(f -> {
-                if (f.getFollowing() != null && f.getFollowing().getId() != null) {
-                    allowedPrivateIds.add(f.getFollowing().getId());
-                }
-            });
-        }
 
-        List<FeedItemDto> normalPosts = postRepo.findAll()
+        Set<String> storyMediaUrls = activeStoryMediaUrls();
+        Set<Long> allowedPrivateIds = resolveAllowedPrivateIds(viewer);
+        int resolvedLimit = resolveLimit(size != null ? size : limit, maxFeedItems, HARD_MAX_ITEMS);
+        Pageable pageable = PageRequest.of(0, resolvedLimit);
+
+        List<Post> candidates = includeUnapproved
+            ? postRepo.findFeedCandidates(pageable)
+            : postRepo.findApprovedFeedCandidates(pageable);
+
+        List<FeedItemDto> normalPosts = candidates
                 .stream()
                 .filter(p -> !isStoryPost(p.getMediaUrl(), storyMediaUrls))
-                .filter(p -> !p.isReel())
-                .filter(p -> includeUnapproved || p.isApproved())
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
                 .filter(p -> canViewPost(viewer, allowedPrivateIds, p.getUser()))
                 .map(FeedItemDto::fromEntity)
                 .toList();
 
-        List<FeedItemDto> merged = new ArrayList<>(normalPosts);
-        merged.sort(Comparator.comparing(this::safeCreatedAt).reversed());
-        return ResponseEntity.ok(merged);
+        return ResponseEntity.ok()
+            .cacheControl(privateCache(Math.max(1, feedCacheSeconds)))
+            .body(normalPosts);
     }
 
     @GetMapping("/videos")
-    public ResponseEntity<?> videos(Authentication auth) {
+    public ResponseEntity<?> videos(
+            @RequestParam(value = "size", required = false) Integer size,
+            @RequestParam(value = "limit", required = false) Integer limit,
+            Authentication auth
+    ) {
         User viewer = (auth != null && auth.isAuthenticated())
                 ? userRepo.findByEmail(auth.getName()).orElse(null)
                 : null;
-        Set<String> storyMediaUrls = storyRepo.findAll()
-                .stream()
-                .map(Story::getMediaUrl)
-                .filter(url -> url != null && !url.isBlank())
-                .collect(Collectors.toSet());
 
-        Set<Long> allowedPrivateIds = new HashSet<>();
-        if (viewer != null) {
-            allowedPrivateIds.add(viewer.getId());
-            followRepo.findByFollower(viewer).forEach(f -> {
-                if (f.getFollowing() != null && f.getFollowing().getId() != null) {
-                    allowedPrivateIds.add(f.getFollowing().getId());
-                }
-            });
-        }
+        Set<String> storyMediaUrls = activeStoryMediaUrls();
+        Set<Long> allowedPrivateIds = resolveAllowedPrivateIds(viewer);
+        int resolvedLimit = resolveLimit(size != null ? size : limit, maxVideoItems, HARD_MAX_ITEMS);
+        Pageable pageable = PageRequest.of(0, resolvedLimit);
 
-        List<FeedItemDto> localVideos = postRepo.findAll()
+        List<Post> candidates = includeUnapproved
+            ? postRepo.findFeedCandidates(pageable)
+            : postRepo.findApprovedFeedCandidates(pageable);
+
+        List<FeedItemDto> localVideos = candidates
                 .stream()
                 .filter(p -> !isStoryPost(p.getMediaUrl(), storyMediaUrls))
-                .filter(p -> !p.isReel())
-                .filter(p -> includeUnapproved || p.isApproved())
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
                 .filter(p -> canViewPost(viewer, allowedPrivateIds, p.getUser()))
+                .filter(this::isVideoFeedPost)
                 .map(FeedItemDto::fromEntity)
-                .filter(FeedItemDto::isVideo)
                 .toList();
 
-        List<FeedItemDto> merged = new ArrayList<>(localVideos);
-        merged.sort(Comparator.comparing(this::safeCreatedAt).reversed());
-        return ResponseEntity.ok(merged);
+        return ResponseEntity.ok()
+            .cacheControl(privateCache(Math.max(1, feedCacheSeconds)))
+            .body(localVideos);
     }
 
     @GetMapping("/{postId}")
@@ -126,7 +137,7 @@ public class FeedController {
                 : null;
 
         Long safeId = Objects.requireNonNull(postId, "postId");
-        Optional<Post> postOpt = postRepo.findById(safeId);
+        Optional<Post> postOpt = postRepo.findPostWithUserById(safeId);
         if (postOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Post not found"));
         }
@@ -154,26 +165,22 @@ public class FeedController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Post not found"));
         }
 
-        Set<Long> allowedPrivateIds = new HashSet<>();
-        if (viewer != null) {
-            allowedPrivateIds.add(viewer.getId());
-            followRepo.findByFollower(viewer).forEach(f -> {
-                if (f.getFollowing() != null && f.getFollowing().getId() != null) {
-                    allowedPrivateIds.add(f.getFollowing().getId());
-                }
-            });
-        }
+        Set<Long> allowedPrivateIds = resolveAllowedPrivateIds(viewer);
 
         if (!canViewPost(viewer, allowedPrivateIds, post.getUser())) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Post not found"));
         }
 
-        return ResponseEntity.ok(FeedItemDto.fromEntity(post));
+        return ResponseEntity.ok()
+            .cacheControl(privateCache(Math.max(1, feedByIdCacheSeconds)))
+            .body(FeedItemDto.fromEntity(post));
     }
 
     @GetMapping("/anonymous")
-    public List<FeedItemDto> getAnonymousFeed() {
-        return anonymousPostService.getApprovedFeed();
+    public ResponseEntity<List<FeedItemDto>> getAnonymousFeed() {
+        return ResponseEntity.ok()
+            .cacheControl(publicCache(Math.max(1, anonymousFeedCacheSeconds)))
+            .body(anonymousPostService.getApprovedFeed());
     }
 
     private boolean canViewPost(User viewer, Set<Long> allowedPrivateIds, User owner) {
@@ -187,8 +194,55 @@ public class FeedController {
         return storyMediaUrls.contains(mediaUrl);
     }
 
-    private LocalDateTime safeCreatedAt(FeedItemDto item) {
-        return item.getCreatedAt() == null ? LocalDateTime.MIN : item.getCreatedAt();
+    private boolean isVideoFeedPost(Post post) {
+        if (post == null) return false;
+        if (post.isReel()) return false;
+        if (!MediaUrlUtils.isLikelyVideo(post.getMediaUrl())) return false;
+
+        String settings = post.getVideoSettings();
+        if (settings == null || settings.isBlank()) return false;
+        String normalized = settings.toLowerCase().replace(" ", "").replace("-", "_");
+        return normalized.contains("\"distributionsurface\":\"video_feed\"")
+            || normalized.contains("\"uploadsurface\":\"video_feed\"")
+            || normalized.contains("\"uploadcontext\":\"long_video\"")
+            || normalized.contains("\"uploadtype\":\"long_video\"")
+            || normalized.contains("\"type\":\"long_video\"");
+    }
+
+    private Set<String> activeStoryMediaUrls() {
+        return storyRepo.findActiveMediaUrls(LocalDateTime.now())
+            .stream()
+            .filter(url -> url != null && !url.isBlank())
+            .collect(Collectors.toSet());
+    }
+
+    private Set<Long> resolveAllowedPrivateIds(User viewer) {
+        if (viewer == null || viewer.getId() == null) return Set.of();
+        Set<Long> allowedPrivateIds = new HashSet<>();
+        allowedPrivateIds.add(viewer.getId());
+        followRepo.findFollowingIdsByFollowerId(viewer.getId())
+            .stream()
+            .filter(Objects::nonNull)
+            .forEach(allowedPrivateIds::add);
+        return allowedPrivateIds;
+    }
+
+    private int resolveLimit(Integer requested, int fallback, int hardMax) {
+        int safeFallback = Math.max(1, Math.min(hardMax, fallback));
+        if (requested == null) return safeFallback;
+        return Math.max(1, Math.min(hardMax, requested));
+    }
+
+    private CacheControl privateCache(int seconds) {
+        return CacheControl.maxAge(Duration.ofSeconds(seconds))
+            .cachePrivate()
+            .mustRevalidate();
+    }
+
+    private CacheControl publicCache(int seconds) {
+        return CacheControl.maxAge(Duration.ofSeconds(seconds))
+            .cachePublic()
+            .mustRevalidate();
     }
 }
 

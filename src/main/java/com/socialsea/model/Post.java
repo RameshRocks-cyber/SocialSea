@@ -33,6 +33,17 @@ public class Post {
     @Column(columnDefinition = "TEXT")
     private String coverImageUrl;
 
+    @Column(length = 64)
+    private String mediaFingerprint;
+
+    @Column(length = 40)
+    private String mediaType;
+
+    private Long mediaSizeBytes;
+
+    @Column(length = 255)
+    private String originalFileName;
+
     private LocalDateTime createdAt = LocalDateTime.now();
 
     @ManyToOne
@@ -71,10 +82,21 @@ public class Post {
     public String getCoverImageUrl() { return coverImageUrl; }
     public void setCoverImageUrl(String coverImageUrl) { this.coverImageUrl = coverImageUrl; }
 
+    public String getMediaFingerprint() { return mediaFingerprint; }
+    public void setMediaFingerprint(String mediaFingerprint) { this.mediaFingerprint = mediaFingerprint; }
+
+    public String getMediaType() { return mediaType; }
+    public void setMediaType(String mediaType) { this.mediaType = mediaType; }
+
+    public Long getMediaSizeBytes() { return mediaSizeBytes; }
+    public void setMediaSizeBytes(Long mediaSizeBytes) { this.mediaSizeBytes = mediaSizeBytes; }
+
+    public String getOriginalFileName() { return originalFileName; }
+    public void setOriginalFileName(String originalFileName) { this.originalFileName = originalFileName; }
+
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
 }
-

@@ -6,6 +6,7 @@ import com.socialsea.repository.ChatMessageRepository;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.PresenceService;
 import com.socialsea.service.UploadService;
+import com.socialsea.service.WebPushService;
 import com.socialsea.util.MediaUrlUtils;
 import com.socialsea.util.UrlUtils;
 import jakarta.servlet.http.HttpServletRequest;
@@ -50,6 +51,7 @@ public class ChatController {
     private final SimpMessagingTemplate messagingTemplate;
     private final UploadService uploadService;
     private final PresenceService presenceService;
+    private final WebPushService webPushService;
     private final ConcurrentMap<String, ReentrantLock> mediaSendLocks = new ConcurrentHashMap<>();
 
     @GetMapping("/conversations")
@@ -371,6 +373,7 @@ public class ChatController {
 
         Map<String, Object> receiverPayload = Objects.requireNonNull(toChatPayload(saved, me, false, request), "payload");
         publishChatMessage(receiver, receiverPayload);
+        pushChatNotification(me, receiver, text);
 
         return ResponseEntity.ok(toChatPayload(saved, me, true, request));
     }
@@ -462,6 +465,7 @@ public class ChatController {
 
         Map<String, Object> receiverPayload = Objects.requireNonNull(toChatPayload(saved, me, false, request), "payload");
         publishChatMessage(receiver, receiverPayload);
+        pushChatNotification(me, receiver, "[Audio]");
 
         return ResponseEntity.ok(toChatPayload(saved, me, true, request));
     }
@@ -585,6 +589,7 @@ public class ChatController {
 
             Map<String, Object> receiverPayload = Objects.requireNonNull(toChatPayload(saved, me, false, request), "payload");
             publishChatMessage(receiver, receiverPayload);
+            pushChatNotification(me, receiver, label);
 
             return ResponseEntity.ok(toChatPayload(saved, me, true, request));
         } finally {
@@ -609,6 +614,26 @@ public class ChatController {
         String raw = user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getEmail();
         if (raw == null || raw.isBlank()) return "User";
         return raw;
+    }
+
+    private void pushChatNotification(User sender, User receiver, String preview) {
+        if (sender == null || receiver == null) return;
+        String receiverEmail = receiver.getEmail() == null ? "" : receiver.getEmail().trim();
+        if (receiverEmail.isBlank()) return;
+        String senderEmail = sender.getEmail() == null ? "" : sender.getEmail().trim();
+        if (!senderEmail.isBlank() && senderEmail.equalsIgnoreCase(receiverEmail)) return;
+
+        String senderName = displayName(sender);
+        String body = String.valueOf(preview == null ? "" : preview).trim();
+        if (body.isBlank()) body = "You have a new message";
+        if (body.length() > 180) body = body.substring(0, 180);
+        String title = "New message from " + senderName;
+
+        try {
+            webPushService.sendToRecipient(receiverEmail, title, body, "CHAT");
+        } catch (Exception ignored) {
+            // Chat delivery already happened over socket; push notification is best-effort.
+        }
     }
 
     private Map<String, Object> toChatPayload(ChatMessage saved, User sender, boolean mine, HttpServletRequest request) {

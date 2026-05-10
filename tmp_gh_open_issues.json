@@ -1,0 +1,84 @@
+[
+  {
+    "url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/issues/1",
+    "repository_url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client",
+    "labels_url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/issues/1/labels{/name}",
+    "comments_url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/issues/1/comments",
+    "events_url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/issues/1/events",
+    "html_url": "https://github.com/RameshRocks-cyber/socialsea-client/pull/1",
+    "id": 4074927252,
+    "node_id": "PR_kwDOQ4Plcs7Kjyxq",
+    "number": 1,
+    "title": "Fix SOS navigation for non-numeric alert IDs",
+    "user": {
+      "login": "RameshRocks-cyber",
+      "id": 197883351,
+      "node_id": "U_kgDOC8t11w",
+      "avatar_url": "https://avatars.githubusercontent.com/u/197883351?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/RameshRocks-cyber",
+      "html_url": "https://github.com/RameshRocks-cyber",
+      "followers_url": "https://api.github.com/users/RameshRocks-cyber/followers",
+      "following_url": "https://api.github.com/users/RameshRocks-cyber/following{/other_user}",
+      "gists_url": "https://api.github.com/users/RameshRocks-cyber/gists{/gist_id}",
+      "starred_url": "https://api.github.com/users/RameshRocks-cyber/starred{/owner}{/repo}",
+      "subscriptions_url": "https://api.github.com/users/RameshRocks-cyber/subscriptions",
+      "organizations_url": "https://api.github.com/users/RameshRocks-cyber/orgs",
+      "repos_url": "https://api.github.com/users/RameshRocks-cyber/repos",
+      "events_url": "https://api.github.com/users/RameshRocks-cyber/events{/privacy}",
+      "received_events_url": "https://api.github.com/users/RameshRocks-cyber/received_events",
+      "type": "User",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "labels": [
+      {
+        "id": 10424790990,
+        "node_id": "LA_kwDOQ4Plcs8AAAACbV2vzg",
+        "url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/labels/codex",
+        "name": "codex",
+        "color": "ededed",
+        "default": false,
+        "description": null
+      }
+    ],
+    "state": "open",
+    "locked": false,
+    "assignees": [
+
+    ],
+    "milestone": null,
+    "comments": 1,
+    "created_at": "2026-03-14T06:58:14Z",
+    "updated_at": "2026-03-14T06:58:37Z",
+    "closed_at": null,
+    "assignee": null,
+    "author_association": "OWNER",
+    "active_lock_reason": null,
+    "draft": false,
+    "pull_request": {
+      "url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/pulls/1",
+      "html_url": "https://github.com/RameshRocks-cyber/socialsea-client/pull/1",
+      "diff_url": "https://github.com/RameshRocks-cyber/socialsea-client/pull/1.diff",
+      "patch_url": "https://github.com/RameshRocks-cyber/socialsea-client/pull/1.patch",
+      "merged_at": null
+    },
+    "body": "### Motivation\n- SOS navigation refused non-numeric alert identifiers and skipped backend assist lookup, breaking links that use non-numeric/local IDs and allowing special characters to produce malformed requests.\n\n### Description\n- Treat any non-empty `alertId` as valid for backend lookup instead of requiring digits only by normalizing `alertId` with `String(alertId || \"\").trim()` in `SOSNavigate.jsx`.\n- URL-encode the `alertId` when calling the assist endpoint by using `encodeURIComponent(normalizedAlertId)` in the request to `/api/emergency/:alertId/assist`.\n\n### Testing\n- Ran `npm run build` which completed successfully.\n- Ran `npm run lint` which failed due to many pre-existing lint issues elsewhere in the repository and not introduced by this change.\n\n------\n[Codex Task](https://chatgpt.com/codex/tasks/task_b_69b505fbc9c48330a340c59a153bcfde)",
+    "closed_by": null,
+    "reactions": {
+      "url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/issues/1/reactions",
+      "total_count": 0,
+      "+1": 0,
+      "-1": 0,
+      "laugh": 0,
+      "hooray": 0,
+      "confused": 0,
+      "heart": 0,
+      "rocket": 0,
+      "eyes": 0
+    },
+    "timeline_url": "https://api.github.com/repos/RameshRocks-cyber/socialsea-client/issues/1/timeline",
+    "performed_via_github_app": null,
+    "state_reason": null
+  }
+]

@@ -22,6 +22,7 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     List<Notification> findByRecipientIgnoreCaseOrderByCreatedAtDesc(String name);
     Page<Notification> findByRecipientIgnoreCase(String name, Pageable pageable);
     List<Notification> findByRecipientIgnoreCaseAndReadFalseOrderByCreatedAtDesc(String name);
+    List<Notification> findByTypeInOrderByCreatedAtDesc(List<String> types);
 
     @Modifying
     @Transactional

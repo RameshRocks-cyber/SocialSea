@@ -53,6 +53,18 @@ ALTER TABLE IF EXISTS post
 ALTER TABLE IF EXISTS post
     ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
 
+ALTER TABLE IF EXISTS post
+    ADD COLUMN IF NOT EXISTS media_fingerprint VARCHAR(64);
+
+ALTER TABLE IF EXISTS post
+    ADD COLUMN IF NOT EXISTS media_type VARCHAR(40);
+
+ALTER TABLE IF EXISTS post
+    ADD COLUMN IF NOT EXISTS media_size_bytes BIGINT;
+
+ALTER TABLE IF EXISTS post
+    ADD COLUMN IF NOT EXISTS original_file_name VARCHAR(255);
+
 ALTER TABLE IF EXISTS posts
     ADD COLUMN IF NOT EXISTS title TEXT;
 
@@ -64,3 +76,31 @@ ALTER TABLE IF EXISTS posts
 
 ALTER TABLE IF EXISTS posts
     ADD COLUMN IF NOT EXISTS cover_image_url TEXT;
+
+ALTER TABLE IF EXISTS posts
+    ADD COLUMN IF NOT EXISTS media_fingerprint VARCHAR(64);
+
+ALTER TABLE IF EXISTS posts
+    ADD COLUMN IF NOT EXISTS media_type VARCHAR(40);
+
+ALTER TABLE IF EXISTS posts
+    ADD COLUMN IF NOT EXISTS media_size_bytes BIGINT;
+
+ALTER TABLE IF EXISTS posts
+    ADD COLUMN IF NOT EXISTS original_file_name VARCHAR(255);
+
+CREATE TABLE IF NOT EXISTS web_push_subscription (
+    id BIGSERIAL PRIMARY KEY,
+    recipient VARCHAR(255) NOT NULL,
+    endpoint VARCHAR(2048) NOT NULL,
+    p256dh VARCHAR(512) NOT NULL,
+    auth VARCHAR(256) NOT NULL,
+    user_agent VARCHAR(512),
+    expiration_time BIGINT,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_web_push_subscription_endpoint
+    ON web_push_subscription(endpoint);

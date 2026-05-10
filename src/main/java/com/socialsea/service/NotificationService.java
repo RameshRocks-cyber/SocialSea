@@ -20,15 +20,18 @@ public class NotificationService {
     private final NotificationRepository repo;
     private final SimpMessagingTemplate messagingTemplate;
     private final EmailService emailService;
+    private final WebPushService webPushService;
 
     public NotificationService(
             NotificationRepository repo,
             SimpMessagingTemplate messagingTemplate,
-            EmailService emailService
+            EmailService emailService,
+            WebPushService webPushService
     ) {
         this.repo = repo;
         this.messagingTemplate = messagingTemplate;
         this.emailService = emailService;
+        this.webPushService = webPushService;
     }
 
     public void notifyAdmin(String title, String message, String type) {
@@ -174,6 +177,17 @@ public class NotificationService {
             } catch (Exception ignored) {
                 // Notification persistence already succeeded.
             }
+        }
+
+        try {
+            webPushService.sendToRecipient(
+                    safeRecipient,
+                    n.getTitle(),
+                    n.getMessage(),
+                    n.getType()
+            );
+        } catch (Exception ignored) {
+            // Web push failures should not break core in-app notification flow.
         }
     }
 

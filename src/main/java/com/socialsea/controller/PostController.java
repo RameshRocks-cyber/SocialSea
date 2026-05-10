@@ -21,10 +21,17 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.HexFormat;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -36,6 +43,12 @@ public class PostController {
     private static final int MAX_TITLE_LEN = 240;
     private static final int MAX_DESC_LEN = 3000;
     private static final int MAX_SETTINGS_LEN = 150000;
+    private static final int MAX_MEDIA_TYPE_LEN = 40;
+    private static final int MAX_ORIGINAL_FILE_NAME_LEN = 255;
+    private static final int COPYRIGHT_MATCH_SAMPLE_LIMIT = 5;
+    private static final String COPYRIGHT_STATUS_CLEAR = "clear";
+    private static final String COPYRIGHT_STATUS_REVIEW = "review";
+    private static final String COPYRIGHT_STATUS_BLOCKED = "blocked";
 
     private final PostRepository postRepo;
     private final UserRepository userRepo;
@@ -75,6 +88,33 @@ public class PostController {
         ));
     }
 
+    @PostMapping("/copyright-match")
+    public ResponseEntity<?> copyrightMatch(
+        @RequestParam("file") MultipartFile file,
+        Authentication auth
+    ) {
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "File is required"));
+        }
+        if (auth == null || !auth.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
+        }
+
+        User user = userRepo.findByEmail(auth.getName()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Map.of("message", "Session expired. Please login again."));
+        }
+
+        String mediaType = normalizeMediaType(file.getContentType());
+        long mediaSizeBytes = Math.max(0L, file.getSize());
+        String mediaFingerprint = computeMediaFingerprint(file, mediaType, mediaSizeBytes);
+        Map<String, Object> result = buildCopyrightMatchResult(mediaFingerprint, user.getId());
+        result.put("mediaType", mediaType);
+        result.put("mediaSizeBytes", mediaSizeBytes);
+        return ResponseEntity.ok(result);
+    }
+
     @PostMapping("/upload")
     public ResponseEntity<?> upload(
         @RequestParam("file") MultipartFile file,
@@ -109,6 +149,21 @@ public class PostController {
         }
 
         boolean wantsStory = isTruthy(isStory);
+        String mediaType = normalizeMediaType(file.getContentType());
+        long mediaSizeBytes = Math.max(0L, file.getSize());
+        String mediaFingerprint = null;
+        Map<String, Object> copyrightMatch = null;
+        if (!wantsStory) {
+            mediaFingerprint = computeMediaFingerprint(file, mediaType, mediaSizeBytes);
+            copyrightMatch = buildCopyrightMatchResult(mediaFingerprint, user.getId());
+            if (Boolean.TRUE.equals(copyrightMatch.get("blocked"))) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "message", "Copyright match found. This file matches another creator's existing upload.",
+                    "copyright", copyrightMatch
+                ));
+            }
+        }
+
         try (VideoEditingService.ProcessingResult videoResult = (!wantsStory && isVideo(file))
             ? videoEditingService.prepareForUpload(file, videoSettings)
             : null) {
@@ -160,7 +215,7 @@ public class PostController {
             boolean wantsReel = isTruthy(isReel) || isTruthy(reel) || isReelType(type);
             boolean wantsLongVideo = isTruthy(isLongVideo) || isLongVideoType(type);
             if ((wantsReel || wantsLongVideo) && !videoFile) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Video file required for clips/long videos"));
+                return ResponseEntity.badRequest().body(Map.of("message", "Video file required for clips/videos"));
             }
 
             String coverImageUrl = null;
@@ -171,7 +226,12 @@ public class PostController {
 
             String safeTitle = clip(clean(title), MAX_TITLE_LEN);
             String safeDescription = clip(clean(caption), MAX_DESC_LEN);
-            String safeSettings = clip(clean(normalizedSettings), MAX_SETTINGS_LEN);
+            String safeSettings = ensureVideoDistributionSettings(
+                clip(clean(normalizedSettings), MAX_SETTINGS_LEN),
+                videoFile,
+                wantsReel,
+                wantsLongVideo
+            );
 
             Post post = new Post();
             post.setMediaUrl(mediaUrl);
@@ -182,6 +242,10 @@ public class PostController {
             post.setDescription(safeDescription);
             post.setVideoSettings(safeSettings);
             post.setCoverImageUrl(coverImageUrl);
+            post.setMediaFingerprint(mediaFingerprint);
+            post.setMediaType(clip(mediaType, MAX_MEDIA_TYPE_LEN));
+            post.setMediaSizeBytes(mediaSizeBytes > 0 ? mediaSizeBytes : null);
+            post.setOriginalFileName(clip(clean(file.getOriginalFilename()), MAX_ORIGINAL_FILE_NAME_LEN));
 
             Post saved = postRepo.save(post);
 
@@ -201,6 +265,8 @@ public class PostController {
             payload.put("isVideo", videoFile);
             payload.put("video", videoFile);
             payload.put("editsApplied", editsApplied);
+            payload.put("copyrightStatus", copyrightMatch != null ? copyrightMatch.get("status") : COPYRIGHT_STATUS_CLEAR);
+            payload.put("copyrightExactMatchCount", copyrightMatch != null ? copyrightMatch.get("exactMatchCount") : 0);
             return ResponseEntity.ok(payload);
         } catch (IllegalStateException e) {
             String message = clean(e.getMessage());
@@ -258,6 +324,105 @@ public class PostController {
         return deletePost(id, auth);
     }
 
+    private Map<String, Object> buildCopyrightMatchResult(String mediaFingerprint, Long currentUserId) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("status", COPYRIGHT_STATUS_CLEAR);
+        payload.put("blocked", false);
+        payload.put("summary", "No exact copyright match found.");
+        payload.put("exactMatchCount", 0);
+        payload.put("matches", List.of());
+        payload.put("fingerprint", mediaFingerprint);
+        payload.put("fingerprintShort", shortenFingerprint(mediaFingerprint));
+
+        String normalizedFingerprint = clean(mediaFingerprint);
+        if (normalizedFingerprint == null) {
+            payload.put("summary", "Could not fingerprint the uploaded file.");
+            return payload;
+        }
+
+        List<Post> exactMatches = postRepo.findTop10ByMediaFingerprintOrderByCreatedAtDesc(normalizedFingerprint);
+        if (exactMatches.isEmpty()) {
+            return payload;
+        }
+
+        boolean hasForeignMatch = exactMatches.stream().anyMatch((post) -> {
+            Long ownerId = post.getUser() != null ? post.getUser().getId() : null;
+            return ownerId != null && !Objects.equals(ownerId, currentUserId);
+        });
+        List<Map<String, Object>> matchRows = exactMatches.stream()
+            .limit(COPYRIGHT_MATCH_SAMPLE_LIMIT)
+            .map((post) -> toCopyrightMatchRow(post, currentUserId))
+            .toList();
+
+        payload.put("exactMatchCount", exactMatches.size());
+        payload.put("matches", matchRows);
+
+        if (hasForeignMatch) {
+            payload.put("status", COPYRIGHT_STATUS_BLOCKED);
+            payload.put("blocked", true);
+            payload.put("summary", "Exact match found in another creator's upload. Publishing is blocked.");
+            return payload;
+        }
+
+        payload.put("status", COPYRIGHT_STATUS_REVIEW);
+        payload.put("blocked", false);
+        payload.put("summary", "Exact match found in your own previous uploads.");
+        return payload;
+    }
+
+    private Map<String, Object> toCopyrightMatchRow(Post post, Long currentUserId) {
+        Map<String, Object> row = new LinkedHashMap<>();
+        Long ownerId = post.getUser() != null ? post.getUser().getId() : null;
+        boolean isOwner = ownerId != null && Objects.equals(ownerId, currentUserId);
+        row.put("ownership", isOwner ? "self" : "other");
+        row.put("ownerLabel", isOwner ? "You" : "Another creator");
+        row.put("surface", post.isReel() ? "clip" : "post");
+        row.put("uploadedAt", formatIsoOffset(post.getCreatedAt()));
+        row.put("postId", isOwner ? post.getId() : null);
+        return row;
+    }
+
+    private String shortenFingerprint(String fingerprint) {
+        String normalized = clean(fingerprint);
+        if (normalized == null) return null;
+        if (normalized.length() <= 12) return normalized;
+        return normalized.substring(0, 12);
+    }
+
+    private String normalizeMediaType(String contentType) {
+        String normalized = clean(contentType);
+        if (normalized == null) return "application/octet-stream";
+        return clip(normalized.toLowerCase(), MAX_MEDIA_TYPE_LEN);
+    }
+
+    private String computeMediaFingerprint(
+        MultipartFile file,
+        String mediaType,
+        long mediaSizeBytes
+    ) {
+        if (file == null || file.isEmpty()) return null;
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            digest.update(String.valueOf(mediaType == null ? "" : mediaType).getBytes(StandardCharsets.UTF_8));
+            digest.update((byte) '|');
+            digest.update(String.valueOf(mediaSizeBytes).getBytes(StandardCharsets.UTF_8));
+            digest.update((byte) '|');
+
+            try (InputStream stream = file.getInputStream()) {
+                byte[] buffer = new byte[8192];
+                int read;
+                while ((read = stream.read(buffer)) != -1) {
+                    digest.update(buffer, 0, read);
+                }
+            }
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (NoSuchAlgorithmException algorithmError) {
+            throw new IllegalStateException("SHA-256 is not available in the runtime", algorithmError);
+        } catch (Exception ioError) {
+            throw new RuntimeException("Unable to fingerprint uploaded media", ioError);
+        }
+    }
+
     private boolean isVideo(MultipartFile file) {
         String contentType = file.getContentType();
         return contentType != null && contentType.toLowerCase().startsWith("video");
@@ -301,9 +466,49 @@ public class PostController {
         return raw.substring(0, maxLen);
     }
 
+    private String ensureVideoDistributionSettings(
+        String rawSettings,
+        boolean videoFile,
+        boolean wantsReel,
+        boolean wantsLongVideo
+    ) {
+        if (!videoFile || wantsReel) return rawSettings;
+
+        String distributionSurface = wantsLongVideo ? "video_feed" : "post_feed";
+        String uploadContext = wantsLongVideo ? "long_video" : "post_feed";
+        String uploadType = wantsLongVideo ? "long_video" : "post_video";
+
+        String markerJson = "\"distributionSurface\":\"" + distributionSurface + "\"," +
+            "\"uploadContext\":\"" + uploadContext + "\"," +
+            "\"uploadType\":\"" + uploadType + "\"";
+
+        if (rawSettings == null || rawSettings.isBlank()) {
+            String generated = "{" + markerJson + "}";
+            return generated.length() <= MAX_SETTINGS_LEN ? generated : null;
+        }
+
+        String trimmed = rawSettings.trim();
+        String lower = trimmed.toLowerCase();
+        if (
+            lower.contains("\"distributionsurface\"") ||
+            lower.contains("\"uploadsurface\"") ||
+            lower.contains("\"uploadcontext\"")
+        ) {
+            return rawSettings;
+        }
+
+        if (!(trimmed.startsWith("{") && trimmed.endsWith("}"))) {
+            return rawSettings;
+        }
+
+        String inner = trimmed.substring(1, trimmed.length() - 1).trim();
+        String merged = inner.isEmpty() ? "{" + markerJson + "}" : "{" + inner + "," + markerJson + "}";
+        if (merged.length() > MAX_SETTINGS_LEN) return rawSettings;
+        return merged;
+    }
+
     private String formatIsoOffset(LocalDateTime value) {
         if (value == null) return null;
         return value.atZone(ZoneId.systemDefault()).format(ISO_OFFSET);
     }
 }
-

@@ -7,12 +7,17 @@ import com.socialsea.repository.PostRepository;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.util.MediaUrlUtils;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.core.Authentication;
+import org.springframework.http.CacheControl;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
 
@@ -26,15 +31,23 @@ import java.util.Optional;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.ArrayList;
+import java.time.Duration;
 
 @RestController
 @RequestMapping({"/api/clips", "/clips", "/api/reels", "/reels"})
 @CrossOrigin(origins = {"https://socialsea.netlify.app", "https://socialsea.co.in", "https://www.socialsea.co.in", "http://localhost:5173", "http://127.0.0.1:5173", "http://43.205.229.211:5173"})
 public class ReelController {
+    private static final int HARD_MAX_ITEMS = 600;
 
     private final PostRepository postRepo;
     private final UserRepository userRepo;
     private final FollowRepository followRepo;
+
+    @Value("${app.reels.max-items:180}")
+    private int maxReelItems;
+
+    @Value("${app.reels.cache-seconds:15}")
+    private int reelsCacheSeconds;
 
     public ReelController(
             PostRepository postRepo,
@@ -47,25 +60,20 @@ public class ReelController {
     }
 
     @GetMapping
-    public List<Map<String, Object>> reels(Authentication auth) {
+    public ResponseEntity<List<Map<String, Object>>> reels(
+            @RequestParam(value = "size", required = false) Integer size,
+            @RequestParam(value = "limit", required = false) Integer limit,
+            Authentication auth
+    ) {
         User viewer = (auth != null && auth.isAuthenticated())
                 ? userRepo.findByEmail(auth.getName()).orElse(null)
                 : null;
-        Set<Long> allowedPrivateIds = new HashSet<>();
-        if (viewer != null) {
-            allowedPrivateIds.add(viewer.getId());
-            followRepo.findByFollower(viewer).forEach(f -> {
-                if (f.getFollowing() != null && f.getFollowing().getId() != null) {
-                    allowedPrivateIds.add(f.getFollowing().getId());
-                }
-            });
-        }
+        Set<Long> allowedPrivateIds = resolveAllowedPrivateIds(viewer);
+        int resolvedLimit = resolveLimit(size != null ? size : limit, maxReelItems, HARD_MAX_ITEMS);
+        Pageable pageable = PageRequest.of(0, resolvedLimit);
 
-        // Keep existing local-media behavior.
-        List<Map<String, Object>> localItems = postRepo.findAll()
+        List<Map<String, Object>> localItems = postRepo.findApprovedReelCandidates(pageable)
                 .stream()
-                .filter(Post::isApproved)
-                .filter(Post::isReel)
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
                 .filter(p -> canViewPost(viewer, allowedPrivateIds, p.getUser()))
                 .map(this::toReelPayload)
@@ -73,7 +81,9 @@ public class ReelController {
 
         List<Map<String, Object>> merged = new ArrayList<>(localItems);
         merged.sort(Comparator.comparing(this::safeCreatedAt).reversed());
-        return merged;
+        return ResponseEntity.ok()
+            .cacheControl(privateCache(Math.max(1, reelsCacheSeconds)))
+            .body(merged);
     }
 
     @GetMapping("/{postId}")
@@ -81,18 +91,10 @@ public class ReelController {
         User viewer = (auth != null && auth.isAuthenticated())
                 ? userRepo.findByEmail(auth.getName()).orElse(null)
                 : null;
-        Set<Long> allowedPrivateIds = new HashSet<>();
-        if (viewer != null) {
-            allowedPrivateIds.add(viewer.getId());
-            followRepo.findByFollower(viewer).forEach(f -> {
-                if (f.getFollowing() != null && f.getFollowing().getId() != null) {
-                    allowedPrivateIds.add(f.getFollowing().getId());
-                }
-            });
-        }
+        Set<Long> allowedPrivateIds = resolveAllowedPrivateIds(viewer);
 
         Long safeId = Objects.requireNonNull(postId, "postId");
-        Optional<Post> postOpt = postRepo.findById(safeId);
+        Optional<Post> postOpt = postRepo.findPostWithUserById(safeId);
         if (postOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Post not found"));
         }
@@ -111,7 +113,9 @@ public class ReelController {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Post not found"));
         }
 
-        return ResponseEntity.ok(toReelPayload(post));
+        return ResponseEntity.ok()
+            .cacheControl(privateCache(Math.max(1, reelsCacheSeconds)))
+            .body(toReelPayload(post));
     }
 
     private boolean canViewPost(User viewer, Set<Long> allowedPrivateIds, User owner) {
@@ -155,6 +159,29 @@ public class ReelController {
             }
         }
         return LocalDateTime.MIN;
+    }
+
+    private Set<Long> resolveAllowedPrivateIds(User viewer) {
+        if (viewer == null || viewer.getId() == null) return Set.of();
+        Set<Long> allowedPrivateIds = new HashSet<>();
+        allowedPrivateIds.add(viewer.getId());
+        followRepo.findFollowingIdsByFollowerId(viewer.getId())
+            .stream()
+            .filter(Objects::nonNull)
+            .forEach(allowedPrivateIds::add);
+        return allowedPrivateIds;
+    }
+
+    private int resolveLimit(Integer requested, int fallback, int hardMax) {
+        int safeFallback = Math.max(1, Math.min(hardMax, fallback));
+        if (requested == null) return safeFallback;
+        return Math.max(1, Math.min(hardMax, requested));
+    }
+
+    private CacheControl privateCache(int seconds) {
+        return CacheControl.maxAge(Duration.ofSeconds(seconds))
+            .cachePrivate()
+            .mustRevalidate();
     }
 }
 
