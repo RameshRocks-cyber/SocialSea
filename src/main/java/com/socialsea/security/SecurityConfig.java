@@ -85,6 +85,10 @@ public class SecurityConfig {
                     "/health",
                     "/actuator/**",
                     "/api/actuator/**",
+                    "/ws-native",
+                    "/ws-native/**",
+                    "/api/ws-native",
+                    "/api/ws-native/**",
                     "/ws/**",
                     "/api/ws/**",
 

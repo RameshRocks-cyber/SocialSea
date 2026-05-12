@@ -45,6 +45,8 @@ public class PostController {
     private static final int MAX_SETTINGS_LEN = 150000;
     private static final int MAX_MEDIA_TYPE_LEN = 40;
     private static final int MAX_ORIGINAL_FILE_NAME_LEN = 255;
+    private static final double MAX_CLIP_DURATION_SECONDS = 120d;
+    private static final double CLIP_DURATION_TOLERANCE_SECONDS = 0.35d;
     private static final int COPYRIGHT_MATCH_SAMPLE_LIMIT = 5;
     private static final String COPYRIGHT_STATUS_CLEAR = "clear";
     private static final String COPYRIGHT_STATUS_REVIEW = "review";
@@ -175,6 +177,24 @@ public class PostController {
                 : clip(clean(videoSettings), MAX_SETTINGS_LEN);
             boolean editsApplied = videoResult != null && videoResult.isEditsApplied();
 
+            boolean videoFile = isVideo(mediaUploadFile);
+            boolean wantsReel = isTruthy(isReel) || isTruthy(reel) || isReelType(type);
+            boolean wantsLongVideo = isTruthy(isLongVideo) || isLongVideoType(type);
+            if ((wantsReel || wantsLongVideo) && !videoFile) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Video file required for clips/videos"));
+            }
+            if (!wantsStory && wantsReel && videoFile) {
+                double durationSeconds = videoEditingService.probeDurationSeconds(mediaUploadFile);
+                if (durationSeconds > MAX_CLIP_DURATION_SECONDS + CLIP_DURATION_TOLERANCE_SECONDS) {
+                    double roundedDurationSeconds = Math.round(Math.max(0d, durationSeconds) * 10d) / 10d;
+                    return ResponseEntity.badRequest().body(Map.of(
+                        "message", "Clips must be 2 minutes or less (120 seconds max).",
+                        "maxSeconds", (int) MAX_CLIP_DURATION_SECONDS,
+                        "durationSeconds", roundedDurationSeconds
+                    ));
+                }
+            }
+
             String mediaUrl = uploadService.upload(mediaUploadFile);
 
             if (wantsStory) {
@@ -209,13 +229,6 @@ public class PostController {
                     "createdAt", formatIsoOffset(savedStory.getCreatedAt()),
                     "expiresAt", formatIsoOffset(savedStory.getExpiresAt())
                 ));
-            }
-
-            boolean videoFile = isVideo(mediaUploadFile);
-            boolean wantsReel = isTruthy(isReel) || isTruthy(reel) || isReelType(type);
-            boolean wantsLongVideo = isTruthy(isLongVideo) || isLongVideoType(type);
-            if ((wantsReel || wantsLongVideo) && !videoFile) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Video file required for clips/videos"));
             }
 
             String coverImageUrl = null;

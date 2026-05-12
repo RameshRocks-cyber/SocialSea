@@ -120,6 +120,25 @@ public class VideoEditingService {
         }
     }
 
+    public double probeDurationSeconds(MultipartFile sourceFile) {
+        Objects.requireNonNull(sourceFile, "sourceFile");
+        if (!isVideo(sourceFile)) return 0d;
+
+        ensureBinaryAvailable(ffprobeBin, "ffprobe");
+        Path probePath = null;
+        try {
+            probePath = copyToTemp(sourceFile, "ss-video-probe-", fileSuffix(sourceFile.getOriginalFilename(), ".mp4"));
+            MediaProbe probe = probe(probePath);
+            return Math.max(0d, probe.durationSeconds());
+        } catch (RuntimeException | IOException error) {
+            throw new IllegalStateException("Unable to read video duration.", error);
+        } finally {
+            if (probePath != null) {
+                deleteQuietly(probePath);
+            }
+        }
+    }
+
     private void runEditCommand(
         Path inputPath,
         Path outputPath,
@@ -167,6 +186,34 @@ public class VideoEditingService {
             if (probe.hasAudio()) {
                 audioFilters.add("atempo=" + f(speed));
             }
+        }
+
+        double cropLeftPct = clamp(number(edits.get("cropLeft"), 0d), 0d, 90d);
+        double cropRightPct = clamp(number(edits.get("cropRight"), 0d), 0d, 90d);
+        double cropTopPct = clamp(number(edits.get("cropTop"), 0d), 0d, 90d);
+        double cropBottomPct = clamp(number(edits.get("cropBottom"), 0d), 0d, 90d);
+        double horizontalCropTotal = cropLeftPct + cropRightPct;
+        if (horizontalCropTotal > 90d) {
+            double ratio = 90d / horizontalCropTotal;
+            cropLeftPct *= ratio;
+            cropRightPct *= ratio;
+        }
+        double verticalCropTotal = cropTopPct + cropBottomPct;
+        if (verticalCropTotal > 90d) {
+            double ratio = 90d / verticalCropTotal;
+            cropTopPct *= ratio;
+            cropBottomPct *= ratio;
+        }
+        if (cropLeftPct + cropRightPct + cropTopPct + cropBottomPct > 0.01d) {
+            double cropWidthRatio = Math.max(0.01d, 1d - (cropLeftPct + cropRightPct) / 100d);
+            double cropHeightRatio = Math.max(0.01d, 1d - (cropTopPct + cropBottomPct) / 100d);
+            double cropXRatio = clamp(cropLeftPct / 100d, 0d, 1d);
+            double cropYRatio = clamp(cropTopPct / 100d, 0d, 1d);
+            String crop = "crop=iw*" + f(cropWidthRatio)
+                + ":ih*" + f(cropHeightRatio)
+                + ":iw*" + f(cropXRatio)
+                + ":ih*" + f(cropYRatio);
+            videoFilters.add(crop);
         }
 
         double zoom = clamp(number(edits.get("cropZoom"), 100d), 100d, 220d);
@@ -1162,6 +1209,10 @@ public class VideoEditingService {
         if (booleanFlag(edits.get("reversePlayback"))) return true;
         if (Math.abs(clamp(number(edits.get("playbackSpeed"), 1d), 0.5d, 2d) - 1d) > 0.001d) return true;
         if (Math.abs(number(edits.get("cropZoom"), 100d) - 100d) > 0.01d) return true;
+        if (Math.abs(number(edits.get("cropLeft"), 0d)) > 0.1d) return true;
+        if (Math.abs(number(edits.get("cropRight"), 0d)) > 0.1d) return true;
+        if (Math.abs(number(edits.get("cropTop"), 0d)) > 0.1d) return true;
+        if (Math.abs(number(edits.get("cropBottom"), 0d)) > 0.1d) return true;
         if (Math.abs(number(edits.get("rotate"), 0d)) > 0.1d) return true;
         if (booleanFlag(edits.get("flipH")) || booleanFlag(edits.get("flipV"))) return true;
         if (Math.abs(number(edits.get("brightness"), 100d) - 100d) > 0.5d) return true;

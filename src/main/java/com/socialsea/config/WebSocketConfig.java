@@ -74,8 +74,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(@NonNull StompEndpointRegistry registry) {
+        var handshakeHandler = Objects.requireNonNull(userHandshakeHandler);
+        registry.addEndpoint("/ws-native")
+                .setHandshakeHandler(handshakeHandler)
+                .addInterceptors(jwtHandshakeInterceptor)
+                .setAllowedOriginPatterns(allowedOrigins);
         registry.addEndpoint("/ws")
-                .setHandshakeHandler(Objects.requireNonNull(userHandshakeHandler))
+                .setHandshakeHandler(handshakeHandler)
                 .addInterceptors(jwtHandshakeInterceptor)
                 .setAllowedOriginPatterns(allowedOrigins)
                 .withSockJS();

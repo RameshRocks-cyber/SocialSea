@@ -210,6 +210,8 @@ public class NotificationController {
                 row.put("postUrl", postUrl);
                 if (isReel) {
                     String adjusted = String.valueOf(row.get("message"));
+                    adjusted = adjusted.replaceAll("(?i)\\byour\\s+reel\\b", "your clip");
+                    adjusted = adjusted.replaceAll("(?i)\\breel\\b", "clip");
                     if ("like".equals(kind)) {
                         adjusted = adjusted.replaceAll("(?i)liked\\s+your\\s+post", "liked your clip");
                     } else if ("comment".equals(kind)) {
