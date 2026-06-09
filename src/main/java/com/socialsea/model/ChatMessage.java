@@ -16,9 +16,13 @@ public class ChatMessage {
     @JoinColumn(name = "sender_id", nullable = false)
     private User sender;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "receiver_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "receiver_id")
     private User receiver;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id")
+    private ChatGroup group;
 
     @Column(nullable = false, length = 2000)
     private String text;
@@ -71,6 +75,14 @@ public class ChatMessage {
 
     public void setReceiver(User receiver) {
         this.receiver = receiver;
+    }
+
+    public ChatGroup getGroup() {
+        return group;
+    }
+
+    public void setGroup(ChatGroup group) {
+        this.group = group;
     }
 
     public String getText() {

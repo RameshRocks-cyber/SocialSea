@@ -4,6 +4,7 @@ import com.socialsea.model.*;
 import com.socialsea.repository.*;
 import com.socialsea.service.NotificationService;
 import com.socialsea.util.MediaUrlUtils;
+import com.socialsea.util.PublicUserPayloads;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -46,9 +47,7 @@ public class LikeController {
         likeRepo.save(like);
 
         // 🔔 NOTIFICATION (must be before return)
-        String actor = (user.getName() != null && !user.getName().isBlank())
-            ? user.getName()
-            : user.getEmail();
+        String actor = PublicUserPayloads.publicDisplayName(user);
         String targetLabel = post.isReel() ? "clip" : (MediaUrlUtils.isLikelyVideo(post.getMediaUrl()) ? "video" : "post");
         notificationService.notifyUser(
             post.getUser().getEmail(),

@@ -17,9 +17,18 @@ import java.util.UUID;
 @Component
 public class JwtUtil {
     private static final Logger log = LoggerFactory.getLogger(JwtUtil.class);
+    private static final String CLAIM_TOKEN_USE = "token_use";
+    private static final String TOKEN_USE_ACCESS = "access";
+    private static final String TOKEN_USE_REFRESH = "refresh";
 
     @Value("${jwt.secret:}")
     private String secret;
+
+    @Value("${jwt.expiration:3600000}")
+    private long accessExpirationMs;
+
+    @Value("${jwt.refresh-expiration:2592000000}")
+    private long refreshExpirationMs;
 
     private final Environment environment;
 
@@ -37,8 +46,6 @@ public class JwtUtil {
         this.key = Keys.hmacShaKeyFor(normalizedSecret.getBytes(StandardCharsets.UTF_8));
     }
 
-    private final long ACCESS_EXP = 1000 * 60 * 60 * 24 * 7; // 7 days
-    private final long REFRESH_EXP = 1000 * 60 * 60 * 24 * 30; // 30 days
     private final long CLOCK_SKEW_SECONDS = 300; // allow 5 minutes drift
 
     public String generateAccessToken(String username) {
@@ -52,7 +59,8 @@ public class JwtUtil {
                 .setSubject(subject)
                 .setId(sid)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + ACCESS_EXP))
+                .setExpiration(new Date(System.currentTimeMillis() + accessExpirationMs))
+                .claim(CLAIM_TOKEN_USE, TOKEN_USE_ACCESS)
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -68,7 +76,8 @@ public class JwtUtil {
                 .setSubject(subject)
                 .setId(sid)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + REFRESH_EXP))
+                .setExpiration(new Date(System.currentTimeMillis() + refreshExpirationMs))
+                .claim(CLAIM_TOKEN_USE, TOKEN_USE_REFRESH)
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -79,23 +88,11 @@ public class JwtUtil {
     }
 
     public String extractUsername(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(key)
-                .setAllowedClockSkewSeconds(CLOCK_SKEW_SECONDS)
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .getSubject();
+        return parseClaims(token).getSubject();
     }
 
     public String extractTokenId(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(key)
-                .setAllowedClockSkewSeconds(CLOCK_SKEW_SECONDS)
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .getId();
+        return parseClaims(token).getId();
     }
 
     // Alias for compatibility
@@ -104,19 +101,28 @@ public class JwtUtil {
     }
 
     public boolean isExpired(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(key)
-                .setAllowedClockSkewSeconds(CLOCK_SKEW_SECONDS)
-                .build()
-                .parseClaimsJws(token)
-                .getBody()
-                .getExpiration()
-                .before(new Date());
+        return parseClaims(token).getExpiration().before(new Date());
     }
 
     // Alias for compatibility
     public boolean isTokenExpired(String token) {
         return isExpired(token);
+    }
+
+    public boolean isRefreshToken(String token) {
+        try {
+            Claims claims = parseClaims(token);
+            String tokenUse = normalizeTokenUse(claims.get(CLAIM_TOKEN_USE, String.class));
+            if (TOKEN_USE_REFRESH.equals(tokenUse)) {
+                return true;
+            }
+            if (TOKEN_USE_ACCESS.equals(tokenUse)) {
+                return false;
+            }
+            return isLikelyRefreshToken(claims);
+        } catch (Exception ignored) {
+            return false;
+        }
     }
 
     private String normalizeSecret(String configuredSecret, boolean prod) {
@@ -156,6 +162,47 @@ public class JwtUtil {
             return UUID.randomUUID().toString();
         }
         return sessionId.trim();
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(key)
+                .setAllowedClockSkewSeconds(CLOCK_SKEW_SECONDS)
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+    }
+
+    private boolean isLikelyRefreshToken(Claims claims) {
+        if (claims == null) {
+            return false;
+        }
+        Date issuedAt = claims.getIssuedAt();
+        Date expiration = claims.getExpiration();
+        if (issuedAt == null || expiration == null) {
+            return false;
+        }
+
+        long lifetimeMs = expiration.getTime() - issuedAt.getTime();
+        if (lifetimeMs <= 0L) {
+            return false;
+        }
+
+        long accessLifetimeMs = Math.max(1L, accessExpirationMs);
+        long refreshLifetimeMs = Math.max(accessLifetimeMs, refreshExpirationMs);
+        if (refreshLifetimeMs <= accessLifetimeMs) {
+            return false;
+        }
+
+        long midpointMs = accessLifetimeMs + Math.max(1L, (refreshLifetimeMs - accessLifetimeMs) / 2L);
+        return lifetimeMs >= midpointMs;
+    }
+
+    private String normalizeTokenUse(String tokenUse) {
+        if (tokenUse == null) {
+            return "";
+        }
+        return tokenUse.trim().toLowerCase();
     }
 }
 

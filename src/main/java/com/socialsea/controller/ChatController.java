@@ -270,17 +270,6 @@ public class ChatController {
         return requested;
     }
 
-    private Instant latestInstant(Instant... values) {
-        Instant latest = null;
-        for (Instant value : values) {
-            if (value == null) continue;
-            if (latest == null || value.isAfter(latest)) {
-                latest = value;
-            }
-        }
-        return latest;
-    }
-
     private Instant toInstant(LocalDateTime value) {
         if (value == null) return null;
         return value.atZone(ZoneId.systemDefault()).toInstant();

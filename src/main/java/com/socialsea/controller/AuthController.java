@@ -10,14 +10,19 @@ import com.socialsea.service.AuthService;
 import com.socialsea.service.DeviceSessionLimitException;
 import com.socialsea.service.LoginSessionService;
 import com.socialsea.service.OtpService;
+import com.socialsea.security.AuthCookieUtil;
 import com.socialsea.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.beans.factory.annotation.Value;
+
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.HashMap;
@@ -26,9 +31,6 @@ import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = {"https://socialsea.netlify.app",
-    "https://socialsea.co.in",
-    "https://www.socialsea.co.in", "http://localhost:5173", "http://127.0.0.1:5173", "http://43.205.229.211:5173"})
 public class AuthController {
 
     @Autowired
@@ -54,6 +56,15 @@ public class AuthController {
 
     @Value("${app.otp.return-fallback-otp-on-delivery-failure:true}")
     private boolean returnFallbackOtpOnDeliveryFailure;
+
+    @Value("${app.security.require-https:false}")
+    private boolean requireHttps;
+
+    @Value("${jwt.expiration:3600000}")
+    private long accessTokenMaxAgeMs;
+
+    @Value("${jwt.refresh-expiration:2592000000}")
+    private long refreshTokenMaxAgeMs;
 
     @PostMapping({"/send-otp", "/forgot-password", "/forgotPassword"})
     public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> body) {
@@ -125,7 +136,8 @@ public class AuthController {
                 : identifier.toLowerCase(Locale.ROOT);
 
         try {
-            return ResponseEntity.ok(authService.verifyOtp(otpKey, otp, httpRequest));
+            AuthResponse response = authService.verifyOtp(otpKey, otp, httpRequest);
+            return respondWithAuthCookies(response, httpRequest);
         } catch (DeviceSessionLimitException ex) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(Map.of("message", ex.getMessage(), "code", "DEVICE_LIMIT"));
@@ -174,6 +186,10 @@ public class AuthController {
             if (byPhone.isPresent()) {
                 user = byPhone.get();
             }
+        }
+
+        if (user != null && user.isBanned()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "User banned"));
         }
 
         if (user != null && user.getPassword() != null && !user.getPassword().isBlank()) {
@@ -225,8 +241,10 @@ public class AuthController {
             String tokenSubject = resolveTokenSubject(user, email != null ? email : username);
             String accessToken = jwtUtil.generateAccessToken(tokenSubject, session.getSessionId());
             String refreshToken = jwtUtil.generateRefreshToken(tokenSubject, session.getSessionId());
-
-            return ResponseEntity.ok(new AuthResponse(accessToken, refreshToken, user, session.getDeviceId()));
+            return respondWithAuthCookies(
+                    new AuthResponse(accessToken, refreshToken, user, session.getDeviceId()),
+                    httpRequest
+            );
         } catch (DeviceSessionLimitException ex) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(Map.of("message", ex.getMessage(), "code", "DEVICE_LIMIT"));
@@ -254,6 +272,10 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid credentials"));
         }
 
+        if (user.isBanned()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "User banned"));
+        }
+
         if (user.getPassword() == null || !passwordEncoder.matches(password, user.getPassword())) {
             if (!legacyPasswordMatchAndUpgrade(user, password)) {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid credentials"));
@@ -265,8 +287,10 @@ public class AuthController {
             String tokenSubject = resolveTokenSubject(user, identifier);
             String accessToken = jwtUtil.generateAccessToken(tokenSubject, session.getSessionId());
             String refreshToken = jwtUtil.generateRefreshToken(tokenSubject, session.getSessionId());
-
-            return ResponseEntity.ok(new AuthResponse(accessToken, refreshToken, user, session.getDeviceId()));
+            return respondWithAuthCookies(
+                    new AuthResponse(accessToken, refreshToken, user, session.getDeviceId()),
+                    httpRequest
+            );
         } catch (DeviceSessionLimitException ex) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(Map.of("message", ex.getMessage(), "code", "DEVICE_LIMIT"));
@@ -439,6 +463,77 @@ public class AuthController {
         return candidate;
     }
 
+    private ResponseCookie buildRefreshCookie(String refreshToken, HttpServletRequest request) {
+        return AuthCookieUtil.buildRefreshTokenCookie(
+                refreshToken,
+                request,
+                requireHttps,
+                Duration.ofMillis(refreshTokenMaxAgeMs)
+        );
+    }
+
+    private ResponseCookie buildAccessCookie(String accessToken, HttpServletRequest request) {
+        return AuthCookieUtil.buildAccessTokenCookie(
+                accessToken,
+                request,
+                requireHttps,
+                Duration.ofMillis(accessTokenMaxAgeMs)
+        );
+    }
+
+    private ResponseEntity<AuthResponse> respondWithAuthCookies(AuthResponse response, HttpServletRequest request) {
+        if (response == null) {
+            return ResponseEntity.ok(new AuthResponse(null, null, (User) null, null));
+        }
+        ResponseEntity.BodyBuilder builder = ResponseEntity.ok();
+        String accessToken = normalize(response.getToken());
+        String refreshToken = normalize(response.getRefreshToken());
+        if (accessToken != null) {
+            builder.header(HttpHeaders.SET_COOKIE, buildAccessCookie(accessToken, request).toString());
+        }
+        if (refreshToken != null) {
+            builder.header(HttpHeaders.SET_COOKIE, buildRefreshCookie(refreshToken, request).toString());
+        }
+        AuthResponse sanitized = new AuthResponse(
+                null,
+                null,
+                response.getUser(),
+                response.getDeviceId()
+        );
+        sanitized.setRole(response.getRole());
+        return builder.body(sanitized);
+    }
+
+    private String resolveRefreshToken(Map<String, String> body, HttpServletRequest request) {
+        String refreshToken = null;
+        if (body != null) {
+            refreshToken = normalize(body.get("refreshToken"));
+            if (refreshToken == null) refreshToken = normalize(body.get("refresh_token"));
+            if (refreshToken == null) refreshToken = normalize(body.get("token"));
+            if (refreshToken == null) refreshToken = normalize(body.get("jwt"));
+        }
+        if (refreshToken != null
+                && !"null".equalsIgnoreCase(refreshToken)
+                && !"undefined".equalsIgnoreCase(refreshToken)) {
+            return refreshToken;
+        }
+        return AuthCookieUtil.resolveRefreshToken(request);
+    }
+
+    private ResponseEntity<String> unauthorizedWithClearedAuthCookies(String message, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .header(HttpHeaders.SET_COOKIE, AuthCookieUtil.clearAccessTokenCookie(request, requireHttps).toString())
+                .header(HttpHeaders.SET_COOKIE, AuthCookieUtil.clearRefreshTokenCookie(request, requireHttps).toString())
+                .body(message);
+    }
+
+    private ResponseEntity<String> forbiddenWithClearedAuthCookies(String message, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .header(HttpHeaders.SET_COOKIE, AuthCookieUtil.clearAccessTokenCookie(request, requireHttps).toString())
+                .header(HttpHeaders.SET_COOKIE, AuthCookieUtil.clearRefreshTokenCookie(request, requireHttps).toString())
+                .body(message);
+    }
+
     private String resolveTokenSubject(User user, String fallback) {
         String email = normalize(user != null ? user.getEmail() : null);
         if (email != null) {
@@ -470,6 +565,10 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid credentials"));
         }
 
+        if (admin.isBanned()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "User banned"));
+        }
+
         if (admin.getPassword() == null || !passwordEncoder.matches(password, admin.getPassword())) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Invalid credentials"));
         }
@@ -483,13 +582,10 @@ public class AuthController {
             String tokenSubject = resolveTokenSubject(admin, email);
             String accessToken = jwtUtil.generateAccessToken(tokenSubject, session.getSessionId());
             String refreshToken = jwtUtil.generateRefreshToken(tokenSubject, session.getSessionId());
-
-            return ResponseEntity.ok(Map.of(
-                    "role", "ADMIN",
-                    "accessToken", accessToken,
-                    "refreshToken", refreshToken,
-                    "deviceId", session.getDeviceId()
-            ));
+            return respondWithAuthCookies(
+                    new AuthResponse(accessToken, refreshToken, admin, session.getDeviceId()),
+                    httpRequest
+            );
         } catch (DeviceSessionLimitException ex) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(Map.of("message", ex.getMessage(), "code", "DEVICE_LIMIT"));
@@ -497,60 +593,62 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<?> refresh(@RequestBody Map<String, String> body) {
-        String refreshToken = body.get("refreshToken");
-
+    public ResponseEntity<?> refresh(@RequestBody(required = false) Map<String, String> body, HttpServletRequest request) {
+        String refreshToken = resolveRefreshToken(body, request);
         if (refreshToken == null || refreshToken.isBlank()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Refresh token missing");
+            return unauthorizedWithClearedAuthCookies("Refresh token missing", request);
         }
 
         try {
             if (jwtUtil.isExpired(refreshToken)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body("Refresh token expired");
+                return unauthorizedWithClearedAuthCookies("Refresh token expired", request);
             }
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Refresh token invalid");
+            return unauthorizedWithClearedAuthCookies("Refresh token invalid", request);
+        }
+
+        if (!jwtUtil.isRefreshToken(refreshToken)) {
+            return unauthorizedWithClearedAuthCookies("Refresh token invalid", request);
         }
 
         String username;
         try {
             username = jwtUtil.extractUsername(refreshToken);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Refresh token invalid");
+            return unauthorizedWithClearedAuthCookies("Refresh token invalid", request);
         }
 
         String sessionId;
         try {
             sessionId = jwtUtil.extractTokenId(refreshToken);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Refresh token invalid");
+            return unauthorizedWithClearedAuthCookies("Refresh token invalid", request);
         }
 
         if (sessionId == null || sessionId.isBlank()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Refresh token invalid");
+            return unauthorizedWithClearedAuthCookies("Refresh token invalid", request);
         }
 
         User user = userRepository.findByEmailIgnoreCase(username).orElse(null);
         if (user == null || user.getId() == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Refresh token invalid");
+            return unauthorizedWithClearedAuthCookies("Refresh token invalid", request);
+        }
+        if (user.isBanned()) {
+            return forbiddenWithClearedAuthCookies("User banned", request);
         }
 
         if (!loginSessionService.isActiveSession(user.getId(), sessionId)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body("Session expired. Please login again.");
+            return unauthorizedWithClearedAuthCookies("Session expired. Please login again.", request);
         }
         loginSessionService.touch(sessionId);
 
         String newAccessToken = jwtUtil.generateAccessToken(username, sessionId);
-
-        return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
+        ResponseCookie refreshCookie = buildRefreshCookie(refreshToken, request);
+        ResponseCookie accessCookie = buildAccessCookie(newAccessToken, request);
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, accessCookie.toString())
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(new AuthResponse(null, null, user, null));
     }
 }
 

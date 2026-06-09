@@ -31,6 +31,7 @@ public class S3UploadService implements UploadService {
     private final Set<String> allowedTypes;
     private final Set<String> allowedExtensions;
     private final long maxBytes;
+    private final long maxImageBytes;
     private final boolean allowLocalFallback;
 
     public S3UploadService(
@@ -42,6 +43,7 @@ public class S3UploadService implements UploadService {
         @Value("${app.upload.allowed-types:image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/x-matroska,video/matroska,audio/mpeg,audio/wav,audio/mp4,application/pdf}") String allowedTypes,
         @Value("${app.upload.allowed-extensions:png,jpg,jpeg,webp,gif,mp4,webm,mkv,mp3,wav,m4a,pdf}") String allowedExtensions,
         @Value("${app.upload.max-bytes:1073741824}") long maxBytes,
+        @Value("${app.upload.max-image-bytes:20971520}") long maxImageBytes,
         @Value("${app.upload.allow-local-fallback:false}") boolean allowLocalFallback
     ) {
         this.bucket = bucket == null ? "" : bucket.trim();
@@ -51,6 +53,7 @@ public class S3UploadService implements UploadService {
         this.allowedTypes = parseCsv(allowedTypes);
         this.allowedExtensions = parseCsv(allowedExtensions);
         this.maxBytes = maxBytes;
+        this.maxImageBytes = maxImageBytes;
         this.allowLocalFallback = allowLocalFallback;
 
         if (region != null && !region.trim().isEmpty()) {
@@ -164,6 +167,9 @@ public class S3UploadService implements UploadService {
         if (maxBytes > 0 && file.getSize() > maxBytes) {
             throw new IllegalArgumentException("File too large");
         }
+        if (maxImageBytes > 0 && isImageFile(file) && file.getSize() > maxImageBytes) {
+            throw new IllegalArgumentException("Image too large");
+        }
 
         String contentType = normalize(file.getContentType());
         if (!allowedTypes.isEmpty() && (contentType == null || !allowedTypes.contains(contentType))) {
@@ -194,6 +200,15 @@ public class S3UploadService implements UploadService {
         }
         String trimmed = value.trim().toLowerCase();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private boolean isImageFile(MultipartFile file) {
+        String contentType = normalize(file != null ? file.getContentType() : null);
+        if (contentType != null && contentType.startsWith("image/")) {
+            return true;
+        }
+        String ext = extractExtension(file != null ? file.getOriginalFilename() : null);
+        return ext != null && Set.of("png", "jpg", "jpeg", "webp", "gif", "bmp", "heic", "heif", "avif").contains(ext);
     }
 
     private Set<String> parseCsv(String raw) {

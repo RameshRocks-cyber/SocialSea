@@ -1,7 +1,7 @@
 package com.socialsea.service;
 
 import com.cloudinary.Cloudinary;
-import com.socialsea.dto.FeedItemDto;
+import com.socialsea.dto.PublicFeedDto;
 import com.socialsea.model.AnonymousPost;
 import com.socialsea.repository.AnonymousPostRepository;
 import org.springframework.stereotype.Service;
@@ -70,11 +70,11 @@ public class AnonymousPostService {
         return repository.findByApprovedTrueOrderByCreatedAtDesc();
     }
 
-    public List<FeedItemDto> getApprovedFeed() {
+    public List<PublicFeedDto> getApprovedFeed() {
         return repository.findByApprovedTrueAndRejectedFalseOrderByCreatedAtDesc()
                 .stream()
                 .filter(p -> p.getContentUrl() != null && !p.getContentUrl().isBlank())
-                .map(FeedItemDto::fromAnonymous)
+                .map(PublicFeedDto::fromAnonymous)
                 .collect(Collectors.toList());
     }
 

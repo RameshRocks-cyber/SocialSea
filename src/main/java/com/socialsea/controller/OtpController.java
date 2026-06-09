@@ -7,14 +7,18 @@ import com.socialsea.repository.UserRepository;
 import com.socialsea.service.AuthService;
 import com.socialsea.service.DeviceSessionLimitException;
 import com.socialsea.service.OtpService;
+import com.socialsea.security.AuthCookieUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Duration;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -35,6 +39,15 @@ public class OtpController {
 
     @Value("${app.otp.return-fallback-otp-on-delivery-failure:true}")
     private boolean returnFallbackOtpOnDeliveryFailure;
+
+    @Value("${app.security.require-https:false}")
+    private boolean requireHttps;
+
+    @Value("${jwt.expiration:3600000}")
+    private long accessTokenMaxAgeMs;
+
+    @Value("${jwt.refresh-expiration:2592000000}")
+    private long refreshTokenMaxAgeMs;
 
     public OtpController(OtpService otpService, AuthService authService) {
         this.otpService = otpService;
@@ -125,7 +138,7 @@ public class OtpController {
 
         try {
             AuthResponse response = authService.verifyOtp(otpKey, otp, httpRequest);
-            return ResponseEntity.ok(response);
+            return respondWithAuthCookies(response, httpRequest);
         } catch (DeviceSessionLimitException ex) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(Map.of("message", ex.getMessage(), "code", "DEVICE_LIMIT"));
@@ -148,7 +161,7 @@ public class OtpController {
 
         try {
             AuthResponse response = authService.verifyOtp(email, otp, httpRequest);
-            return ResponseEntity.ok(response);
+            return respondWithAuthCookies(response, httpRequest);
         } catch (DeviceSessionLimitException ex) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .body(Map.of("message", ex.getMessage(), "code", "DEVICE_LIMIT"));
@@ -297,5 +310,46 @@ public class OtpController {
             return username;
         }
         return null;
+    }
+
+    private ResponseCookie buildRefreshCookie(String refreshToken, HttpServletRequest request) {
+        return AuthCookieUtil.buildRefreshTokenCookie(
+                refreshToken,
+                request,
+                requireHttps,
+                Duration.ofMillis(refreshTokenMaxAgeMs)
+        );
+    }
+
+    private ResponseCookie buildAccessCookie(String accessToken, HttpServletRequest request) {
+        return AuthCookieUtil.buildAccessTokenCookie(
+                accessToken,
+                request,
+                requireHttps,
+                Duration.ofMillis(accessTokenMaxAgeMs)
+        );
+    }
+
+    private ResponseEntity<AuthResponse> respondWithAuthCookies(AuthResponse response, HttpServletRequest request) {
+        if (response == null) {
+            return ResponseEntity.ok(new AuthResponse(null, null, (User) null, null));
+        }
+        ResponseEntity.BodyBuilder builder = ResponseEntity.ok();
+        String accessToken = response.getToken();
+        if (accessToken != null && !accessToken.isBlank()) {
+            builder.header(HttpHeaders.SET_COOKIE, buildAccessCookie(accessToken, request).toString());
+        }
+        String refreshToken = response.getRefreshToken();
+        if (refreshToken != null && !refreshToken.isBlank()) {
+            builder.header(HttpHeaders.SET_COOKIE, buildRefreshCookie(refreshToken, request).toString());
+        }
+        AuthResponse sanitized = new AuthResponse(
+                null,
+                null,
+                response.getUser(),
+                response.getDeviceId()
+        );
+        sanitized.setRole(response.getRole());
+        return builder.body(sanitized);
     }
 }

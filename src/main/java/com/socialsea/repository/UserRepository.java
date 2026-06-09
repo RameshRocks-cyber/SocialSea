@@ -20,7 +20,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByNameIgnoreCase(String name);
     boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
 
-    List<User> findTop20ByEmailContainingIgnoreCaseOrNameContainingIgnoreCase(String email, String name);
+    List<User> findTop20ByNameContainingIgnoreCase(String name);
 
     @Query("""
         SELECT new com.socialsea.dto.ChartPointDto(

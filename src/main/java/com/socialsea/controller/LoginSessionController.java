@@ -3,10 +3,13 @@ package com.socialsea.controller;
 import com.socialsea.model.LoginSession;
 import com.socialsea.model.User;
 import com.socialsea.repository.UserRepository;
+import com.socialsea.security.AuthCookieUtil;
 import com.socialsea.security.JwtUtil;
 import com.socialsea.service.LoginSessionService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -28,6 +31,9 @@ public class LoginSessionController {
     private final UserRepository userRepository;
     private final LoginSessionService loginSessionService;
     private final JwtUtil jwtUtil;
+
+    @Value("${app.security.require-https:false}")
+    private boolean requireHttps;
 
     public record LoginSessionInfo(
             String sessionId,
@@ -106,6 +112,9 @@ public class LoginSessionController {
     @PostMapping("/logout")
     public ResponseEntity<?> logoutCurrent(Authentication auth, HttpServletRequest request) {
         User me = currentUser(auth);
+        if ((me == null || me.getId() == null)) {
+            me = currentUserFromRefreshCookie(request);
+        }
         if (me == null || me.getId() == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         }
@@ -113,7 +122,10 @@ public class LoginSessionController {
         if (!currentSessionId.isBlank()) {
             loginSessionService.revokeSession(me.getId(), currentSessionId, "logout");
         }
-        return ResponseEntity.ok(Map.of("ok", true));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, clearAccessCookie(request).toString())
+                .header(HttpHeaders.SET_COOKIE, clearRefreshCookie(request).toString())
+                .body(Map.of("ok", true));
     }
 
     private User currentUser(Authentication auth) {
@@ -123,8 +135,27 @@ public class LoginSessionController {
         return userRepository.findByEmailIgnoreCase(email).orElse(null);
     }
 
+    private User currentUserFromRefreshCookie(HttpServletRequest request) {
+        String refreshToken = AuthCookieUtil.resolveRefreshToken(request);
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return null;
+        }
+        try {
+            String email = jwtUtil.extractUsername(refreshToken);
+            if (email == null || email.isBlank()) {
+                return null;
+            }
+            return userRepository.findByEmailIgnoreCase(email).orElse(null);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
     private String resolveCurrentSessionId(HttpServletRequest request) {
-        String token = extractBearerToken(request);
+        String token = AuthCookieUtil.resolveAccessToken(request);
+        if (token.isBlank()) {
+            token = AuthCookieUtil.resolveRefreshToken(request);
+        }
         if (token.isBlank()) return "";
         try {
             String sid = jwtUtil.extractTokenId(token);
@@ -132,15 +163,6 @@ public class LoginSessionController {
         } catch (Exception e) {
             return "";
         }
-    }
-
-    private String extractBearerToken(HttpServletRequest request) {
-        if (request == null) return "";
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader == null) return "";
-        String value = authHeader.trim();
-        if (!value.startsWith("Bearer ")) return "";
-        return value.substring(7).trim();
     }
 
     private String hint(String deviceId) {
@@ -152,5 +174,13 @@ public class LoginSessionController {
 
     private String safe(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private org.springframework.http.ResponseCookie clearRefreshCookie(HttpServletRequest request) {
+        return AuthCookieUtil.clearRefreshTokenCookie(request, requireHttps);
+    }
+
+    private org.springframework.http.ResponseCookie clearAccessCookie(HttpServletRequest request) {
+        return AuthCookieUtil.clearAccessTokenCookie(request, requireHttps);
     }
 }

@@ -1,5 +1,6 @@
 package com.socialsea.security;
 
+import com.socialsea.service.PresenceService;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
 import org.springframework.messaging.simp.stomp.StompCommand;
@@ -20,25 +21,30 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
 
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
+    private final PresenceService presenceService;
 
-    public WebSocketAuthChannelInterceptor(JwtUtil jwtUtil, UserDetailsService userDetailsService) {
+    public WebSocketAuthChannelInterceptor(JwtUtil jwtUtil, UserDetailsService userDetailsService, PresenceService presenceService) {
         this.jwtUtil = jwtUtil;
         this.userDetailsService = userDetailsService;
+        this.presenceService = presenceService;
     }
 
     @Override
     public Message<?> preSend(@NonNull Message<?> message, @NonNull MessageChannel channel) {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
         StompCommand command = accessor.getCommand();
-        if (!(StompCommand.CONNECT.equals(command) || StompCommand.STOMP.equals(command))) {
+        if (touchPresence(accessor)) {
             return message;
         }
-        if (accessor.getUser() != null) {
+        if (!(StompCommand.CONNECT.equals(command) || StompCommand.STOMP.equals(command))) {
             return message;
         }
 
         String token = resolveToken(accessor);
         if (token == null || token.isBlank()) {
+            return message;
+        }
+        if (jwtUtil.isRefreshToken(token)) {
             return message;
         }
 
@@ -61,11 +67,43 @@ public class WebSocketAuthChannelInterceptor implements ChannelInterceptor {
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
             accessor.setUser(authentication);
+            touchPresence(user.getUsername(), accessor.getSessionId());
             return MessageBuilder.createMessage(message.getPayload(), accessor.getMessageHeaders());
         } catch (Exception ignored) {
             // Keep socket flow resilient; anonymous connect may still be used for non-user channels.
         }
         return message;
+    }
+
+    private boolean touchPresence(StompHeaderAccessor accessor) {
+        if (accessor == null) {
+            return false;
+        }
+
+        var user = accessor.getUser();
+        String sessionId = accessor.getSessionId();
+        if (user == null || sessionId == null || sessionId.isBlank()) {
+            return false;
+        }
+
+        try {
+            presenceService.refreshSocket(user.getName(), sessionId);
+        } catch (Exception ignored) {
+            // Presence must never block websocket traffic.
+        }
+        return true;
+    }
+
+    private void touchPresence(String username, String sessionId) {
+        if (username == null || username.isBlank() || sessionId == null || sessionId.isBlank()) {
+            return;
+        }
+
+        try {
+            presenceService.refreshSocket(username, sessionId);
+        } catch (Exception ignored) {
+            // Presence must never block websocket traffic.
+        }
     }
 
     private String resolveToken(StompHeaderAccessor accessor) {

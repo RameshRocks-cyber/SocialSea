@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -107,6 +109,9 @@ public class LoginSessionService {
         }
         if (request == null) {
             throw new IllegalArgumentException("request required");
+        }
+        if (user.isBanned()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User banned");
         }
 
         String deviceId = resolveDeviceId(request, suggestedDeviceId);

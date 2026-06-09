@@ -155,7 +155,7 @@ public class StoryController {
         payload.put("id", saved.getId());
         payload.put("mediaUrl", saved.getMediaUrl());
         payload.put("storyUrl", saved.getMediaUrl());
-        payload.put("isVideo", file.getContentType() != null && file.getContentType().startsWith("video"));
+        payload.put("isVideo", isVideoContentType(file.getContentType()));
         payload.put("caption", saved.getCaption());
         payload.put("storyText", saved.getStoryText());
         payload.put("privacy", saved.getPrivacy());
@@ -232,5 +232,9 @@ public class StoryController {
     private String formatIsoOffset(LocalDateTime value) {
         if (value == null) return null;
         return value.atZone(ZoneId.systemDefault()).format(ISO_OFFSET);
+    }
+
+    private boolean isVideoContentType(String contentType) {
+        return contentType != null && contentType.startsWith("video");
     }
 }

@@ -22,6 +22,16 @@
   - `ln -sfn "$JAR_PATH" socialsea.jar`
   - `java -Dspring.profiles.active=prod -jar socialsea.jar`
 
+## Local backend (localhost)
+1. Create `.env.local` (copy from `.env.local.example`).
+2. Run the backend:
+   - PostgreSQL (default): `powershell -ExecutionPolicy Bypass -File scripts/run-backend-local.ps1`
+   - H2 (no external DB): `powershell -ExecutionPolicy Bypass -File scripts/run-backend-local.ps1 -Profiles dev,h2`
+
+Notes:
+- Backend runs at `http://localhost:8080`.
+- In `dev`, uploads fall back to local disk and are served at `/uploads/**` (stored under `uploads/`).
+
 ### Important
 This repo historically had a second backend folder at `SocialSea-main/`.
 That folder is now a Maven wrapper that compiles the backend from the repository root (`../src/...`), so builds from either location match.

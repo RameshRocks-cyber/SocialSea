@@ -9,6 +9,7 @@ import com.socialsea.repository.StoryViewRepository;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.NotificationService;
 import com.socialsea.service.StoryService;
+import com.socialsea.util.PublicUserPayloads;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -96,9 +97,7 @@ public class StoryLikeController {
         User owner = story.getUser();
         if (owner != null && owner.getEmail() != null
                 && !owner.getEmail().equalsIgnoreCase(user.getEmail())) {
-            String actor = (user.getName() != null && !user.getName().isBlank())
-                    ? user.getName()
-                    : user.getEmail();
+            String actor = PublicUserPayloads.publicDisplayName(user);
             notificationService.notifyUser(
                     owner.getEmail(),
                     actor + " liked your story [storyId:" + story.getId() + "]"

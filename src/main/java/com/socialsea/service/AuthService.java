@@ -8,6 +8,8 @@ import com.socialsea.security.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -39,15 +41,24 @@ public class AuthService {
             throw new IllegalArgumentException("Identifier is required");
         }
 
-        otpService.verifyOtp(normalizedIdentifier, otp);
         String normalizedPhone = normalizePhone(normalizedIdentifier);
         boolean isPhone = normalizedPhone != null && !normalizedIdentifier.contains("@");
+        User existingUser = null;
+        if (isPhone) {
+            existingUser = userRepository.findByPhoneNumber(normalizedPhone).orElse(null);
+        } else {
+            existingUser = userRepository.findByEmail(normalizedIdentifier.toLowerCase()).orElse(null);
+        }
+        if (existingUser != null && existingUser.isBanned()) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User banned");
+        }
+
+        otpService.verifyOtp(normalizedIdentifier, otp);
 
         User user;
         if (isPhone) {
-            Optional<User> byPhone = userRepository.findByPhoneNumber(normalizedPhone);
-            if (byPhone.isPresent()) {
-                user = byPhone.get();
+            if (existingUser != null) {
+                user = existingUser;
             } else {
                 User newUser = new User();
                 newUser.setPhoneNumber(normalizedPhone);
@@ -58,7 +69,7 @@ public class AuthService {
             }
         } else {
             String normalizedEmail = normalizedIdentifier.toLowerCase();
-            user = userRepository.findByEmail(normalizedEmail).orElseGet(() -> {
+            user = existingUser != null ? existingUser : userRepository.findByEmail(normalizedEmail).orElseGet(() -> {
                 User newUser = new User();
                 newUser.setEmail(normalizedEmail);
                 newUser.setRole(Role.USER);

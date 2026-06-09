@@ -3,6 +3,7 @@ package com.socialsea.dto;
 import com.socialsea.model.AnonymousPost;
 import com.socialsea.model.Post;
 import com.socialsea.util.MediaUrlUtils;
+import com.socialsea.util.PublicUserPayloads;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -14,6 +15,7 @@ public class FeedItemDto {
     private String content;
     private String contentUrl;
     private String thumbnailUrl;
+    private String mediumUrl;
     private String posterUrl;
     private String coverImageUrl;
     private String description;
@@ -29,7 +31,7 @@ public class FeedItemDto {
     private boolean originalReel;
     private boolean isVideo;
     private Long userId;
-    private String userEmail;
+    private String publicUsername;
     private String userDisplayName;
     private String profilePic;
 
@@ -40,6 +42,7 @@ public class FeedItemDto {
         dto.contentUrl = post.getMediaUrl();
         boolean video = post.isReel() || MediaUrlUtils.isLikelyVideo(dto.contentUrl);
         dto.thumbnailUrl = MediaUrlUtils.thumbnailUrl(dto.contentUrl, video ? "video" : "image");
+        dto.mediumUrl = MediaUrlUtils.mediumUrl(dto.contentUrl, video ? "video" : "image");
         dto.coverImageUrl = post.getCoverImageUrl();
         dto.posterUrl = (dto.coverImageUrl != null && !dto.coverImageUrl.isBlank()) ? dto.coverImageUrl : dto.thumbnailUrl;
         dto.description = post.getDescription();
@@ -53,12 +56,10 @@ public class FeedItemDto {
         dto.isVideo = video;
         if (post.getUser() != null) {
             dto.userId = post.getUser().getId();
-            dto.userEmail = post.getUser().getEmail();
-            dto.userDisplayName = (post.getUser().getName() != null && !post.getUser().getName().isBlank())
-                    ? post.getUser().getName()
-                    : post.getUser().getEmail();
+            dto.publicUsername = PublicUserPayloads.publicUsername(post.getUser());
+            dto.userDisplayName = PublicUserPayloads.publicDisplayName(post.getUser());
             dto.profilePic = post.getUser().getProfilePic();
-            dto.username = dto.userDisplayName;
+            dto.username = dto.publicUsername.isBlank() ? dto.userDisplayName : dto.publicUsername;
         }
         dto.likeCount = 0;
         dto.viewCount = 0;
@@ -77,6 +78,7 @@ public class FeedItemDto {
         boolean video = "VIDEO".equals(normalizedType) || MediaUrlUtils.isLikelyVideo(dto.contentUrl);
         dto.type = video ? "VIDEO" : "IMAGE";
         dto.thumbnailUrl = MediaUrlUtils.thumbnailUrl(dto.contentUrl, video ? "video" : "image");
+        dto.mediumUrl = MediaUrlUtils.mediumUrl(dto.contentUrl, video ? "video" : "image");
         dto.posterUrl = dto.thumbnailUrl;
         dto.reel = video;
         dto.originalReel = video;
@@ -98,6 +100,7 @@ public class FeedItemDto {
     public String getThumbnailUrl() { return thumbnailUrl; }
     public String getThumbnail() { return thumbnailUrl; }
     public String getThumbUrl() { return thumbnailUrl; }
+    public String getMediumUrl() { return mediumUrl; }
     public String getPosterUrl() { return posterUrl == null || posterUrl.isBlank() ? thumbnailUrl : posterUrl; }
     public String getPoster() { return getPosterUrl(); }
     public String getCoverImageUrl() { return coverImageUrl; }
@@ -110,18 +113,18 @@ public class FeedItemDto {
     public String getType() { return type; }
     public String getUsername() { return username; }
     public Long getUserId() { return userId; }
-    public String getEmail() { return userEmail; }
     public String getName() { return userDisplayName; }
     public String getProfilePic() { return profilePic; }
     public Map<String, Object> getUser() {
-        if (userId == null && userEmail == null && userDisplayName == null && profilePic == null) {
+        if (userId == null && publicUsername == null && userDisplayName == null && profilePic == null) {
             return null;
         }
         Map<String, Object> user = new LinkedHashMap<>();
         user.put("id", userId);
-        user.put("email", userEmail);
         user.put("name", userDisplayName);
-        user.put("username", userDisplayName);
+        if (publicUsername != null && !publicUsername.isBlank()) {
+            user.put("username", publicUsername);
+        }
         user.put("profilePic", profilePic);
         return user;
     }

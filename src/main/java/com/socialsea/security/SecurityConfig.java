@@ -110,6 +110,7 @@ public class SecurityConfig {
                     "/anonymous/**",
                     "/api/anonymous/**",
                     "/api/public/**",
+                    "/public/**",
                     "/api/study/assistant/**",
                     "/api/emergency/trigger",
                     "/api/emergency/active",
@@ -144,6 +145,19 @@ public class SecurityConfig {
                 .contentTypeOptions(Customizer.withDefaults())
                 .frameOptions(frame -> frame.deny())
                 .referrerPolicy(referrer -> referrer.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
+                .contentSecurityPolicy(csp -> csp.policyDirectives(
+                    "default-src 'self'; " +
+                    "base-uri 'self'; " +
+                    "frame-ancestors 'none'; " +
+                    "form-action 'self'; " +
+                    "img-src 'self' data: https:; " +
+                    "media-src 'self' blob: data: https:; " +
+                    "connect-src 'self' https: wss:; " +
+                    "script-src 'self' 'unsafe-inline'; " +
+                    "style-src 'self' 'unsafe-inline'; " +
+                    "object-src 'none'"
+                ))
+                .xssProtection(xss -> xss.disable())
                 .httpStrictTransportSecurity(hsts -> hsts
                     .includeSubDomains(true)
                     .preload(true)

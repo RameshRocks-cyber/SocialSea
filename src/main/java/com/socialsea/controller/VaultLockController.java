@@ -37,14 +37,23 @@ public class VaultLockController {
         }
         try {
             Map<String, Object> parsed = objectMapper.readValue(raw, new TypeReference<>() {});
-            List<String> imageIds = sanitizeImageIds(parsed.get("imageIds"));
-            if (imageIds.isEmpty()) {
+            List<String> fileSignatures = sanitizeLockValues(parsed.get("fileSignatures"));
+            List<String> legacyImageIds = fileSignatures.isEmpty()
+                    ? sanitizeLockValues(parsed.get("imageIds"))
+                    : List.of();
+            boolean legacy = fileSignatures.isEmpty() && !legacyImageIds.isEmpty();
+            List<String> normalized = !fileSignatures.isEmpty() ? fileSignatures : legacyImageIds;
+            if (normalized.isEmpty()) {
                 return ResponseEntity.ok(Map.of("configured", false));
             }
             long createdAt = parseCreatedAt(parsed.get("createdAt"));
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("configured", true);
-            out.put("imageIds", imageIds);
+            out.put("fileSignatures", normalized);
+            out.put("legacy", legacy);
+            if (legacy) {
+                out.put("imageIds", legacyImageIds);
+            }
             out.put("createdAt", createdAt > 0 ? createdAt : System.currentTimeMillis());
             out.put("updatedAt", me.getVaultLockUpdatedAt());
             return ResponseEntity.ok(out);
@@ -59,12 +68,15 @@ public class VaultLockController {
         if (meOpt.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("message", "Login required"));
         }
-        List<String> imageIds = sanitizeImageIds(body == null ? null : body.get("imageIds"));
-        if (imageIds.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "imageIds is required"));
+        List<String> fileSignatures = sanitizeLockValues(body == null ? null : body.get("fileSignatures"));
+        if (fileSignatures.isEmpty()) {
+            fileSignatures = sanitizeLockValues(body == null ? null : body.get("imageIds"));
         }
-        if (imageIds.size() > 20) {
-            return ResponseEntity.badRequest().body(Map.of("message", "imageIds is too large"));
+        if (fileSignatures.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "fileSignatures is required"));
+        }
+        if (fileSignatures.size() > 20) {
+            return ResponseEntity.badRequest().body(Map.of("message", "fileSignatures is too large"));
         }
 
         User me = meOpt.get();
@@ -74,7 +86,7 @@ public class VaultLockController {
         }
 
         Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("imageIds", imageIds);
+        payload.put("fileSignatures", fileSignatures);
         payload.put("createdAt", createdAt);
 
         try {
@@ -84,7 +96,8 @@ public class VaultLockController {
             return ResponseEntity.ok(Map.of(
                     "ok", true,
                     "configured", true,
-                    "imageIds", imageIds,
+                    "fileSignatures", fileSignatures,
+                    "legacy", false,
                     "createdAt", createdAt
             ));
         } catch (Exception ex) {
@@ -118,7 +131,7 @@ public class VaultLockController {
                 .or(() -> userRepo.findByNameIgnoreCase(identifier));
     }
 
-    private List<String> sanitizeImageIds(Object value) {
+    private List<String> sanitizeLockValues(Object value) {
         if (!(value instanceof List<?> list)) return List.of();
         List<String> out = new ArrayList<>();
         for (Object raw : list) {

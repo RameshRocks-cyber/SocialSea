@@ -3,10 +3,12 @@ package com.socialsea.controller;
 import com.socialsea.model.Follow;
 import com.socialsea.model.FollowRequest;
 import com.socialsea.model.User;
+import com.socialsea.dto.PublicUserDto;
 import com.socialsea.repository.FollowRepository;
 import com.socialsea.repository.FollowRequestRepository;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.NotificationService;
+import com.socialsea.util.PublicUserPayloads;
 import com.socialsea.util.UrlUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -72,7 +74,7 @@ public class FollowController {
             followRequestRepo.save(request);
             notificationService.notifyUser(
                     following.getEmail(),
-                    follower.getEmail() + " requested to follow you"
+                    PublicUserPayloads.publicDisplayName(follower) + " requested to follow you"
             );
             return Map.of("status", "REQUESTED", "message", "Follow request sent", "requestId", request.getId());
         }
@@ -80,7 +82,7 @@ public class FollowController {
         followRepo.save(new Follow(null, follower, following));
         notificationService.notifyUser(
                 following.getEmail(),
-                follower.getEmail() + " started following you"
+                PublicUserPayloads.publicDisplayName(follower) + " started following you"
         );
 
         return Map.of("status", "FOLLOWING", "message", "Followed");
@@ -107,7 +109,7 @@ public class FollowController {
         followRequestRepo.save(request);
         notificationService.notifyUser(
                 following.getEmail(),
-                follower.getEmail() + " requested to follow you"
+                PublicUserPayloads.publicDisplayName(follower) + " requested to follow you"
         );
         return Map.of("status", "REQUESTED", "message", "Follow request sent", "requestId", request.getId());
     }
@@ -156,7 +158,7 @@ public class FollowController {
         }
         notificationService.notifyUser(
                 request.getSender().getEmail(),
-                receiver.getEmail() + " accepted your follow request"
+                PublicUserPayloads.publicDisplayName(receiver) + " accepted your follow request"
         );
         return Map.of("status", "ACCEPTED");
     }
@@ -188,13 +190,14 @@ public class FollowController {
     }
 
     @GetMapping("/{identifier}/followers/users")
-    public List<Map<String, Object>> followerUsers(
+    public List<PublicUserDto> followerUsers(
             @PathVariable String identifier,
             Authentication auth,
             HttpServletRequest request
     ) {
-        requireAuth(auth);
+        User viewer = requireAuth(auth);
         User user = resolveUser(identifier, auth);
+        ensureCanViewConnectionList(viewer, user);
         List<User> users = followRepo.findByFollowing(user).stream()
                 .map(Follow::getFollower)
                 .filter(Objects::nonNull)
@@ -203,13 +206,14 @@ public class FollowController {
     }
 
     @GetMapping("/{identifier}/following/users")
-    public List<Map<String, Object>> followingUsers(
+    public List<PublicUserDto> followingUsers(
             @PathVariable String identifier,
             Authentication auth,
             HttpServletRequest request
     ) {
-        requireAuth(auth);
+        User viewer = requireAuth(auth);
         User user = resolveUser(identifier, auth);
+        ensureCanViewConnectionList(viewer, user);
         List<User> users = followRepo.findByFollower(user).stream()
                 .map(Follow::getFollowing)
                 .filter(Objects::nonNull)
@@ -239,8 +243,7 @@ public class FollowController {
             return userRepo.findById(Long.parseLong(clean))
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         }
-        return userRepo.findByEmailIgnoreCase(clean)
-                .or(() -> userRepo.findByNameIgnoreCase(clean))
+        return userRepo.findByNameIgnoreCase(clean)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
@@ -262,8 +265,8 @@ public class FollowController {
         return clean;
     }
 
-    private List<Map<String, Object>> uniqueUserItemsById(HttpServletRequest request, List<User> users) {
-        Map<Long, Map<String, Object>> unique = new LinkedHashMap<>();
+    private List<PublicUserDto> uniqueUserItemsById(HttpServletRequest request, List<User> users) {
+        Map<Long, PublicUserDto> unique = new LinkedHashMap<>();
         for (User user : users) {
             if (user == null || user.getId() == null) continue;
             unique.putIfAbsent(user.getId(), toUserItem(request, user));
@@ -271,15 +274,23 @@ public class FollowController {
         return List.copyOf(unique.values());
     }
 
-    private Map<String, Object> toUserItem(HttpServletRequest request, User user) {
-        Map<String, Object> item = new HashMap<>();
-        item.put("id", user.getId());
-        item.put("email", user.getEmail());
-        item.put("name", (user.getName() != null && !user.getName().isBlank()) ? user.getName() : user.getEmail());
-        String profilePicUrl = UrlUtils.toAbsoluteUrl(request, user.getProfilePic());
-        item.put("profilePic", profilePicUrl);
-        item.put("profilePicUrl", profilePicUrl);
-        return item;
+    private PublicUserDto toUserItem(HttpServletRequest request, User user) {
+        return PublicUserPayloads.toUserSummary(user, UrlUtils.toAbsoluteUrl(request, user.getProfilePic()));
+    }
+
+    private void ensureCanViewConnectionList(User viewer, User owner) {
+        if (owner == null || !owner.isPrivateAccount()) {
+            return;
+        }
+        if (viewer == null || viewer.getId() == null || owner.getId() == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This account is private");
+        }
+        if (owner.getId().equals(viewer.getId())) {
+            return;
+        }
+        if (!followRepo.existsByFollowerAndFollowing(viewer, owner)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This account is private");
+        }
     }
 
     private Map<String, Object> toFollowRequestItem(HttpServletRequest httpRequest, FollowRequest request) {

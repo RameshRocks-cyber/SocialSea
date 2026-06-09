@@ -1,6 +1,6 @@
 package com.socialsea.controller;
 
-import com.socialsea.model.AnonymousPost;
+import com.socialsea.dto.PublicFeedDto;
 import com.socialsea.service.AnonymousPostService;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,7 +21,7 @@ public class PublicAnonymousFeedController {
     }
 
     @GetMapping("/feed")
-    public List<AnonymousPost> feed() {
-        return service.getApprovedPosts();
+    public List<PublicFeedDto> feed() {
+        return service.getApprovedFeed();
     }
 }

@@ -1,6 +1,6 @@
 package com.socialsea.controller;
 
-import com.socialsea.dto.FeedItemDto;
+import com.socialsea.dto.PublicFeedDto;
 import com.socialsea.model.Post;
 import com.socialsea.model.SavedPost;
 import com.socialsea.model.User;
@@ -55,9 +55,9 @@ public class SavedPostController {
     @GetMapping
     public ResponseEntity<?> getSavedPosts(Authentication auth) {
         User user = userRepo.findByEmail(auth.getName()).orElseThrow();
-        List<FeedItemDto> savedPosts = savedPostRepo.findByUserOrderBySavedAtDesc(user)
+        List<PublicFeedDto> savedPosts = savedPostRepo.findByUserOrderBySavedAtDesc(user)
                 .stream()
-                .map(saved -> FeedItemDto.fromEntity(saved.getPost()))
+                .map(saved -> PublicFeedDto.fromEntity(saved.getPost()))
                 .toList();
         return ResponseEntity.ok(savedPosts);
     }

@@ -1,11 +1,12 @@
 package com.socialsea.controller;
 
+import com.socialsea.dto.PublicFeedDto;
+import com.socialsea.dto.PublicReelDto;
 import com.socialsea.model.Post;
 import com.socialsea.model.User;
 import com.socialsea.repository.FollowRepository;
 import com.socialsea.repository.PostRepository;
 import com.socialsea.repository.UserRepository;
-import com.socialsea.util.MediaUrlUtils;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
@@ -24,7 +25,6 @@ import org.springframework.http.HttpStatus;
 import java.util.List;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -60,7 +60,7 @@ public class ReelController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Map<String, Object>>> reels(
+    public ResponseEntity<List<PublicReelDto>> reels(
             @RequestParam(value = "size", required = false) Integer size,
             @RequestParam(value = "limit", required = false) Integer limit,
             Authentication auth
@@ -72,14 +72,14 @@ public class ReelController {
         int resolvedLimit = resolveLimit(size != null ? size : limit, maxReelItems, HARD_MAX_ITEMS);
         Pageable pageable = PageRequest.of(0, resolvedLimit);
 
-        List<Map<String, Object>> localItems = postRepo.findApprovedReelCandidates(pageable)
+        List<PublicReelDto> localItems = postRepo.findApprovedReelCandidates(pageable)
                 .stream()
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
                 .filter(p -> canViewPost(viewer, allowedPrivateIds, p.getUser()))
-                .map(this::toReelPayload)
+                .map(PublicReelDto::fromPost)
                 .toList();
 
-        List<Map<String, Object>> merged = new ArrayList<>(localItems);
+        List<PublicReelDto> merged = new ArrayList<>(localItems);
         merged.sort(Comparator.comparing(this::safeCreatedAt).reversed());
         return ResponseEntity.ok()
             .cacheControl(privateCache(Math.max(1, reelsCacheSeconds)))
@@ -115,7 +115,7 @@ public class ReelController {
 
         return ResponseEntity.ok()
             .cacheControl(privateCache(Math.max(1, reelsCacheSeconds)))
-            .body(toReelPayload(post));
+            .body(PublicReelDto.fromPost(post));
     }
 
     private boolean canViewPost(User viewer, Set<Long> allowedPrivateIds, User owner) {
@@ -124,41 +124,8 @@ public class ReelController {
         return viewer != null && owner.getId() != null && allowedPrivateIds.contains(owner.getId());
     }
 
-    private Map<String, Object> toReelPayload(Post post) {
-        boolean video = post.isReel() || MediaUrlUtils.isLikelyVideo(post.getMediaUrl());
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("id", post.getId());
-        payload.put("mediaUrl", post.getMediaUrl());
-        payload.put("contentUrl", post.getMediaUrl());
-        payload.put("description", post.getDescription());
-        payload.put("content", post.getDescription());
-        payload.put("title", post.getTitle());
-        payload.put("videoSettings", post.getVideoSettings());
-        payload.put("coverImageUrl", post.getCoverImageUrl());
-        payload.put("coverImage", post.getCoverImageUrl());
-        payload.put("reel", post.isReel());
-        payload.put("originalReel", post.isReel());
-        payload.put("type", video ? "VIDEO" : "IMAGE");
-        payload.put("isVideo", video);
-        payload.put("approved", post.isApproved());
-        payload.put("createdAt", post.getCreatedAt());
-        payload.put("user", post.getUser());
-        return payload;
-    }
-
-    private LocalDateTime safeCreatedAt(Map<String, Object> item) {
-        Object raw = item.get("createdAt");
-        if (raw instanceof LocalDateTime dt) {
-            return dt;
-        }
-        if (raw instanceof String text) {
-            try {
-                return LocalDateTime.parse(text);
-            } catch (Exception ignored) {
-                return LocalDateTime.MIN;
-            }
-        }
-        return LocalDateTime.MIN;
+    private LocalDateTime safeCreatedAt(PublicFeedDto item) {
+        return item != null && item.getCreatedAt() != null ? item.getCreatedAt() : LocalDateTime.MIN;
     }
 
     private Set<Long> resolveAllowedPrivateIds(User viewer) {

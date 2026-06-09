@@ -4,7 +4,10 @@ import com.socialsea.model.Post;
 import com.socialsea.model.Role;
 import com.socialsea.model.Story;
 import com.socialsea.model.User;
+import com.socialsea.repository.CommentRepository;
+import com.socialsea.repository.LikeRepository;
 import com.socialsea.repository.PostRepository;
+import com.socialsea.repository.SavedPostRepository;
 import com.socialsea.repository.StoryRepository;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.UploadService;
@@ -20,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -54,6 +58,9 @@ public class PostController {
 
     private final PostRepository postRepo;
     private final UserRepository userRepo;
+    private final CommentRepository commentRepo;
+    private final LikeRepository likeRepo;
+    private final SavedPostRepository savedPostRepo;
     private final UploadService uploadService;
     private final StoryRepository storyRepo;
     private final VideoEditingService videoEditingService;
@@ -61,12 +68,18 @@ public class PostController {
     public PostController(
         PostRepository postRepo,
         UserRepository userRepo,
+        CommentRepository commentRepo,
+        LikeRepository likeRepo,
+        SavedPostRepository savedPostRepo,
         UploadService uploadService,
         StoryRepository storyRepo,
         VideoEditingService videoEditingService
     ) {
         this.postRepo = postRepo;
         this.userRepo = userRepo;
+        this.commentRepo = commentRepo;
+        this.likeRepo = likeRepo;
+        this.savedPostRepo = savedPostRepo;
         this.uploadService = uploadService;
         this.storyRepo = storyRepo;
         this.videoEditingService = videoEditingService;
@@ -296,6 +309,7 @@ public class PostController {
     }
 
     @DeleteMapping("/{id}")
+    @Transactional
     public ResponseEntity<?> deletePost(
         @PathVariable("id") Long id,
         Authentication auth
@@ -325,6 +339,9 @@ public class PostController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message", "Not allowed"));
         }
 
+        commentRepo.deleteByPost(post);
+        likeRepo.deleteByPost(post);
+        savedPostRepo.deleteByPost(post);
         postRepo.delete(post);
         return ResponseEntity.ok(Map.of("ok", true, "deletedId", safeId));
     }

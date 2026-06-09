@@ -26,6 +26,10 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .or(() -> userRepository.findByNameIgnoreCase(email))
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + email));
 
+        if (user.isBanned()) {
+            throw new UsernameNotFoundException("User banned: " + email);
+        }
+
         Set<SimpleGrantedAuthority> authorities = new HashSet<>();
         // Add Role
         authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));

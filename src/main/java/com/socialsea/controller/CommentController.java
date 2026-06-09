@@ -8,10 +8,15 @@ import com.socialsea.repository.PostRepository;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.NotificationService;
 import com.socialsea.util.MediaUrlUtils;
+import com.socialsea.util.PublicUserPayloads;
+import com.socialsea.util.UrlUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/comments")
@@ -38,10 +43,11 @@ public class CommentController {
     }
 
     @PostMapping("/{postId}")
-    public Comment add(
+    public Map<String, Object> add(
         @PathVariable long postId,
         @RequestBody String text,
-        Authentication auth
+        Authentication auth,
+        HttpServletRequest request
     ) {
         User user = userRepo.findByEmail(auth.getName()).orElseThrow();
         Post post = postRepo.findById(postId).orElseThrow();
@@ -55,9 +61,7 @@ public class CommentController {
 
         // Always notify post owner so notifications also appear in single-account testing.
         if (post.getUser() != null && post.getUser().getEmail() != null) {
-            String actor = (user.getName() != null && !user.getName().isBlank())
-                ? user.getName()
-                : user.getEmail();
+            String actor = PublicUserPayloads.publicDisplayName(user);
             String targetLabel = post.isReel() ? "clip" : (MediaUrlUtils.isLikelyVideo(post.getMediaUrl()) ? "video" : "post");
             notificationService.notifyUser(
                 post.getUser().getEmail(),
@@ -65,13 +69,32 @@ public class CommentController {
             );
         }
 
-        return saved;
+        return toCommentPayload(saved, request);
     }
 
     @GetMapping("/{postId}")
-    public List<Comment> list(@PathVariable long postId) {
+    public List<Map<String, Object>> list(@PathVariable long postId, HttpServletRequest request) {
         Post post = postRepo.findById(postId).orElseThrow();
-        return commentRepo.findByPost(post);
+        return commentRepo.findByPost(post).stream()
+                .map(comment -> toCommentPayload(comment, request))
+                .toList();
+    }
+
+    private Map<String, Object> toCommentPayload(Comment comment, HttpServletRequest request) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("id", comment.getId());
+        payload.put("text", comment.getText());
+        payload.put("createdAt", comment.getCreatedAt());
+
+        User author = comment.getUser();
+        String profilePicUrl = author == null ? null : UrlUtils.toAbsoluteUrl(request, author.getProfilePic());
+        payload.put("user", PublicUserPayloads.toUserSummary(author, profilePicUrl));
+
+        Post post = comment.getPost();
+        if (post != null && post.getId() != null) {
+            payload.put("postId", post.getId());
+        }
+        return payload;
     }
 }
 

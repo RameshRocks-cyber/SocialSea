@@ -1,9 +1,13 @@
 package com.socialsea.controller;
 
+import com.socialsea.dto.PublicFeedDto;
+import com.socialsea.dto.PublicProfileDto;
+import com.socialsea.dto.PublicUserDto;
 import com.socialsea.model.*;
 import com.socialsea.repository.*;
 import com.socialsea.service.ProfileService;
 import com.socialsea.util.MediaUrlUtils;
+import com.socialsea.util.PublicUserPayloads;
 import com.socialsea.util.UrlUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Objects;
-import java.util.stream.Collectors;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.regex.Pattern;
@@ -81,37 +84,20 @@ public class ProfileController {
             postsCount = visiblePosts.size();
             videosCount = visiblePosts.stream().filter(this::isVideoPost).count();
         }
+        boolean followingFlag = "FOLLOWING".equalsIgnoreCase(followStatus);
 
-        Map<String, Object> profile = new HashMap<>();
-        profile.put("id", user.getId());
-        profile.put("username", user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getEmail());
-        profile.put("email", canViewContent ? user.getEmail() : null);
-        profile.put("name", user.getName());
-        profile.put("bio", canViewContent ? user.getBio() : "");
-        String profilePicUrl = UrlUtils.toAbsoluteUrl(request, user.getProfilePic());
-        String coverPhotoUrl = UrlUtils.toAbsoluteUrl(request, user.getCoverPhoto());
-        profile.put("profilePic", profilePicUrl);
-        profile.put("profilePicUrl", profilePicUrl);
-        profile.put("coverUrl", coverPhotoUrl);
-        profile.put("coverPhoto", coverPhotoUrl);
-        profile.put("coverPhotoUrl", coverPhotoUrl);
-        profile.put("profileCoverUrl", coverPhotoUrl);
-        profile.put("profileCompleted", user.isProfileCompleted());
-        profile.put("followers", followers);
-        profile.put("following", following);
-        profile.put("postsCount", postsCount);
-        profile.put("postCount", postsCount);
-        profile.put("totalPosts", postsCount);
-        profile.put("videosCount", videosCount);
-        profile.put("videoCount", videosCount);
-        profile.put("totalVideos", videosCount);
-        profile.put("privateAccount", user.isPrivateAccount());
-        profile.put("longVideosEnabled", user.isLongVideosEnabled());
-        profile.put("canViewContent", canViewContent);
-        profile.put("followStatus", followStatus);
-        profile.put("isFollowing", "FOLLOWING".equalsIgnoreCase(followStatus));
-
-        return ResponseEntity.ok(profile);
+        return ResponseEntity.ok(buildProfileDto(
+                user,
+                request,
+                canViewContent ? user.getBio() : "",
+                followers,
+                following,
+                postsCount,
+                videosCount,
+                canViewContent,
+                followStatus,
+                followingFlag
+        ));
     }
 
     // ✅ My posts (Authenticated user)
@@ -123,7 +109,7 @@ public class ProfileController {
         User user = resolveAuthenticatedUser(auth)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        List<Map<String, Object>> posts = postRepo.findByUser(user)
+        List<PublicFeedDto> posts = postRepo.findByUser(user)
                 .stream()
                 .filter(Post::isApproved)
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
@@ -155,39 +141,24 @@ public class ProfileController {
         long postsCount = visiblePosts.size();
         long videosCount = visiblePosts.stream().filter(this::isVideoPost).count();
 
-        Map<String, Object> profile = new HashMap<>();
-        profile.put("id", user.getId());
-        profile.put("username", user.getName() != null && !user.getName().isBlank() ? user.getName() : user.getEmail());
-        profile.put("email", user.getEmail());
-        profile.put("name", user.getName());
-        profile.put("bio", user.getBio());
-        String profilePicUrl = UrlUtils.toAbsoluteUrl(request, user.getProfilePic());
-        String coverPhotoUrl = UrlUtils.toAbsoluteUrl(request, user.getCoverPhoto());
-        profile.put("profilePic", profilePicUrl);
-        profile.put("profilePicUrl", profilePicUrl);
-        profile.put("coverUrl", coverPhotoUrl);
-        profile.put("coverPhoto", coverPhotoUrl);
-        profile.put("coverPhotoUrl", coverPhotoUrl);
-        profile.put("profileCoverUrl", coverPhotoUrl);
-        profile.put("profileCompleted", user.isProfileCompleted());
-        profile.put("followers", followers);
-        profile.put("following", following);
-        profile.put("postsCount", postsCount);
-        profile.put("postCount", postsCount);
-        profile.put("totalPosts", postsCount);
-        profile.put("videosCount", videosCount);
-        profile.put("videoCount", videosCount);
-        profile.put("totalVideos", videosCount);
-        profile.put("privateAccount", user.isPrivateAccount());
-        profile.put("trafficAlertsEnabled", user.isTrafficAlertsEnabled());
-        profile.put("longVideosEnabled", user.isLongVideosEnabled());
-        profile.put("preferredLanguage", user.getPreferredLanguage());
-        profile.put("notificationVoice", user.getNotificationVoice());
-        profile.put("ambulanceDriverApproved", user.isAmbulanceDriverApproved());
-        profile.put("canViewContent", true);
-        profile.put("followStatus", "FOLLOWING");
-        profile.put("isFollowing", true);
-
+        PublicProfileDto profile = buildProfileDto(
+                user,
+                request,
+                user.getBio(),
+                followers,
+                following,
+                postsCount,
+                videosCount,
+                true,
+                "FOLLOWING",
+                true
+        );
+        profile.setEmail(user.getEmail());
+        profile.setTrafficAlertsEnabled(user.isTrafficAlertsEnabled());
+        profile.setLongVideosEnabled(user.isLongVideosEnabled());
+        profile.setPreferredLanguage(user.getPreferredLanguage());
+        profile.setNotificationVoice(user.getNotificationVoice());
+        profile.setAmbulanceDriverApproved(user.isAmbulanceDriverApproved());
         return ResponseEntity.ok(profile);
     }
 
@@ -458,7 +429,7 @@ public class ProfileController {
         User user = resolveAuthenticatedUser(auth)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        List<Map<String, Object>> posts = postRepo.findByUserIdOrderByCreatedAtDesc(user.getId())
+        List<PublicFeedDto> posts = postRepo.findByUserIdOrderByCreatedAtDesc(user.getId())
                 .stream()
                 .filter(Post::isApproved)
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
@@ -486,21 +457,12 @@ public class ProfileController {
         }
 
         Long finalMyUserId = myUserId;
-        List<Map<String, Object>> users = userRepo
-                .findTop20ByEmailContainingIgnoreCaseOrNameContainingIgnoreCase(query, query)
+        List<PublicUserDto> users = userRepo
+                .findTop20ByNameContainingIgnoreCase(query)
                 .stream()
                 .filter(u -> finalMyUserId == null || !u.getId().equals(finalMyUserId))
-                .map(u -> {
-                    Map<String, Object> item = new HashMap<>();
-                    item.put("id", u.getId());
-                    item.put("email", u.getEmail());
-                    item.put("name", u.getName() != null && !u.getName().isBlank() ? u.getName() : u.getEmail());
-                    String profilePicUrl = UrlUtils.toAbsoluteUrl(request, u.getProfilePic());
-                    item.put("profilePic", profilePicUrl);
-                    item.put("profilePicUrl", profilePicUrl);
-                    return item;
-                })
-                .collect(Collectors.toList());
+                .map(u -> PublicUserPayloads.toUserSummary(u, UrlUtils.toAbsoluteUrl(request, u.getProfilePic())))
+                .toList();
 
         return ResponseEntity.ok(users);
     }
@@ -522,7 +484,7 @@ public class ProfileController {
         }
 
         long userId = target.getId();
-        List<Map<String, Object>> posts = postRepo.findByUserIdOrderByCreatedAtDesc(userId)
+        List<PublicFeedDto> posts = postRepo.findByUserIdOrderByCreatedAtDesc(userId)
                 .stream()
                 .filter(Post::isApproved)
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
@@ -544,33 +506,24 @@ public class ProfileController {
         return false;
     }
 
-    private Map<String, Object> toShortFeedPostPayload(Post post) {
+    private PublicFeedDto toShortFeedPostPayload(Post post) {
         boolean video = isVideoPost(post);
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("id", post.getId());
-        payload.put("mediaUrl", post.getMediaUrl());
-        payload.put("contentUrl", post.getMediaUrl());
-        payload.put("description", post.getDescription());
-        payload.put("content", post.getDescription());
-        payload.put("title", post.getTitle());
-        payload.put("videoSettings", post.getVideoSettings());
-        payload.put("coverImageUrl", post.getCoverImageUrl());
-        payload.put("coverImage", post.getCoverImageUrl());
-        payload.put("reel", post.isReel());
-        payload.put("originalReel", post.isReel());
-        payload.put("type", video ? "VIDEO" : "IMAGE");
-        payload.put("isVideo", video);
-        payload.put("video", video);
-        payload.put("approved", post.isApproved());
-        payload.put("createdAt", post.getCreatedAt());
-        payload.put("user", post.getUser());
+        PublicFeedDto payload = new PublicFeedDto();
+        payload.setId(post.getId());
+        payload.setContentUrl(post.getMediaUrl());
+        payload.setContent(post.getDescription());
+        payload.setDescription(post.getDescription());
+        payload.setTitle(post.getTitle());
+        payload.setVideoSettings(post.getVideoSettings());
+        payload.setCoverImageUrl(post.getCoverImageUrl());
+        payload.setReel(post.isReel());
+        payload.setOriginalReel(post.isReel());
+        payload.setType(video ? "VIDEO" : "IMAGE");
+        payload.setVideo(video);
+        payload.setCreatedAt(post.getCreatedAt());
         if (post.getUser() != null) {
-            payload.put("userId", post.getUser().getId());
-            String displayName = (post.getUser().getName() != null && !post.getUser().getName().isBlank())
-                    ? post.getUser().getName()
-                    : post.getUser().getEmail();
-            payload.put("username", displayName);
-            payload.put("profilePic", post.getUser().getProfilePic());
+            PublicUserDto user = PublicUserPayloads.toUserSummary(post.getUser(), post.getUser().getProfilePic());
+            payload.setUser(user);
         }
         return payload;
     }
@@ -578,6 +531,94 @@ public class ProfileController {
     private boolean isVideoPost(Post post) {
         if (post == null) return false;
         return post.isReel() || MediaUrlUtils.isLikelyVideo(post.getMediaUrl());
+    }
+
+    private PublicProfileDto buildProfileDto(
+            User user,
+            HttpServletRequest request,
+            String bio,
+            long followers,
+            long following,
+            long postsCount,
+            long videosCount,
+            boolean canViewContent,
+            String followStatus,
+            boolean followingUser
+    ) {
+        PublicProfileDto profile = new PublicProfileDto();
+        if (user == null) {
+            return profile;
+        }
+
+        profile.setId(user.getId());
+        profile.setName(PublicUserPayloads.publicDisplayName(user));
+        profile.setUsername(PublicUserPayloads.publicUsername(user));
+        profile.setBio(bio == null ? "" : bio);
+        String profilePicUrl = UrlUtils.toAbsoluteUrl(request, user.getProfilePic());
+        profile.setProfilePic(profilePicUrl);
+        profile.setProfilePicUrl(profilePicUrl);
+        String coverPhotoUrl = UrlUtils.toAbsoluteUrl(request, user.getCoverPhoto());
+        profile.setCoverImage(coverPhotoUrl);
+        profile.setProfileCompleted(user.isProfileCompleted());
+        profile.setFollowers(followers);
+        profile.setFollowing(following);
+        profile.setPostsCount(postsCount);
+        profile.setPostCount(postsCount);
+        profile.setTotalPosts(postsCount);
+        profile.setVideosCount(videosCount);
+        profile.setVideoCount(videosCount);
+        profile.setTotalVideos(videosCount);
+        profile.setPrivateAccount(user.isPrivateAccount());
+        profile.setLongVideosEnabled(user.isLongVideosEnabled());
+        profile.setCanViewContent(canViewContent);
+        profile.setFollowStatus(followStatus);
+        profile.setFollowingUser(followingUser);
+        return profile;
+    }
+
+    private PublicProfileDto buildSetupProfileDto(Map<String, Object> updated, HttpServletRequest request) {
+        PublicProfileDto profile = new PublicProfileDto();
+        if (updated == null || updated.isEmpty()) {
+            return profile;
+        }
+
+        Object rawId = updated.get("id");
+        if (rawId instanceof Number number) {
+            profile.setId(number.longValue());
+        } else if (rawId != null) {
+            try {
+                profile.setId(Long.parseLong(String.valueOf(rawId)));
+            } catch (NumberFormatException ignored) {
+                // keep id unset if parsing fails
+            }
+        }
+
+        Object rawName = updated.get("name");
+        if (rawName != null) {
+            profile.setName(String.valueOf(rawName));
+            profile.setUsername(String.valueOf(rawName));
+        }
+
+        Object rawBio = updated.get("bio");
+        profile.setBio(rawBio == null ? "" : String.valueOf(rawBio));
+
+        Object rawProfilePic = updated.get("profilePic");
+        String profilePicUrl = UrlUtils.toAbsoluteUrl(request, rawProfilePic == null ? null : String.valueOf(rawProfilePic));
+        profile.setProfilePic(profilePicUrl);
+        profile.setProfilePicUrl(profilePicUrl);
+
+        Object rawCover = updated.get("coverPhoto");
+        String coverPhotoUrl = UrlUtils.toAbsoluteUrl(request, rawCover == null ? null : String.valueOf(rawCover));
+        profile.setCoverImage(coverPhotoUrl);
+
+        Object rawCompleted = updated.get("profileCompleted");
+        if (rawCompleted instanceof Boolean value) {
+            profile.setProfileCompleted(value);
+        } else if (rawCompleted != null) {
+            profile.setProfileCompleted(Boolean.parseBoolean(String.valueOf(rawCompleted)));
+        }
+
+        return profile;
     }
 
     @GetMapping("/{identifier}/followers")
@@ -600,9 +641,10 @@ public class ProfileController {
                     .body(Map.of("message", "This account is private"));
         }
 
-        List<User> users = followRepo.findByFollowing(target).stream()
+        List<PublicUserDto> users = followRepo.findByFollowing(target).stream()
                 .map(Follow::getFollower)
                 .filter(u -> u != null && u.getId() != null)
+                .map(u -> PublicUserPayloads.toUserSummary(u, UrlUtils.toAbsoluteUrl(request, u.getProfilePic())))
                 .toList();
         return ResponseEntity.ok(uniqueUserItemsById(request, users));
     }
@@ -627,9 +669,10 @@ public class ProfileController {
                     .body(Map.of("message", "This account is private"));
         }
 
-        List<User> users = followRepo.findByFollower(target).stream()
+        List<PublicUserDto> users = followRepo.findByFollower(target).stream()
                 .map(Follow::getFollowing)
                 .filter(u -> u != null && u.getId() != null)
+                .map(u -> PublicUserPayloads.toUserSummary(u, UrlUtils.toAbsoluteUrl(request, u.getProfilePic())))
                 .toList();
         return ResponseEntity.ok(uniqueUserItemsById(request, users));
     }
@@ -660,8 +703,7 @@ public class ProfileController {
             return userRepo.findById(Long.parseLong(clean));
         }
 
-        return userRepo.findByEmailIgnoreCase(clean)
-                .or(() -> userRepo.findByNameIgnoreCase(clean));
+        return userRepo.findByNameIgnoreCase(clean);
     }
 
     private String normalizeIdentifier(String identifier) {
@@ -682,19 +724,11 @@ public class ProfileController {
         return clean;
     }
 
-    private List<Map<String, Object>> uniqueUserItemsById(HttpServletRequest request, List<User> users) {
-        Map<Long, Map<String, Object>> unique = new LinkedHashMap<>();
-        for (User user : users) {
+    private List<PublicUserDto> uniqueUserItemsById(HttpServletRequest request, List<PublicUserDto> users) {
+        Map<Long, PublicUserDto> unique = new LinkedHashMap<>();
+        for (PublicUserDto user : users) {
             if (user == null || user.getId() == null) continue;
-            Map<String, Object> item = new HashMap<>();
-            item.put("id", user.getId());
-            item.put("email", user.getEmail());
-            item.put("name", (user.getName() != null && !user.getName().isBlank()) ? user.getName() : user.getEmail());
-            item.put("username", (user.getName() != null && !user.getName().isBlank()) ? user.getName() : user.getEmail());
-            String profilePicUrl = UrlUtils.toAbsoluteUrl(request, user.getProfilePic());
-            item.put("profilePic", profilePicUrl);
-            item.put("profilePicUrl", profilePicUrl);
-            unique.putIfAbsent(user.getId(), item);
+            unique.putIfAbsent(user.getId(), user);
         }
         return List.copyOf(unique.values());
     }
@@ -738,18 +772,7 @@ public class ProfileController {
         try {
             MultipartFile effectiveCover = firstNonEmptyFile(coverPhoto, cover, coverImage);
             Map<String, Object> updated = profileService.setupProfile(effectiveUserId, name, bio, profilePic, effectiveCover);
-            Map<String, Object> response = new HashMap<>(updated);
-            Object raw = updated.get("profilePic");
-            String profilePicUrl = UrlUtils.toAbsoluteUrl(request, raw == null ? null : String.valueOf(raw));
-            response.put("profilePic", profilePicUrl == null ? "" : profilePicUrl);
-            response.put("profilePicUrl", profilePicUrl == null ? "" : profilePicUrl);
-            Object rawCover = updated.get("coverPhoto");
-            String coverPhotoUrl = UrlUtils.toAbsoluteUrl(request, rawCover == null ? null : String.valueOf(rawCover));
-            response.put("coverUrl", coverPhotoUrl == null ? "" : coverPhotoUrl);
-            response.put("coverPhoto", coverPhotoUrl == null ? "" : coverPhotoUrl);
-            response.put("coverPhotoUrl", coverPhotoUrl == null ? "" : coverPhotoUrl);
-            response.put("profileCoverUrl", coverPhotoUrl == null ? "" : coverPhotoUrl);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(buildSetupProfileDto(updated, request));
         } catch (IllegalArgumentException e) {
             Map<String, Object> availability = profileService.checkNameAvailability(name, effectiveUserId);
             return ResponseEntity.badRequest().body(Map.of(

@@ -1,6 +1,11 @@
 package com.socialsea.dto;
 
-public class AdminStatsDto {
+import java.io.Serializable;
+
+public class AdminStatsDto implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     public long users;
     public long posts;
     public long videos;

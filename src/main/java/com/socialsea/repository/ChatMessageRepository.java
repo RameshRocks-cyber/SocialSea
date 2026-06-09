@@ -32,11 +32,18 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
             Pageable pageable
     );
 
+    @EntityGraph(attributePaths = {"sender", "group"})
+    List<ChatMessage> findByGroupIdOrderByCreatedAtDesc(Long groupId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"sender", "group"})
+    List<ChatMessage> findByGroupIdOrderByCreatedAtAsc(Long groupId);
+
     @Query("""
             select case when m.sender.id = :me then m.receiver.id else m.sender.id end as otherId,
                    max(m.createdAt) as lastAt
             from ChatMessage m
-            where m.sender.id = :me or m.receiver.id = :me
+            where m.group is null
+              and (m.sender.id = :me or m.receiver.id = :me)
             group by case when m.sender.id = :me then m.receiver.id else m.sender.id end
             order by max(m.createdAt) desc
             """)
@@ -76,6 +83,32 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
             LocalDateTime createdAtAfter
     );
 
+    @EntityGraph(attributePaths = {"sender", "group"})
+    Optional<ChatMessage> findTopBySenderIdAndGroupIdAndClientMessageIdOrderByCreatedAtDesc(
+            Long senderId,
+            Long groupId,
+            String clientMessageId
+    );
+
+    @EntityGraph(attributePaths = {"sender", "group"})
+    Optional<ChatMessage> findTopBySenderIdAndGroupIdAndMediaTypeAndFileNameAndMediaSizeBytesAndTextAndCreatedAtAfterOrderByCreatedAtDesc(
+            Long senderId,
+            Long groupId,
+            String mediaType,
+            String fileName,
+            Long mediaSizeBytes,
+            String text,
+            LocalDateTime createdAtAfter
+    );
+
+    @EntityGraph(attributePaths = {"sender", "group"})
+    Optional<ChatMessage> findTopBySenderIdAndGroupIdAndMediaFingerprintAndCreatedAtAfterOrderByCreatedAtDesc(
+            Long senderId,
+            Long groupId,
+            String mediaFingerprint,
+            LocalDateTime createdAtAfter
+    );
+
     long deleteBySenderIdAndReceiverIdOrSenderIdAndReceiverId(
             Long senderId,
             Long receiverId,
@@ -83,10 +116,13 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
             Long receiverIdReverse
     );
 
+    long deleteByGroupId(Long groupId);
+
     @Query("""
             select count(distinct m.sender.id)
             from ChatMessage m
-            where m.receiver.id = :receiverId
+            where m.group is null
+              and m.receiver.id = :receiverId
               and m.readAt is null
               and (m.text is null or m.text not like '__SS_READ_RECEIPT__:%')
             """)

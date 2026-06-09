@@ -10,6 +10,9 @@ import com.socialsea.repository.StoryLikeRepository;
 import com.socialsea.repository.StoryViewRepository;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.StoryService;
+import com.socialsea.util.PublicUserPayloads;
+import com.socialsea.util.UrlUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -61,7 +64,7 @@ public class StoryInsightsController {
     }
 
     @GetMapping("/{id}/likes")
-    public ResponseEntity<?> likes(@PathVariable("id") Long id, Authentication auth) {
+    public ResponseEntity<?> likes(@PathVariable("id") Long id, Authentication auth, HttpServletRequest request) {
         ResponseEntity<?> guard = guardOwner(id, auth);
         if (guard != null) return guard;
 
@@ -72,13 +75,13 @@ public class StoryInsightsController {
 
         List<Map<String, Object>> items = new ArrayList<>();
         for (StoryLike like : storyLikeRepo.findByStoryOrderByIdDesc(story)) {
-            items.add(toUserItem(like.getUser(), null, null));
+            items.add(toUserItem(like.getUser(), null, null, null, request));
         }
         return ResponseEntity.ok(Map.of("count", items.size(), "items", items));
     }
 
     @GetMapping("/{id}/views")
-    public ResponseEntity<?> views(@PathVariable("id") Long id, Authentication auth) {
+    public ResponseEntity<?> views(@PathVariable("id") Long id, Authentication auth, HttpServletRequest request) {
         ResponseEntity<?> guard = guardOwner(id, auth);
         if (guard != null) return guard;
 
@@ -89,13 +92,13 @@ public class StoryInsightsController {
 
         List<Map<String, Object>> items = new ArrayList<>();
         for (StoryView view : storyViewRepo.findByStoryOrderByCreatedAtDesc(story)) {
-            items.add(toUserItem(view.getUser(), "viewedAt", view.getCreatedAt()));
+            items.add(toUserItem(view.getUser(), "viewedAt", view.getCreatedAt(), null, request));
         }
         return ResponseEntity.ok(Map.of("count", items.size(), "items", items));
     }
 
     @GetMapping("/{id}/comments")
-    public ResponseEntity<?> comments(@PathVariable("id") Long id, Authentication auth) {
+    public ResponseEntity<?> comments(@PathVariable("id") Long id, Authentication auth, HttpServletRequest request) {
         ResponseEntity<?> guard = guardOwner(id, auth);
         if (guard != null) return guard;
 
@@ -107,7 +110,7 @@ public class StoryInsightsController {
         List<Map<String, Object>> items = new ArrayList<>();
         for (StoryComment comment : storyCommentRepo.findByStoryOrderByCreatedAtDesc(story)) {
             String text = comment.getText() == null ? "" : comment.getText().trim();
-            items.add(toUserItem(comment.getUser(), "commentedAt", comment.getCreatedAt(), text));
+            items.add(toUserItem(comment.getUser(), "commentedAt", comment.getCreatedAt(), text, request));
         }
         return ResponseEntity.ok(Map.of("count", items.size(), "items", items));
     }
@@ -135,24 +138,22 @@ public class StoryInsightsController {
         return null;
     }
 
-    private Map<String, Object> toUserItem(User user, String atKey, LocalDateTime at) {
-        return toUserItem(user, atKey, at, null);
-    }
-
-    private Map<String, Object> toUserItem(User user, String atKey, LocalDateTime at, String commentText) {
+    private Map<String, Object> toUserItem(User user, String atKey, LocalDateTime at, String commentText, HttpServletRequest request) {
         Map<String, Object> item = new LinkedHashMap<>();
         if (user != null) {
             item.put("userId", user.getId());
-            item.put("email", user.getEmail());
-            String displayName = (user.getName() != null && !user.getName().isBlank())
-                    ? user.getName()
-                    : user.getEmail();
-            item.put("name", displayName);
-            item.put("username", displayName);
-            item.put("profilePic", user.getProfilePic());
+            item.put("name", PublicUserPayloads.publicDisplayName(user));
+            String username = PublicUserPayloads.publicUsername(user);
+            if (!username.isBlank()) {
+                item.put("username", username);
+            }
+            String profilePicUrl = UrlUtils.toAbsoluteUrl(request, user.getProfilePic());
+            if (profilePicUrl != null && !profilePicUrl.isBlank()) {
+                item.put("profilePic", profilePicUrl);
+                item.put("profilePicUrl", profilePicUrl);
+            }
         } else {
             item.put("userId", null);
-            item.put("email", "");
             item.put("name", "Unknown");
             item.put("username", "Unknown");
             item.put("profilePic", null);

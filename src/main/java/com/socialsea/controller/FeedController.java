@@ -1,6 +1,6 @@
 package com.socialsea.controller;
 
-import com.socialsea.dto.FeedItemDto;
+import com.socialsea.dto.PublicFeedDto;
 import com.socialsea.model.Post;
 import com.socialsea.model.User;
 import com.socialsea.repository.FollowRepository;
@@ -64,6 +64,7 @@ public class FeedController {
 
     @GetMapping
     public ResponseEntity<?> feed(
+            @RequestParam(value = "page", required = false) Integer page,
             @RequestParam(value = "size", required = false) Integer size,
             @RequestParam(value = "limit", required = false) Integer limit,
             Authentication auth
@@ -75,27 +76,32 @@ public class FeedController {
         Set<String> storyMediaUrls = activeStoryMediaUrls();
         Set<Long> allowedPrivateIds = resolveAllowedPrivateIds(viewer);
         int resolvedLimit = resolveLimit(size != null ? size : limit, maxFeedItems, HARD_MAX_ITEMS);
-        Pageable pageable = PageRequest.of(0, resolvedLimit);
+        int resolvedPage = Math.max(0, page != null ? page : 0);
+        Pageable pageable = PageRequest.of(resolvedPage, Math.min(HARD_MAX_ITEMS, resolvedLimit + 1));
 
         List<Post> candidates = includeUnapproved
             ? postRepo.findFeedCandidates(pageable)
             : postRepo.findApprovedFeedCandidates(pageable);
 
-        List<FeedItemDto> normalPosts = candidates
+        List<PublicFeedDto> normalPosts = candidates
                 .stream()
                 .filter(p -> !isStoryPost(p.getMediaUrl(), storyMediaUrls))
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
                 .filter(p -> canViewPost(viewer, allowedPrivateIds, p.getUser()))
-                .map(FeedItemDto::fromEntity)
+                .map(PublicFeedDto::fromEntity)
+                .limit(resolvedLimit)
                 .toList();
+
+        boolean hasNext = candidates.size() > resolvedLimit;
 
         return ResponseEntity.ok()
             .cacheControl(privateCache(Math.max(1, feedCacheSeconds)))
-            .body(normalPosts);
+            .body(feedPage(normalPosts, resolvedPage, resolvedLimit, hasNext));
     }
 
     @GetMapping("/videos")
     public ResponseEntity<?> videos(
+            @RequestParam(value = "page", required = false) Integer page,
             @RequestParam(value = "size", required = false) Integer size,
             @RequestParam(value = "limit", required = false) Integer limit,
             Authentication auth
@@ -107,24 +113,28 @@ public class FeedController {
         Set<String> storyMediaUrls = activeStoryMediaUrls();
         Set<Long> allowedPrivateIds = resolveAllowedPrivateIds(viewer);
         int resolvedLimit = resolveLimit(size != null ? size : limit, maxVideoItems, HARD_MAX_ITEMS);
-        Pageable pageable = PageRequest.of(0, resolvedLimit);
+        int resolvedPage = Math.max(0, page != null ? page : 0);
+        Pageable pageable = PageRequest.of(resolvedPage, Math.min(HARD_MAX_ITEMS, resolvedLimit + 1));
 
         List<Post> candidates = includeUnapproved
             ? postRepo.findFeedCandidates(pageable)
             : postRepo.findApprovedFeedCandidates(pageable);
 
-        List<FeedItemDto> localVideos = candidates
+        List<PublicFeedDto> localVideos = candidates
                 .stream()
                 .filter(p -> !isStoryPost(p.getMediaUrl(), storyMediaUrls))
                 .filter(p -> p.getMediaUrl() != null && !p.getMediaUrl().isBlank())
                 .filter(p -> canViewPost(viewer, allowedPrivateIds, p.getUser()))
                 .filter(this::isVideoFeedPost)
-                .map(FeedItemDto::fromEntity)
+                .map(PublicFeedDto::fromEntity)
+                .limit(resolvedLimit)
                 .toList();
+
+        boolean hasNext = candidates.size() > resolvedLimit;
 
         return ResponseEntity.ok()
             .cacheControl(privateCache(Math.max(1, feedCacheSeconds)))
-            .body(localVideos);
+            .body(feedPage(localVideos, resolvedPage, resolvedLimit, hasNext));
     }
 
     @GetMapping("/{postId}")
@@ -173,11 +183,11 @@ public class FeedController {
 
         return ResponseEntity.ok()
             .cacheControl(privateCache(Math.max(1, feedByIdCacheSeconds)))
-            .body(FeedItemDto.fromEntity(post));
+            .body(PublicFeedDto.fromEntity(post));
     }
 
     @GetMapping("/anonymous")
-    public ResponseEntity<List<FeedItemDto>> getAnonymousFeed() {
+    public ResponseEntity<List<PublicFeedDto>> getAnonymousFeed() {
         return ResponseEntity.ok()
             .cacheControl(publicCache(Math.max(1, anonymousFeedCacheSeconds)))
             .body(anonymousPostService.getApprovedFeed());
@@ -231,6 +241,15 @@ public class FeedController {
         int safeFallback = Math.max(1, Math.min(hardMax, fallback));
         if (requested == null) return safeFallback;
         return Math.max(1, Math.min(hardMax, requested));
+    }
+
+    private Map<String, Object> feedPage(List<PublicFeedDto> content, int page, int size, boolean hasNext) {
+        return Map.of(
+            "content", content,
+            "page", Math.max(0, page),
+            "size", Math.max(1, size),
+            "hasNext", hasNext
+        );
     }
 
     private CacheControl privateCache(int seconds) {

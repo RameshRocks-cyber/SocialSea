@@ -9,6 +9,7 @@ import com.socialsea.repository.StoryCommentRepository;
 import com.socialsea.repository.StoryLikeRepository;
 import com.socialsea.repository.StoryRepository;
 import com.socialsea.repository.StoryViewRepository;
+import com.socialsea.util.PublicUserPayloads;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -50,15 +51,7 @@ public class StoryService {
 
         List<StoryDto> result = new ArrayList<>();
         for (Story story : active) {
-            User owner = story.getUser();
-            Long ownerId = owner != null ? owner.getId() : null;
-            String privacy = story.getPrivacy() != null ? story.getPrivacy().toLowerCase() : "public";
-            boolean isOwner = viewer != null && ownerId != null && ownerId.equals(viewer.getId());
-            boolean allow = "public".equals(privacy) || isOwner;
-            if (!allow && "followers".equals(privacy) && ownerId != null) {
-                allow = followingIds.contains(ownerId);
-            }
-            if (!allow) continue;
+            if (!canViewStory(story, viewer, followingIds)) continue;
             result.add(toDtoWithStats(story, viewer));
         }
         return result;
@@ -70,18 +63,42 @@ public class StoryService {
     }
 
     public boolean canViewStory(Story story, User viewer) {
+        return canViewStory(story, viewer, null);
+    }
+
+    private boolean canViewStory(Story story, User viewer, Set<Long> followingIds) {
         if (story == null) return false;
         if (story.getExpiresAt() != null && story.getExpiresAt().isBefore(LocalDateTime.now())) {
             return false;
         }
-        String privacy = story.getPrivacy() != null ? story.getPrivacy().toLowerCase() : "public";
-        if ("public".equals(privacy)) return true;
-        if (viewer == null) return false;
         User owner = story.getUser();
         Long ownerId = owner != null ? owner.getId() : null;
-        if (ownerId != null && ownerId.equals(viewer.getId())) return true;
+        boolean isOwner = viewer != null && ownerId != null && ownerId.equals(viewer.getId());
+        if (isOwner) return true;
+
+        String privacy = story.getPrivacy() != null ? story.getPrivacy().toLowerCase() : "public";
+        boolean ownerIsPrivate = owner != null && owner.isPrivateAccount();
+
+        if (ownerIsPrivate) {
+            if (viewer == null || owner == null) return false;
+
+            boolean followsOwner;
+            if (followingIds != null && ownerId != null) {
+                followsOwner = followingIds.contains(ownerId);
+            } else {
+                followsOwner = followRepo.existsByFollowerAndFollowing(viewer, owner);
+            }
+
+            if (!followsOwner) return false;
+
+            // Close-friends is not implemented yet, so keep it owner-only.
+            if ("close_friends".equals(privacy)) return false;
+            return true;
+        }
+
+        if ("public".equals(privacy)) return true;
         if ("followers".equals(privacy) && owner != null) {
-            return followRepo.existsByFollowerAndFollowing(viewer, owner);
+            return viewer != null && followRepo.existsByFollowerAndFollowing(viewer, owner);
         }
         return false;
     }
@@ -116,7 +133,7 @@ public class StoryService {
         User owner = story.getUser();
         if (owner != null) {
             dto.setUserId(owner.getId());
-            dto.setUsername(owner.getEmail());
+            dto.setUsername(PublicUserPayloads.publicDisplayName(owner));
         }
         if (storyLikeRepo != null) {
             dto.setLikeCount(storyLikeRepo.countByStory(story));

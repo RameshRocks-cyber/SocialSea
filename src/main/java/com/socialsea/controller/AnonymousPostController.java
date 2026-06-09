@@ -37,7 +37,7 @@ public class AnonymousPostController {
     public ResponseEntity<?> like(@PathVariable Long id) {
         Long safeId = Objects.requireNonNull(id, "id");
         AnonymousPost post = repo.findById(safeId).orElse(null);
-        if (post == null) {
+        if (post == null || !post.isApproved() || post.isRejected()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Anonymous post not found"));
         }
         post.setLikeCount(Math.max(0, post.getLikeCount() + 1));
@@ -53,7 +53,7 @@ public class AnonymousPostController {
     public ResponseEntity<?> view(@PathVariable Long id) {
         Long safeId = Objects.requireNonNull(id, "id");
         AnonymousPost post = repo.findById(safeId).orElse(null);
-        if (post == null) {
+        if (post == null || !post.isApproved() || post.isRejected()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "Anonymous post not found"));
         }
         post.setViewCount(Math.max(0, post.getViewCount() + 1));

@@ -64,15 +64,13 @@ public class JwtFilter extends OncePerRequestFilter {
         @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
-        String authHeader = request.getHeader("Authorization");
-
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        String token = AuthCookieUtil.resolveAccessToken(request);
+        if (token == null || token.isBlank()) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        String token = authHeader.substring(7).trim();
-        if (token.isEmpty() || token.equalsIgnoreCase("null") || token.equalsIgnoreCase("undefined")) {
+        if (jwtUtil.isRefreshToken(token)) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -99,12 +97,20 @@ public class JwtFilter extends OncePerRequestFilter {
                     filterChain.doFilter(request, response);
                     return;
                 }
+                if (dbUser.isBanned()) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
                 if (!loginSessionService.isActiveSession(dbUser.getId(), sessionId)) {
                     filterChain.doFilter(request, response);
                     return;
                 }
 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+                if (!userDetails.isAccountNonLocked() || !userDetails.isEnabled()) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
 
                 if (!jwtUtil.isTokenExpired(token) && username.equals(userDetails.getUsername())) {
 

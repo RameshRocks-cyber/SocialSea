@@ -16,6 +16,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 @Service
@@ -89,11 +90,7 @@ public class OpenAiRealtimeService {
         try (Response response = client.newCall(request).execute()) {
             String body = response.body() != null ? response.body().string() : "";
             if (!response.isSuccessful()) {
-                String message = "OpenAI realtime token request failed (status="
-                        + response.code()
-                        + (body.isBlank() ? "" : ", body=" + body)
-                        + ")";
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, message);
+                throw buildRealtimeFailure(response.code(), body);
             }
             return mapper.readTree(body);
         } catch (IOException e) {
@@ -140,6 +137,61 @@ public class OpenAiRealtimeService {
                     "OPENAI_API_KEY is not configured"
             );
         }
+    }
+
+    private ResponseStatusException buildRealtimeFailure(int statusCode, String body) {
+        String normalized = normalizeProviderError(body);
+        if (isCapacityError(normalized)) {
+            return new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Voice assistant is busy right now. Please try again in a moment."
+            );
+        }
+        if (isRateLimitError(statusCode, normalized)) {
+            return new ResponseStatusException(
+                    HttpStatus.TOO_MANY_REQUESTS,
+                    "Voice assistant is getting a lot of traffic. Please try again shortly."
+            );
+        }
+        return new ResponseStatusException(
+                HttpStatus.BAD_GATEWAY,
+                "Voice assistant service is temporarily unavailable."
+        );
+    }
+
+    private String normalizeProviderError(String body) {
+        String raw = body == null ? "" : body.trim();
+        if (raw.isBlank()) return "";
+        try {
+            JsonNode parsed = mapper.readTree(raw);
+            JsonNode error = parsed.path("error");
+            if (!error.isMissingNode()) {
+                String message = error.path("message").asText("");
+                if (!message.isBlank()) return message.trim().toLowerCase(Locale.ROOT);
+            }
+            String message = parsed.path("message").asText("");
+            if (!message.isBlank()) return message.trim().toLowerCase(Locale.ROOT);
+        } catch (Exception ignored) {
+            // Fall through to raw-text matching.
+        }
+        return raw.toLowerCase(Locale.ROOT);
+    }
+
+    private boolean isCapacityError(String normalized) {
+        if (normalized == null || normalized.isBlank()) return false;
+        return normalized.contains("at capacity")
+                || normalized.contains("try a different model")
+                || normalized.contains("model is overloaded")
+                || normalized.contains("server is overloaded")
+                || normalized.contains("resource exhausted");
+    }
+
+    private boolean isRateLimitError(int statusCode, String normalized) {
+        if (statusCode == 429) return true;
+        if (normalized == null || normalized.isBlank()) return false;
+        return normalized.contains("rate limit")
+                || normalized.contains("too many requests")
+                || normalized.contains("quota");
     }
 
     private String normalize(String value, String fallback) {
