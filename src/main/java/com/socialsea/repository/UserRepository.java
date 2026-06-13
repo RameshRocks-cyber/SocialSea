@@ -2,6 +2,7 @@ package com.socialsea.repository;
 
 import com.socialsea.dto.ChartPointDto;
 import com.socialsea.model.User;
+import com.socialsea.util.UserIdentityUtils;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,9 +13,16 @@ import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
 
-    @Query("select u from User u where lower(u.email) = lower(:email)")
-    Optional<User> findByEmail(@Param("email") String email);
-    Optional<User> findByEmailIgnoreCase(String email);
+    List<User> findAllByEmailIgnoreCase(String email);
+
+    default Optional<User> findByEmail(String email) {
+        return findCanonicalEmailMatch(email);
+    }
+
+    default Optional<User> findByEmailIgnoreCase(String email) {
+        return findCanonicalEmailMatch(email);
+    }
+
     Optional<User> findByPhoneNumber(String phoneNumber);
     Optional<User> findByNameIgnoreCase(String name);
     boolean existsByNameIgnoreCase(String name);
@@ -44,4 +52,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
         ORDER BY FUNCTION('DATE', u.createdAt)
     """)
     List<ChartPointDto> userGrowthFrom(@Param("fromDate") LocalDateTime fromDate);
+
+    private Optional<User> findCanonicalEmailMatch(String email) {
+        String normalized = UserIdentityUtils.normalizeEmail(email);
+        if (normalized == null) {
+            return Optional.empty();
+        }
+        return UserIdentityUtils.selectCanonicalUser(findAllByEmailIgnoreCase(normalized));
+    }
 }

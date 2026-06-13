@@ -12,6 +12,7 @@ import com.socialsea.service.LoginSessionService;
 import com.socialsea.service.OtpService;
 import com.socialsea.security.AuthCookieUtil;
 import com.socialsea.security.JwtUtil;
+import com.socialsea.util.UserIdentityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -19,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -167,6 +169,7 @@ public class AuthController {
         if (email == null && username != null && username.contains("@")) {
             email = username;
         }
+        email = UserIdentityUtils.normalizeEmail(email);
 
         User user = null;
         if (email != null) {
@@ -193,7 +196,9 @@ public class AuthController {
         }
 
         if (user != null && user.getPassword() != null && !user.getPassword().isBlank()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "User already registered"));
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "message", "That email already has an account. Please log in instead."
+            ));
         }
 
         if (user == null) {
@@ -205,10 +210,12 @@ public class AuthController {
         if (email == null) {
             email = generateLocalEmail(username != null ? username : "user");
         }
+        email = UserIdentityUtils.normalizeEmail(email);
 
-        if (user.getEmail() == null || user.getEmail().isBlank()) {
+        String existingEmail = UserIdentityUtils.normalizeEmail(user.getEmail());
+        if (existingEmail == null) {
             user.setEmail(email);
-        } else if (!user.getEmail().equalsIgnoreCase(email)) {
+        } else if (!existingEmail.equals(email)) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", "Email already linked to another account"));
         }
 
@@ -234,7 +241,13 @@ public class AuthController {
         }
 
         user.setPassword(passwordEncoder.encode(password));
-        userRepository.save(user);
+        try {
+            userRepository.save(user);
+        } catch (DataIntegrityViolationException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "message", "An account already exists for that email. Please log in instead."
+            ));
+        }
 
         try {
             var session = loginSessionService.startSession(user, httpRequest, body.get("deviceId"), body.get("deviceName"));
@@ -535,7 +548,7 @@ public class AuthController {
     }
 
     private String resolveTokenSubject(User user, String fallback) {
-        String email = normalize(user != null ? user.getEmail() : null);
+        String email = UserIdentityUtils.normalizeEmail(user != null ? user.getEmail() : null);
         if (email != null) {
             return email;
         }

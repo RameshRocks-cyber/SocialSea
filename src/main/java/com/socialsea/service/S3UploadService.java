@@ -40,8 +40,8 @@ public class S3UploadService implements UploadService {
         @Value("${app.s3.public-base-url:}") String publicBaseUrl,
         @Value("${app.s3.region:}") String region,
         @Value("${app.upload.dir:uploads}") String uploadDir,
-        @Value("${app.upload.allowed-types:image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/x-matroska,video/matroska,audio/mpeg,audio/wav,audio/mp4,application/pdf}") String allowedTypes,
-        @Value("${app.upload.allowed-extensions:png,jpg,jpeg,webp,gif,mp4,webm,mkv,mp3,wav,m4a,pdf}") String allowedExtensions,
+        @Value("${app.upload.allowed-types:image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm,video/x-matroska,video/matroska,audio/mpeg,audio/wav,audio/mp4,audio/webm,audio/ogg,audio/opus,application/pdf}") String allowedTypes,
+        @Value("${app.upload.allowed-extensions:png,jpg,jpeg,webp,gif,mp4,webm,mkv,mp3,wav,m4a,ogg,opus,pdf}") String allowedExtensions,
         @Value("${app.upload.max-bytes:1073741824}") long maxBytes,
         @Value("${app.upload.max-image-bytes:20971520}") long maxImageBytes,
         @Value("${app.upload.allow-local-fallback:false}") boolean allowLocalFallback
@@ -199,6 +199,10 @@ public class S3UploadService implements UploadService {
             return null;
         }
         String trimmed = value.trim().toLowerCase();
+        int parameterIndex = trimmed.indexOf(';');
+        if (parameterIndex >= 0) {
+            trimmed = trimmed.substring(0, parameterIndex).trim();
+        }
         return trimmed.isEmpty() ? null : trimmed;
     }
 

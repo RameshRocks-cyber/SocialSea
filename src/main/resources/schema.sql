@@ -34,9 +34,27 @@ ALTER TABLE IF EXISTS chat_messages
 ALTER TABLE IF EXISTS chat_messages
     ADD COLUMN IF NOT EXISTS media_fingerprint VARCHAR(64);
 
+ALTER TABLE IF EXISTS chat_messages
+    ADD COLUMN IF NOT EXISTS group_id BIGINT;
+
+ALTER TABLE IF EXISTS chat_messages
+    ALTER COLUMN receiver_id DROP NOT NULL;
+
+ALTER TABLE IF EXISTS chat_messages
+    ALTER COLUMN group_id DROP NOT NULL;
+
+ALTER TABLE IF EXISTS chat_messages
+    ADD COLUMN IF NOT EXISTS sender_deleted_at TIMESTAMP;
+
+ALTER TABLE IF EXISTS chat_messages
+    ADD COLUMN IF NOT EXISTS receiver_deleted_at TIMESTAMP;
+
 CREATE UNIQUE INDEX IF NOT EXISTS ux_chat_messages_sender_receiver_client_message_id
     ON chat_messages(sender_id, receiver_id, client_message_id)
     WHERE client_message_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_chat_messages_sender_group_client_message_id
+    ON chat_messages(sender_id, group_id, client_message_id);
 
 CREATE INDEX IF NOT EXISTS idx_chat_messages_sender_receiver_media_fingerprint_created_at
     ON chat_messages(sender_id, receiver_id, media_fingerprint, created_at DESC);

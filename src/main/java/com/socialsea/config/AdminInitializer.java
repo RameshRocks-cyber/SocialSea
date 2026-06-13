@@ -3,6 +3,7 @@ package com.socialsea.config;
 import com.socialsea.model.Role;
 import com.socialsea.model.User;
 import com.socialsea.repository.UserRepository;
+import com.socialsea.util.UserIdentityUtils;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -33,6 +34,7 @@ public class AdminInitializer {
         return args -> {
             System.out.println("ACTIVE PROFILES: " + java.util.Arrays.toString(env.getActiveProfiles()));
             ensureUserLocationColumns(jdbcTemplate);
+            ensureChatMessageGroupColumns(jdbcTemplate);
 
             try {
                 if (!adminBootstrapEnabled) {
@@ -41,8 +43,9 @@ public class AdminInitializer {
 
                 String adminEmail = adminBootstrapEmail != null ? adminBootstrapEmail.trim() : "";
                 String adminPassword = adminBootstrapPassword != null ? adminBootstrapPassword.trim() : "";
+                adminEmail = UserIdentityUtils.normalizeEmail(adminEmail);
 
-                if (adminEmail.isBlank() || adminPassword.isBlank()) {
+                if (adminEmail == null || adminEmail.isBlank() || adminPassword.isBlank()) {
                     System.err.println("ADMIN INIT SKIPPED: set APP_ADMIN_BOOTSTRAP_EMAIL and APP_ADMIN_BOOTSTRAP_PASSWORD");
                     return;
                 }
@@ -73,6 +76,17 @@ public class AdminInitializer {
             jdbcTemplate.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS location_updated_at TIMESTAMP");
         } catch (Exception e) {
             System.err.println("USERS COLUMN PATCH FAILED: " + e.getMessage());
+        }
+    }
+
+    private void ensureChatMessageGroupColumns(JdbcTemplate jdbcTemplate) {
+        try {
+            jdbcTemplate.execute("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS group_id BIGINT");
+            jdbcTemplate.execute("ALTER TABLE chat_messages ALTER COLUMN receiver_id DROP NOT NULL");
+            jdbcTemplate.execute("ALTER TABLE chat_messages ALTER COLUMN group_id DROP NOT NULL");
+            jdbcTemplate.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_chat_messages_sender_group_client_message_id ON chat_messages(sender_id, group_id, client_message_id)");
+        } catch (Exception e) {
+            System.err.println("CHAT MESSAGES COLUMN PATCH FAILED: " + e.getMessage());
         }
     }
 }

@@ -8,9 +8,12 @@ import com.socialsea.repository.EmergencyAlertRepository;
 import com.socialsea.repository.PostRepository;
 import com.socialsea.repository.ReportRepository;
 import com.socialsea.repository.UserRepository;
+import com.socialsea.service.AdminUserDeletionService;
 import com.socialsea.service.NotificationService;
 import com.socialsea.util.MediaUrlUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,6 +33,7 @@ import java.util.Map;
 import java.util.Comparator;
 import java.util.Optional;
 import java.util.Objects;
+import java.util.NoSuchElementException;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -52,6 +56,7 @@ public class AdminDataController {
     private final ReportRepository reportRepo;
     private final EmergencyAlertRepository emergencyRepo;
     private final NotificationService notificationService;
+    private final AdminUserDeletionService adminUserDeletionService;
 
     @GetMapping("/users")
     public List<Map<String, Object>> users() {
@@ -79,6 +84,25 @@ public class AdminDataController {
     @PostMapping("/users/{id}/unblock")
     public ResponseEntity<?> unblockUser(@PathVariable Long id) {
         return setUserBanState(id, false);
+    }
+
+    @DeleteMapping("/users/{id}")
+    public ResponseEntity<?> deleteUser(@PathVariable Long id) {
+        try {
+            AdminUserDeletionService.DeletedUserSummary deleted = adminUserDeletionService.deleteUser(id);
+            return ResponseEntity.ok(Map.of(
+                    "ok", true,
+                    "deletedId", deleted.userId(),
+                    "message", "User deleted successfully"
+            ));
+        } catch (NoSuchElementException ex) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
+        } catch (DataIntegrityViolationException ex) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                    "message",
+                    "User could not be deleted because related data still exists"
+            ));
+        }
     }
 
     @PostMapping("/users/{id}/notice")

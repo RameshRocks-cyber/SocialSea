@@ -5,10 +5,12 @@ import com.socialsea.model.Role;
 import com.socialsea.model.User;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.security.JwtUtil;
+import com.socialsea.util.UserIdentityUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -47,7 +49,7 @@ public class AuthService {
         if (isPhone) {
             existingUser = userRepository.findByPhoneNumber(normalizedPhone).orElse(null);
         } else {
-            existingUser = userRepository.findByEmail(normalizedIdentifier.toLowerCase()).orElse(null);
+            existingUser = userRepository.findByEmail(UserIdentityUtils.normalizeEmail(normalizedIdentifier)).orElse(null);
         }
         if (existingUser != null && existingUser.isBanned()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "User banned");
@@ -65,27 +67,52 @@ public class AuthService {
                 newUser.setEmail(generateLocalEmailFromPhone(normalizedPhone));
                 newUser.setRole(Role.USER);
                 newUser.setCreatedAt(LocalDateTime.now());
-                user = userRepository.save(newUser);
+                try {
+                    user = userRepository.save(newUser);
+                } catch (DataIntegrityViolationException ex) {
+                    user = userRepository.findByPhoneNumber(normalizedPhone)
+                            .orElseGet(() -> userRepository.findByEmail(newUser.getEmail())
+                                    .orElseThrow(() -> new ResponseStatusException(
+                                            HttpStatus.CONFLICT,
+                                            "Account already exists for this phone number"
+                                    )));
+                }
             }
         } else {
-            String normalizedEmail = normalizedIdentifier.toLowerCase();
+            String normalizedEmail = UserIdentityUtils.normalizeEmail(normalizedIdentifier);
             user = existingUser != null ? existingUser : userRepository.findByEmail(normalizedEmail).orElseGet(() -> {
                 User newUser = new User();
                 newUser.setEmail(normalizedEmail);
                 newUser.setRole(Role.USER);
                 newUser.setCreatedAt(LocalDateTime.now());
-                return userRepository.save(newUser);
+                try {
+                    return userRepository.save(newUser);
+                } catch (DataIntegrityViolationException ex) {
+                    return userRepository.findByEmail(normalizedEmail)
+                            .orElseThrow(() -> new ResponseStatusException(
+                                    HttpStatus.CONFLICT,
+                                    "Account already exists for this email"
+                            ));
+                }
             });
         }
 
         if (user.getEmail() == null || user.getEmail().isBlank()) {
             String fallbackLocal = isPhone ? generateLocalEmailFromPhone(normalizedPhone) : generateLocalEmailFromPhone("user");
             user.setEmail(fallbackLocal);
-            user = userRepository.save(user);
+            try {
+                user = userRepository.save(user);
+            } catch (DataIntegrityViolationException ex) {
+                user = userRepository.findByEmail(fallbackLocal)
+                        .orElseThrow(() -> new ResponseStatusException(
+                                HttpStatus.CONFLICT,
+                                "Account already exists for this email"
+                        ));
+            }
         }
 
         var session = loginSessionService.startSession(user, request, null, null);
-        String subject = normalize(user.getEmail());
+        String subject = UserIdentityUtils.normalizeEmail(user.getEmail());
         if (subject == null) {
             subject = isPhone ? normalizedPhone : normalizedIdentifier;
         }

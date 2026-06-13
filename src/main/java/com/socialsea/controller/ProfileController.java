@@ -461,6 +461,7 @@ public class ProfileController {
                 .findTop20ByNameContainingIgnoreCase(query)
                 .stream()
                 .filter(u -> finalMyUserId == null || !u.getId().equals(finalMyUserId))
+                .filter(PublicUserPayloads::isPubliclyVisible)
                 .map(u -> PublicUserPayloads.toUserSummary(u, UrlUtils.toAbsoluteUrl(request, u.getProfilePic())))
                 .toList();
 
@@ -641,8 +642,7 @@ public class ProfileController {
                     .body(Map.of("message", "This account is private"));
         }
 
-        List<PublicUserDto> users = followRepo.findByFollowing(target).stream()
-                .map(Follow::getFollower)
+        List<PublicUserDto> users = followRepo.findVisibleFollowers(target).stream()
                 .filter(u -> u != null && u.getId() != null)
                 .map(u -> PublicUserPayloads.toUserSummary(u, UrlUtils.toAbsoluteUrl(request, u.getProfilePic())))
                 .toList();
@@ -669,8 +669,7 @@ public class ProfileController {
                     .body(Map.of("message", "This account is private"));
         }
 
-        List<PublicUserDto> users = followRepo.findByFollower(target).stream()
-                .map(Follow::getFollowing)
+        List<PublicUserDto> users = followRepo.findVisibleFollowing(target).stream()
                 .filter(u -> u != null && u.getId() != null)
                 .map(u -> PublicUserPayloads.toUserSummary(u, UrlUtils.toAbsoluteUrl(request, u.getProfilePic())))
                 .toList();
@@ -700,10 +699,12 @@ public class ProfileController {
         }
 
         if (clean.matches("\\d+")) {
-            return userRepo.findById(Long.parseLong(clean));
+            return userRepo.findById(Long.parseLong(clean))
+                    .filter(PublicUserPayloads::isPubliclyVisible);
         }
 
-        return userRepo.findByNameIgnoreCase(clean);
+        return userRepo.findByNameIgnoreCase(clean)
+                .filter(PublicUserPayloads::isPubliclyVisible);
     }
 
     private String normalizeIdentifier(String identifier) {
@@ -742,7 +743,8 @@ public class ProfileController {
             return Optional.empty();
         }
         return userRepo.findByEmailIgnoreCase(identifier)
-                .or(() -> userRepo.findByNameIgnoreCase(identifier));
+                .filter(PublicUserPayloads::isPubliclyVisible)
+                .or(() -> userRepo.findByNameIgnoreCase(identifier).filter(PublicUserPayloads::isPubliclyVisible));
     }
 
     @PostMapping("/setup")

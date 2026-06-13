@@ -3,6 +3,7 @@ package com.socialsea.repository;
 import com.socialsea.model.ChatMessage;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -29,6 +30,41 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
             Long receiverId,
             Long senderIdReverse,
             Long receiverIdReverse,
+            Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = {"sender", "receiver"})
+    @Query("""
+            select m
+            from ChatMessage m
+            where m.group is null
+              and (
+                (m.sender.id = :me and m.receiver.id = :other and m.senderDeletedAt is null)
+                or
+                (m.sender.id = :other and m.receiver.id = :me and m.receiverDeletedAt is null)
+              )
+            order by m.createdAt asc
+            """)
+    List<ChatMessage> findVisibleDirectMessagesOrderByCreatedAtAsc(
+            @Param("me") Long me,
+            @Param("other") Long other
+    );
+
+    @EntityGraph(attributePaths = {"sender", "receiver"})
+    @Query("""
+            select m
+            from ChatMessage m
+            where m.group is null
+              and (
+                (m.sender.id = :me and m.receiver.id = :other and m.senderDeletedAt is null)
+                or
+                (m.sender.id = :other and m.receiver.id = :me and m.receiverDeletedAt is null)
+              )
+            order by m.createdAt desc
+            """)
+    List<ChatMessage> findVisibleDirectMessagesOrderByCreatedAtDesc(
+            @Param("me") Long me,
+            @Param("other") Long other,
             Pageable pageable
     );
 
@@ -109,11 +145,34 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
             LocalDateTime createdAtAfter
     );
 
-    long deleteBySenderIdAndReceiverIdOrSenderIdAndReceiverId(
-            Long senderId,
-            Long receiverId,
-            Long senderIdReverse,
-            Long receiverIdReverse
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update ChatMessage m
+            set m.senderDeletedAt = :deletedAt
+            where m.group is null
+              and m.sender.id = :me
+              and m.receiver.id = :other
+              and m.senderDeletedAt is null
+            """)
+    int markSenderConversationDeleted(
+            @Param("me") Long me,
+            @Param("other") Long other,
+            @Param("deletedAt") LocalDateTime deletedAt
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update ChatMessage m
+            set m.receiverDeletedAt = :deletedAt
+            where m.group is null
+              and m.sender.id = :other
+              and m.receiver.id = :me
+              and m.receiverDeletedAt is null
+            """)
+    int markReceiverConversationDeleted(
+            @Param("me") Long me,
+            @Param("other") Long other,
+            @Param("deletedAt") LocalDateTime deletedAt
     );
 
     long deleteByGroupId(Long groupId);
@@ -123,6 +182,7 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
             from ChatMessage m
             where m.group is null
               and m.receiver.id = :receiverId
+              and m.receiverDeletedAt is null
               and m.readAt is null
               and (m.text is null or m.text not like '__SS_READ_RECEIPT__:%')
             """)

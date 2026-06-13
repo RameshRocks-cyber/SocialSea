@@ -28,6 +28,7 @@ public class NotificationController {
 
     private final NotificationRepository repo;
     private final UserRepository userRepo;
+    private final FollowRequestRepository followRequestRepo;
     private final PostRepository postRepo;
     private static final Logger log = LoggerFactory.getLogger(NotificationController.class);
     private static final Pattern EMAIL_PATTERN =
@@ -35,6 +36,8 @@ public class NotificationController {
     private static final Pattern URL_PATTERN = Pattern.compile("https?://\\S+");
     private static final Pattern SOS_ALERT_ID_PATTERN =
         Pattern.compile("/sos/(?:live|navigate)/([0-9]+)", Pattern.CASE_INSENSITIVE);
+    private static final Pattern ACTOR_ID_MARKER_PATTERN =
+        Pattern.compile("\\[actorId\\s*:\\s*(\\d+)]", Pattern.CASE_INSENSITIVE);
     private static final Pattern POST_ID_MARKER_PATTERN =
         Pattern.compile("\\[postId\\s*:\\s*(\\d+)]", Pattern.CASE_INSENSITIVE);
     private static final Pattern STORY_ID_MARKER_PATTERN =
@@ -42,9 +45,15 @@ public class NotificationController {
     private static final int DEFAULT_PAGE_SIZE = 50;
     private static final int MAX_PAGE_SIZE = 120;
 
-    public NotificationController(NotificationRepository repo, UserRepository userRepo, PostRepository postRepo) {
+    public NotificationController(
+            NotificationRepository repo,
+            UserRepository userRepo,
+            FollowRequestRepository followRequestRepo,
+            PostRepository postRepo
+    ) {
         this.repo = repo;
         this.userRepo = userRepo;
+        this.followRequestRepo = followRequestRepo;
         this.postRepo = postRepo;
     }
 
@@ -57,6 +66,7 @@ public class NotificationController {
     ) {
         if (auth == null || !auth.isAuthenticated()) return List.of();
         try {
+            User viewer = userRepo.findByEmailIgnoreCase(auth.getName()).orElse(null);
             int safePage = Math.max(0, page);
             int requestedSize = size != null ? size : (limit != null ? limit : DEFAULT_PAGE_SIZE);
             int safeSize = resolvePageSize(requestedSize);
@@ -66,7 +76,7 @@ public class NotificationController {
                     PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, "createdAt"))
                 )
                 .getContent();
-            return buildNotificationPayload(items);
+            return buildNotificationPayload(items, viewer);
         } catch (Exception ex) {
             log.error("Failed to load notifications for {}", auth.getName(), ex);
             return List.of();
@@ -141,7 +151,7 @@ public class NotificationController {
         return Math.min(MAX_PAGE_SIZE, requestedSize);
     }
 
-    private List<Map<String, Object>> buildNotificationPayload(List<Notification> items) {
+    private List<Map<String, Object>> buildNotificationPayload(List<Notification> items, User viewer) {
         List<Map<String, Object>> out = new ArrayList<>();
         Set<String> seenFollowActors = new LinkedHashSet<>();
 
@@ -156,16 +166,42 @@ public class NotificationController {
             if ("TRAFFIC".equalsIgnoreCase(type)) {
                 kind = "traffic";
             }
+            String actorIdMarker = extractActorId(raw);
             String actorEmail = extractFirstEmail(messageWithoutMarkers);
-            Optional<User> actorOpt = actorEmail == null ? Optional.empty() : userRepo.findByEmail(actorEmail);
-            String actorName = actorOpt
+            String actorName = "follow".equals(kind)
+                    ? deriveActorFromMessage(messageWithoutMarkers)
+                    : "";
+            Optional<User> actorOpt = Optional.empty();
+            if (actorIdMarker != null && !actorIdMarker.isBlank()) {
+                try {
+                    actorOpt = userRepo.findById(Long.parseLong(actorIdMarker));
+                } catch (NumberFormatException ignored) {
+                    // fall back to email/name matching
+                }
+            }
+            if (actorOpt.isEmpty() && actorEmail != null && !actorEmail.isBlank()) {
+                actorOpt = userRepo.findByEmailIgnoreCase(actorEmail);
+            }
+            if (actorOpt.isEmpty() && "follow".equals(kind) && actorName != null && !actorName.isBlank()) {
+                actorOpt = userRepo.findByNameIgnoreCase(actorName);
+            }
+            String actorDisplayName = actorOpt
                     .map(u -> (u.getName() != null && !u.getName().isBlank()) ? u.getName() : u.getEmail())
-                    .orElse(actorEmail);
+                    .orElse(!actorName.isBlank() ? actorName : actorEmail);
+            String followRequestId = null;
+            if ("follow".equals(kind) && viewer != null && actorOpt.isPresent()) {
+                followRequestId = followRequestRepo
+                        .findFirstBySenderAndReceiverAndStatusIgnoreCase(actorOpt.get(), viewer, "PENDING")
+                        .map(req -> req.getId() != null ? String.valueOf(req.getId()) : null)
+                        .orElse(null);
+            }
             String normalizedMessage = normalizeSenderName(messageWithoutMarkers);
 
             // Collapse noisy repeated follow alerts from the same actor.
             if ("follow".equals(kind)) {
-                String dedupeActor = (actorEmail != null && !actorEmail.isBlank())
+                String dedupeActor = (actorIdMarker != null && !actorIdMarker.isBlank())
+                        ? ("uid:" + actorIdMarker.trim().toLowerCase(Locale.ROOT))
+                        : (actorEmail != null && !actorEmail.isBlank())
                         ? actorEmail.toLowerCase()
                         : deriveActorFromMessage(normalizedMessage).toLowerCase();
                 if (!seenFollowActors.add(dedupeActor)) {
@@ -182,10 +218,21 @@ public class NotificationController {
             row.put("createdAt", n.getCreatedAt());
             row.put("recipient", n.getRecipient());
             row.put("kind", kind);
-            row.put("actorEmail", actorEmail);
-            row.put("actorName", actorName);
+            row.put("actorId", actorOpt.map(User::getId).orElse(null));
+            row.put("actorEmail", actorOpt.map(User::getEmail).orElse(actorEmail));
+            row.put("actorName", actorDisplayName);
             row.put("actorProfilePic", actorOpt.map(User::getProfilePic).orElse(null));
-            row.put("actorIdentifier", (actorEmail != null && !actorEmail.isBlank()) ? actorEmail : actorName);
+            row.put(
+                    "actorIdentifier",
+                    actorOpt.map(user -> String.valueOf(user.getId()))
+                            .orElseGet(() -> {
+                                if (actorEmail != null && !actorEmail.isBlank()) return actorEmail;
+                                return actorDisplayName;
+                            })
+            );
+            if (followRequestId != null && !followRequestId.isBlank()) {
+                row.put("followRequestId", followRequestId);
+            }
             String postId = extractPostId(raw);
             String storyId = extractStoryId(raw);
             if (("like".equals(kind) || "comment".equals(kind)) && postId != null) {
@@ -301,6 +348,16 @@ public class NotificationController {
         return null;
     }
 
+    private String extractActorId(String message) {
+        if (message == null || message.isBlank()) return null;
+        Matcher matcher = ACTOR_ID_MARKER_PATTERN.matcher(message);
+        if (matcher.find()) {
+            String id = matcher.group(1);
+            return (id != null && !id.isBlank()) ? id.trim() : null;
+        }
+        return null;
+    }
+
     private String extractPostId(String message) {
         if (message == null || message.isBlank()) return null;
         Matcher matcher = POST_ID_MARKER_PATTERN.matcher(message);
@@ -323,7 +380,8 @@ public class NotificationController {
 
     private String stripTargetMarkers(String message) {
         if (message == null || message.isBlank()) return message;
-        String stripped = POST_ID_MARKER_PATTERN.matcher(message).replaceAll(" ");
+        String stripped = ACTOR_ID_MARKER_PATTERN.matcher(message).replaceAll(" ");
+        stripped = POST_ID_MARKER_PATTERN.matcher(stripped).replaceAll(" ");
         stripped = STORY_ID_MARKER_PATTERN.matcher(stripped).replaceAll(" ");
         return stripped.replaceAll("\\s{2,}", " ").trim();
     }
@@ -336,7 +394,7 @@ public class NotificationController {
     private String deriveActorFromMessage(String message) {
         if (message == null || message.isBlank()) return "user";
         String lower = message.toLowerCase();
-        String[] cuts = new String[]{" liked ", " started following ", " commented ", " mentioned "};
+        String[] cuts = new String[]{" liked ", " started following ", " requested to follow ", " commented ", " mentioned "};
         for (String cut : cuts) {
             int idx = lower.indexOf(cut);
             if (idx > 0) return message.substring(0, idx).trim();
@@ -345,13 +403,19 @@ public class NotificationController {
     }
 
     private String buildNotificationThreadKey(Notification notification) {
-        String message = stripTargetMarkers(notification != null ? notification.getMessage() : null);
+        String rawMessage = notification != null ? notification.getMessage() : null;
+        String message = stripTargetMarkers(rawMessage);
         String type = notification != null && notification.getType() != null ? notification.getType() : "SYSTEM";
         String kind = deriveKind(message);
         if ("EMERGENCY".equalsIgnoreCase(type)) {
             kind = "emergency";
         } else if ("TRAFFIC".equalsIgnoreCase(type)) {
             kind = "traffic";
+        }
+
+        String actorId = extractActorId(rawMessage);
+        if (actorId != null && !actorId.isBlank()) {
+            return kind + ":uid:" + actorId.trim();
         }
 
         String actorEmail = extractFirstEmail(message);

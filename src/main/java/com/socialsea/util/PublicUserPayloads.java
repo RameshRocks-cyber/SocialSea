@@ -19,6 +19,10 @@ public final class PublicUserPayloads {
         return safeTrim(user.getName());
     }
 
+    public static boolean isPubliclyVisible(User user) {
+        return user != null && !user.isBanned();
+    }
+
     public static PublicUserDto toUserSummary(User user, String profilePicUrl) {
         if (user == null) return null;
         return PublicUserDto.from(user, profilePicUrl);

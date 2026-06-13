@@ -57,6 +57,12 @@ public class ChatMessage {
     @Column
     private LocalDateTime readAt;
 
+    @Column
+    private LocalDateTime senderDeletedAt;
+
+    @Column
+    private LocalDateTime receiverDeletedAt;
+
     public Long getId() {
         return id;
     }
@@ -171,5 +177,21 @@ public class ChatMessage {
 
     public void setReadAt(LocalDateTime readAt) {
         this.readAt = readAt;
+    }
+
+    public LocalDateTime getSenderDeletedAt() {
+        return senderDeletedAt;
+    }
+
+    public void setSenderDeletedAt(LocalDateTime senderDeletedAt) {
+        this.senderDeletedAt = senderDeletedAt;
+    }
+
+    public LocalDateTime getReceiverDeletedAt() {
+        return receiverDeletedAt;
+    }
+
+    public void setReceiverDeletedAt(LocalDateTime receiverDeletedAt) {
+        this.receiverDeletedAt = receiverDeletedAt;
     }
 }

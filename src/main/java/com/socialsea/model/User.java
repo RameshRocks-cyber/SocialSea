@@ -7,6 +7,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -75,6 +76,19 @@ public class User implements UserDetails {
     private Double lastLongitude;
     private LocalDateTime locationUpdatedAt;
     private LocalDateTime presenceUpdatedAt;
+
+    @PrePersist
+    @PreUpdate
+    private void normalizeIdentityFields() {
+        if (email != null) {
+            String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
+            email = normalizedEmail.isEmpty() ? null : normalizedEmail;
+        }
+        if (phoneNumber != null) {
+            String normalizedPhone = phoneNumber.trim();
+            phoneNumber = normalizedPhone.isEmpty() ? null : normalizedPhone;
+        }
+    }
 
     public Long getId() {
         return id;

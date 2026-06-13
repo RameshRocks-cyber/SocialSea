@@ -74,7 +74,7 @@ public class FollowController {
             followRequestRepo.save(request);
             notificationService.notifyUser(
                     following.getEmail(),
-                    PublicUserPayloads.publicDisplayName(follower) + " requested to follow you"
+                    PublicUserPayloads.publicDisplayName(follower) + " requested to follow you [actorId:" + follower.getId() + "]"
             );
             return Map.of("status", "REQUESTED", "message", "Follow request sent", "requestId", request.getId());
         }
@@ -109,7 +109,7 @@ public class FollowController {
         followRequestRepo.save(request);
         notificationService.notifyUser(
                 following.getEmail(),
-                PublicUserPayloads.publicDisplayName(follower) + " requested to follow you"
+                PublicUserPayloads.publicDisplayName(follower) + " requested to follow you [actorId:" + follower.getId() + "]"
         );
         return Map.of("status", "REQUESTED", "message", "Follow request sent", "requestId", request.getId());
     }
@@ -133,6 +133,7 @@ public class FollowController {
         User receiver = requireAuth(auth);
         return followRequestRepo.findByReceiverAndStatus(receiver, "PENDING").stream()
                 .map(req -> toFollowRequestItem(request, req))
+                .filter(Objects::nonNull)
                 .toList();
     }
 
@@ -141,6 +142,7 @@ public class FollowController {
         User sender = requireAuth(auth);
         return followRequestRepo.findBySenderAndStatus(sender, "PENDING").stream()
                 .map(req -> toFollowRequestItem(request, req))
+                .filter(Objects::nonNull)
                 .toList();
     }
 
@@ -148,31 +150,34 @@ public class FollowController {
     public Map<String, Object> acceptRequest(@PathVariable Long id, Authentication auth) {
         User receiver = requireAuth(auth);
         FollowRequest request = followRequestRepo.findById(id).orElseThrow();
-        if (!request.getReceiver().getId().equals(receiver.getId())) {
-            return Map.of("status", "ERROR", "message", "Not allowed");
-        }
-        request.setStatus("ACCEPTED");
-        followRequestRepo.save(request);
-        if (!followRepo.existsByFollowerAndFollowing(request.getSender(), request.getReceiver())) {
-            followRepo.save(new Follow(null, request.getSender(), request.getReceiver()));
-        }
-        notificationService.notifyUser(
-                request.getSender().getEmail(),
-                PublicUserPayloads.publicDisplayName(receiver) + " accepted your follow request"
-        );
-        return Map.of("status", "ACCEPTED");
+        return acceptRequestInternal(request, receiver);
     }
 
     @PostMapping("/requests/{id}/reject")
     public Map<String, Object> rejectRequest(@PathVariable Long id, Authentication auth) {
         User receiver = requireAuth(auth);
         FollowRequest request = followRequestRepo.findById(id).orElseThrow();
-        if (!request.getReceiver().getId().equals(receiver.getId())) {
-            return Map.of("status", "ERROR", "message", "Not allowed");
-        }
-        request.setStatus("REJECTED");
-        followRequestRepo.save(request);
-        return Map.of("status", "REJECTED");
+        return rejectRequestInternal(request, receiver);
+    }
+
+    @PostMapping("/requests/from/{identifier}/accept")
+    public Map<String, Object> acceptRequestFromSender(@PathVariable String identifier, Authentication auth) {
+        User receiver = requireAuth(auth);
+        User sender = resolveUser(identifier, auth);
+        FollowRequest request = followRequestRepo
+                .findFirstBySenderAndReceiverAndStatusIgnoreCase(sender, receiver, "PENDING")
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Follow request not found"));
+        return acceptRequestInternal(request, receiver);
+    }
+
+    @PostMapping("/requests/from/{identifier}/reject")
+    public Map<String, Object> rejectRequestFromSender(@PathVariable String identifier, Authentication auth) {
+        User receiver = requireAuth(auth);
+        User sender = resolveUser(identifier, auth);
+        FollowRequest request = followRequestRepo
+                .findFirstBySenderAndReceiverAndStatusIgnoreCase(sender, receiver, "PENDING")
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Follow request not found"));
+        return rejectRequestInternal(request, receiver);
     }
 
     @GetMapping("/{identifier}/followers")
@@ -198,10 +203,7 @@ public class FollowController {
         User viewer = requireAuth(auth);
         User user = resolveUser(identifier, auth);
         ensureCanViewConnectionList(viewer, user);
-        List<User> users = followRepo.findByFollowing(user).stream()
-                .map(Follow::getFollower)
-                .filter(Objects::nonNull)
-                .toList();
+        List<User> users = followRepo.findVisibleFollowers(user);
         return uniqueUserItemsById(request, users);
     }
 
@@ -214,10 +216,7 @@ public class FollowController {
         User viewer = requireAuth(auth);
         User user = resolveUser(identifier, auth);
         ensureCanViewConnectionList(viewer, user);
-        List<User> users = followRepo.findByFollower(user).stream()
-                .map(Follow::getFollowing)
-                .filter(Objects::nonNull)
-                .toList();
+        List<User> users = followRepo.findVisibleFollowing(user);
         return uniqueUserItemsById(request, users);
     }
 
@@ -226,6 +225,7 @@ public class FollowController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login required");
         }
         return userRepo.findByEmail(auth.getName())
+                .filter(PublicUserPayloads::isPubliclyVisible)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login required"));
     }
     private User resolveUser(String identifier, Authentication auth) {
@@ -236,14 +236,18 @@ public class FollowController {
                     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login required");
                 }
                 return userRepo.findByEmail(auth.getName())
+                        .filter(PublicUserPayloads::isPubliclyVisible)
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
             }
         }
         if (clean.matches("\\d+")) {
             return userRepo.findById(Long.parseLong(clean))
+                    .filter(PublicUserPayloads::isPubliclyVisible)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
         }
-        return userRepo.findByNameIgnoreCase(clean)
+        return userRepo.findByEmailIgnoreCase(clean)
+                .filter(PublicUserPayloads::isPubliclyVisible)
+                .or(() -> userRepo.findByNameIgnoreCase(clean).filter(PublicUserPayloads::isPubliclyVisible))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
@@ -268,7 +272,7 @@ public class FollowController {
     private List<PublicUserDto> uniqueUserItemsById(HttpServletRequest request, List<User> users) {
         Map<Long, PublicUserDto> unique = new LinkedHashMap<>();
         for (User user : users) {
-            if (user == null || user.getId() == null) continue;
+            if (!PublicUserPayloads.isPubliclyVisible(user) || user.getId() == null) continue;
             unique.putIfAbsent(user.getId(), toUserItem(request, user));
         }
         return List.copyOf(unique.values());
@@ -276,6 +280,33 @@ public class FollowController {
 
     private PublicUserDto toUserItem(HttpServletRequest request, User user) {
         return PublicUserPayloads.toUserSummary(user, UrlUtils.toAbsoluteUrl(request, user.getProfilePic()));
+    }
+
+    private Map<String, Object> acceptRequestInternal(FollowRequest request, User receiver) {
+        if (request == null || receiver == null || request.getReceiver() == null || request.getReceiver().getId() == null
+                || !request.getReceiver().getId().equals(receiver.getId())) {
+            return Map.of("status", "ERROR", "message", "Not allowed");
+        }
+        request.setStatus("ACCEPTED");
+        followRequestRepo.save(request);
+        if (!followRepo.existsByFollowerAndFollowing(request.getSender(), request.getReceiver())) {
+            followRepo.save(new Follow(null, request.getSender(), request.getReceiver()));
+        }
+        notificationService.notifyUser(
+                request.getSender().getEmail(),
+                PublicUserPayloads.publicDisplayName(receiver) + " accepted your follow request"
+        );
+        return Map.of("status", "ACCEPTED");
+    }
+
+    private Map<String, Object> rejectRequestInternal(FollowRequest request, User receiver) {
+        if (request == null || receiver == null || request.getReceiver() == null || request.getReceiver().getId() == null
+                || !request.getReceiver().getId().equals(receiver.getId())) {
+            return Map.of("status", "ERROR", "message", "Not allowed");
+        }
+        request.setStatus("REJECTED");
+        followRequestRepo.save(request);
+        return Map.of("status", "REJECTED");
     }
 
     private void ensureCanViewConnectionList(User viewer, User owner) {
@@ -294,6 +325,10 @@ public class FollowController {
     }
 
     private Map<String, Object> toFollowRequestItem(HttpServletRequest httpRequest, FollowRequest request) {
+        if (!PublicUserPayloads.isPubliclyVisible(request.getSender())
+                || !PublicUserPayloads.isPubliclyVisible(request.getReceiver())) {
+            return null;
+        }
         Map<String, Object> item = new HashMap<>();
         item.put("id", request.getId());
         item.put("status", request.getStatus());

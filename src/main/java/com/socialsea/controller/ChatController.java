@@ -8,6 +8,7 @@ import com.socialsea.service.PresenceService;
 import com.socialsea.service.UploadService;
 import com.socialsea.service.WebPushService;
 import com.socialsea.util.MediaUrlUtils;
+import static com.socialsea.util.PublicUserPayloads.isPubliclyVisible;
 import com.socialsea.util.UrlUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -77,11 +78,12 @@ public class ChatController {
 
         for (ChatMessage m : recent) {
             if (m == null) continue;
+            if (!isVisibleToUser(m, me.getId())) continue;
             User sender = m.getSender();
             User receiver = m.getReceiver();
             if (sender == null || receiver == null) continue;
             User other = Objects.equals(sender.getId(), me.getId()) ? receiver : sender;
-            if (other == null || other.getId() == null) continue;
+            if (other == null || other.getId() == null || !isPubliclyVisible(other)) continue;
             Long otherId = other.getId();
             if (byOtherUser.containsKey(otherId)) continue;
 
@@ -186,11 +188,9 @@ public class ChatController {
         Long safeOtherUserId = otherOpt.get().getId();
 
         int safeLimit = normalizeLimit(limit, 20, 200, 100);
-        List<ChatMessage> recent = chatRepo.findBySenderIdAndReceiverIdOrSenderIdAndReceiverIdOrderByCreatedAtDesc(
+        List<ChatMessage> recent = chatRepo.findVisibleDirectMessagesOrderByCreatedAtDesc(
                 me.getId(),
                 safeOtherUserId,
-                safeOtherUserId,
-                me.getId(),
                 PageRequest.of(0, safeLimit)
         );
         List<ChatMessage> list = new ArrayList<>(recent);
@@ -275,6 +275,19 @@ public class ChatController {
         return value.atZone(ZoneId.systemDefault()).toInstant();
     }
 
+    private boolean isVisibleToUser(ChatMessage message, Long userId) {
+        if (message == null || userId == null) return false;
+        User sender = message.getSender();
+        if (sender != null && Objects.equals(sender.getId(), userId)) {
+            return message.getSenderDeletedAt() == null;
+        }
+        User receiver = message.getReceiver();
+        if (receiver != null && Objects.equals(receiver.getId(), userId)) {
+            return message.getReceiverDeletedAt() == null;
+        }
+        return true;
+    }
+
     @DeleteMapping("/{otherUserId}")
     @Transactional
     public ResponseEntity<?> deleteConversation(@PathVariable String otherUserId, Authentication auth) {
@@ -285,12 +298,9 @@ public class ChatController {
         if (otherOpt.isEmpty()) return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", "User not found"));
         Long safeOtherUserId = otherOpt.get().getId();
 
-        long deleted = chatRepo.deleteBySenderIdAndReceiverIdOrSenderIdAndReceiverId(
-            me.getId(),
-            safeOtherUserId,
-            safeOtherUserId,
-            me.getId()
-        );
+        LocalDateTime deletedAt = LocalDateTime.now();
+        long deleted = (long) chatRepo.markSenderConversationDeleted(me.getId(), safeOtherUserId, deletedAt)
+                + chatRepo.markReceiverConversationDeleted(me.getId(), safeOtherUserId, deletedAt);
 
         return ResponseEntity.ok(Map.of("deleted", deleted));
     }
@@ -596,7 +606,9 @@ public class ChatController {
 
     private User currentUser(Authentication auth) {
         if (auth == null || !auth.isAuthenticated()) return null;
-        return userRepo.findByEmailIgnoreCase(auth.getName()).orElse(null);
+        return userRepo.findByEmailIgnoreCase(auth.getName())
+                .filter(user -> isPubliclyVisible(user))
+                .orElse(null);
     }
 
     private String displayName(User user) {
@@ -612,7 +624,7 @@ public class ChatController {
         String senderEmail = sender.getEmail() == null ? "" : sender.getEmail().trim();
         if (!senderEmail.isBlank() && senderEmail.equalsIgnoreCase(receiverEmail)) return;
 
-        String senderName = displayName(sender);
+        String senderName = isPubliclyVisible(sender) ? displayName(sender) : "User";
         String body = String.valueOf(preview == null ? "" : preview).trim();
         if (body.isBlank()) body = "You have a new message";
         if (body.length() > 180) body = body.substring(0, 180);
@@ -627,11 +639,12 @@ public class ChatController {
 
     private Map<String, Object> toChatPayload(ChatMessage saved, User sender, boolean mine, HttpServletRequest request) {
         Map<String, Object> payload = new HashMap<>();
+        String senderLabel = isPubliclyVisible(sender) ? displayName(sender) : "User";
         payload.put("id", saved.getId());
         payload.put("senderId", sender.getId());
         payload.put("receiverId", saved.getReceiver().getId());
-        payload.put("senderName", displayName(sender));
-        payload.put("senderEmail", sender.getEmail());
+        payload.put("senderName", senderLabel);
+        payload.put("senderEmail", isPubliclyVisible(sender) ? sender.getEmail() : null);
         payload.put("text", saved.getText());
         applyMediaPayload(payload, saved, request);
         payload.put("fileName", saved.getFileName());
@@ -786,8 +799,9 @@ public class ChatController {
         User other = otherOpt.get();
         Long safeOtherUserId = other.getId();
 
-        List<ChatMessage> list = chatRepo.findBySenderIdAndReceiverIdOrSenderIdAndReceiverIdOrderByCreatedAtAsc(
-                safeOtherUserId, me.getId(), me.getId(), safeOtherUserId
+        List<ChatMessage> list = chatRepo.findVisibleDirectMessagesOrderByCreatedAtAsc(
+                me.getId(),
+                safeOtherUserId
         );
 
         LocalDateTime now = LocalDateTime.now();
@@ -827,10 +841,11 @@ public class ChatController {
         String clean = normalizeIdentifier(identifier);
         if (clean.isBlank()) return Optional.empty();
         if (clean.matches("\\d+")) {
-            return userRepo.findById(Long.parseLong(clean));
+            return userRepo.findById(Long.parseLong(clean)).filter(user -> isPubliclyVisible(user));
         }
         return userRepo.findByEmailIgnoreCase(clean)
-                .or(() -> userRepo.findByNameIgnoreCase(clean));
+                .filter(user -> isPubliclyVisible(user))
+                .or(() -> userRepo.findByNameIgnoreCase(clean).filter(user -> isPubliclyVisible(user)));
     }
 
     private String normalizeIdentifier(String identifier) {

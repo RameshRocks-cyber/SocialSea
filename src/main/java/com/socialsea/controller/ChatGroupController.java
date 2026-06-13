@@ -10,6 +10,7 @@ import com.socialsea.repository.ChatMessageRepository;
 import com.socialsea.repository.UserRepository;
 import com.socialsea.service.UploadService;
 import com.socialsea.util.MediaUrlUtils;
+import static com.socialsea.util.PublicUserPayloads.isPubliclyVisible;
 import com.socialsea.util.UrlUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -97,7 +98,9 @@ public class ChatGroupController {
         memberIds.add(me.getId());
         memberIds.addAll(parseMemberIds(body == null ? null : body.get("memberIds")));
 
-        List<User> members = userRepo.findAllById(memberIds);
+        List<User> members = userRepo.findAllById(memberIds).stream()
+                .filter(user -> isPubliclyVisible(user))
+                .toList();
         if (members.size() < 2) {
             return ResponseEntity.badRequest().body(Map.of("message", "Select at least one person"));
         }
@@ -599,7 +602,7 @@ public class ChatGroupController {
         List<ChatGroupMember> members = groupMemberRepo.findByGroupId(groupId);
         boolean ownerDeleting = group.getOwner() != null && Objects.equals(group.getOwner().getId(), me.getId());
 
-        if (ownerDeleting || members.size() <= 2) {
+        if (ownerDeleting || visibleGroupMembers(members).size() <= 2) {
             chatRepo.deleteByGroupId(groupId);
             groupRepo.delete(group);
             return ResponseEntity.ok(Map.of("deleted", true, "left", false));
@@ -616,7 +619,9 @@ public class ChatGroupController {
         if (auth == null || !auth.isAuthenticated()) {
             return null;
         }
-        return userRepo.findByEmailIgnoreCase(auth.getName()).orElse(null);
+        return userRepo.findByEmailIgnoreCase(auth.getName())
+                .filter(user -> isPubliclyVisible(user))
+                .orElse(null);
     }
 
     private Set<Long> parseMemberIds(Object raw) {
@@ -649,10 +654,12 @@ public class ChatGroupController {
             User me
     ) {
         Map<String, Object> item = new LinkedHashMap<>();
+        List<ChatGroupMember> visibleMembers = visibleGroupMembers(members);
         String threadId = "group:" + group.getId();
         Instant lastAt = latest != null ? toInstant(latest.getCreatedAt()) : toInstant(group.getCreatedAt());
         String lastMessage = latest != null ? lastMessagePreview(latest) : "Group created";
         String groupProfilePic = UrlUtils.toAbsoluteUrl(request, group.getProfilePic());
+        String ownerName = isPubliclyVisible(group.getOwner()) ? displayName(group.getOwner()) : "";
 
         item.put("id", threadId);
         item.put("threadId", threadId);
@@ -665,19 +672,19 @@ public class ChatGroupController {
         item.put("profilePic", groupProfilePic);
         item.put("profilePicUrl", groupProfilePic);
         item.put("ownerId", group.getOwner() != null ? group.getOwner().getId() : null);
-        item.put("ownerName", group.getOwner() != null ? displayName(group.getOwner()) : "Admin");
+        item.put("ownerName", ownerName);
         item.put("isAdmin", isGroupAdmin(group, me));
         item.put("canEdit", isGroupAdmin(group, me));
         Instant groupCreatedAt = toInstant(group.getCreatedAt());
         item.put("createdAt", groupCreatedAt != null ? groupCreatedAt.toString() : null);
-        item.put("memberCount", members.size());
-        item.put("memberIds", members.stream()
+        item.put("memberCount", visibleMembers.size());
+        item.put("memberIds", visibleMembers.stream()
                 .map(ChatGroupMember::getUser)
                 .filter(Objects::nonNull)
                 .map(User::getId)
                 .filter(Objects::nonNull)
                 .toList());
-        item.put("members", members.stream().map(member -> {
+        item.put("members", visibleMembers.stream().map(member -> {
             User user = member.getUser();
             if (user == null) {
                 return Map.of();
@@ -706,14 +713,15 @@ public class ChatGroupController {
     ) {
         Map<String, Object> payload = new LinkedHashMap<>();
         User sender = message.getSender();
+        String senderLabel = isPubliclyVisible(sender) ? displayName(sender) : "User";
         payload.put("id", message.getId());
         payload.put("threadType", "group");
         payload.put("isGroup", true);
         payload.put("groupId", group.getId());
         payload.put("groupName", group.getName());
         payload.put("senderId", sender != null ? sender.getId() : null);
-        payload.put("senderName", sender != null ? displayName(sender) : "User");
-        payload.put("senderEmail", sender != null ? sender.getEmail() : null);
+        payload.put("senderName", sender != null ? senderLabel : "User");
+        payload.put("senderEmail", sender != null && isPubliclyVisible(sender) ? sender.getEmail() : null);
         payload.put("text", message.getText());
         applyMediaPayload(payload, message, request);
         payload.put("fileName", message.getFileName());
@@ -732,7 +740,7 @@ public class ChatGroupController {
     }
 
     private void publishGroupMessage(ChatGroup group, Long excludeUserId, Map<String, Object> payload) {
-        List<ChatGroupMember> members = groupMemberRepo.findByGroupId(group.getId());
+        List<ChatGroupMember> members = visibleGroupMembers(groupMemberRepo.findByGroupId(group.getId()));
         for (ChatGroupMember membership : members) {
             User user = membership.getUser();
             if (user == null || user.getId() == null) {
@@ -756,6 +764,16 @@ public class ChatGroupController {
             return "User";
         }
         return raw;
+    }
+
+    private List<ChatGroupMember> visibleGroupMembers(List<ChatGroupMember> members) {
+        if (members == null || members.isEmpty()) {
+            return List.of();
+        }
+        return members.stream()
+                .filter(Objects::nonNull)
+                .filter(member -> isPubliclyVisible(member.getUser()))
+                .toList();
     }
 
     private Instant toInstant(LocalDateTime value) {

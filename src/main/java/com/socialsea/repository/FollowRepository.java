@@ -14,13 +14,45 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
 
     boolean existsByFollowerAndFollowing(User follower, User following);
 
-    long countByFollower(User follower);
+    @Query("""
+        select count(f)
+        from Follow f
+        where f.follower = :follower
+          and f.following is not null
+          and f.following.banned = false
+    """)
+    long countByFollower(@Param("follower") User follower);
 
-    long countByFollowing(User following);
+    @Query("""
+        select count(f)
+        from Follow f
+        where f.following = :following
+          and f.follower is not null
+          and f.follower.banned = false
+    """)
+    long countByFollowing(@Param("following") User following);
 
     List<Follow> findByFollower(User follower);
 
     List<Follow> findByFollowing(User following);
+
+    @Query("""
+        select distinct f.follower
+        from Follow f
+        where f.following = :following
+          and f.follower is not null
+          and f.follower.banned = false
+    """)
+    List<User> findVisibleFollowers(@Param("following") User following);
+
+    @Query("""
+        select distinct f.following
+        from Follow f
+        where f.follower = :follower
+          and f.following is not null
+          and f.following.banned = false
+    """)
+    List<User> findVisibleFollowing(@Param("follower") User follower);
 
     @Query("select f.following.id from Follow f where f.follower.id = :followerId")
     List<Long> findFollowingIdsByFollowerId(@Param("followerId") Long followerId);
